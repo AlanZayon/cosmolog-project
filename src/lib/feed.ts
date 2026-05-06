@@ -67,6 +67,7 @@ export interface FeedUniversePayload {
   tagline: string;
   coverImageUrl: string | null;
   storyCount: number;
+  arcCount: number;
 }
 
 export type StoryFeedItem = {

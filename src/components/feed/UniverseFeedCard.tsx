@@ -28,13 +28,14 @@ export default function UniverseFeedCard({ universe }: UniverseFeedCardProps) {
           <div className="flex items-center gap-2 mb-3">
             <Badge variant="outline">{t('story.universe')}</Badge>
             <Badge variant="secondary">{universe.storyCount} hist.</Badge>
+            <Badge variant="secondary">{(universe.arcCount ?? 0)} arcos</Badge>
           </div>
 
           <h2 className="text-2xl font-semibold font-serif leading-tight">{universe.title}</h2>
           {universe.tagline && <p className="mt-3 text-base leading-relaxed text-foreground/80">{universe.tagline}</p>}
 
           <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-            <Library className="h-4 w-4" /> {universe.storyCount} histórias disponíveis
+            <Library className="h-4 w-4" /> {universe.storyCount} histórias e {(universe.arcCount ?? 0)} arcos
           </div>
         </div>
       </article>

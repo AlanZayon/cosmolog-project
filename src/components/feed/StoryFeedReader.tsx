@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Link from "next/link";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -84,6 +84,13 @@ export default function StoryFeedReader({ open, storyId, onOpenChange }: StoryFe
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!left-0 !top-0 !h-screen !w-screen !max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-none border-0 p-0">
+        <DialogDescription className="sr-only">
+          {loading || !story
+            ? loading
+              ? t('common.loading')
+              : t('common.noContent')
+            : story.description?.trim() || story.title}
+        </DialogDescription>
         {loading || !story ? (
           <>
             <DialogTitle className="sr-only">{t("common.loading")}</DialogTitle>

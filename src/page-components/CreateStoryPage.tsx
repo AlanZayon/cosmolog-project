@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -93,8 +92,6 @@ export default function CreateStoryPage() {
 
     if (universeId) {
       setSelectedUniverseId(universeId);
-    } else if (!selectedUniverseId && universeList.length > 0) {
-      setSelectedUniverseId(universeList[0].id);
     }
 
     setLoadingRelations(false);
@@ -148,7 +145,7 @@ export default function CreateStoryPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !storyType || !selectedUniverseId) return;
+    if (!user || !storyType) return;
     setLoading(true);
     try {
       const cover_image_url = coverFile ? await uploadFile('covers', coverFile) : null;
@@ -160,7 +157,7 @@ export default function CreateStoryPage() {
         tags,
         type: storyType,
         content: storyType === 'short_story' ? content : null,
-        universe_id: selectedUniverseId,
+        universe_id: selectedUniverseId || null,
         arc_id: selectedArcId || null,
         ...(cover_image_url && { cover_image_url }),
       } as any).select().single();
@@ -215,16 +212,9 @@ export default function CreateStoryPage() {
           <h1 className="text-2xl font-bold font-serif mb-6">{t('createStory.title')}</h1>
           {loadingRelations ? (
             <p className="text-muted-foreground mb-4">{t('common.loading')}</p>
-          ) : universes.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card p-4 mb-6">
-              <p className="text-sm text-muted-foreground mb-4">{t('createStory.noUniverses')}</p>
-              <Button asChild className="gradient-warm text-primary-foreground">
-                <Link href="/universes/create">{t('createStory.createUniverseFirst')}</Link>
-              </Button>
-            </div>
           ) : (
             <div className="rounded-xl border border-border bg-card p-4 mb-6">
-              <p className="text-sm text-muted-foreground mb-3">{t('createStory.universeRequired')}</p>
+              <p className="text-sm text-muted-foreground mb-3">{t('createStory.universeOptional')}</p>
               <label className="text-sm font-medium text-foreground mb-2 block">{t('story.universe')}</label>
               <select
                 value={selectedUniverseId}
@@ -232,6 +222,7 @@ export default function CreateStoryPage() {
                 disabled={!!universeId}
                 className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
               >
+                <option value="">{t('common.none')}</option>
                 {universes.map((universe) => (
                   <option key={universe.id} value={universe.id}>{universe.title}</option>
                 ))}
@@ -244,7 +235,7 @@ export default function CreateStoryPage() {
               <button
                 key={st.value}
                 onClick={() => setStoryType(st.value)}
-                disabled={loadingRelations || universes.length === 0 || !selectedUniverseId}
+                disabled={loadingRelations}
                 className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-accent transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="p-2 rounded-lg bg-primary/10 text-primary">{st.icon}</div>
@@ -279,9 +270,8 @@ export default function CreateStoryPage() {
               onChange={(e) => setSelectedUniverseId(e.target.value)}
               disabled={!!universeId}
               className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
-              required
             >
-              <option value="" disabled>{t('createStory.universeRequired')}</option>
+              <option value="">{t('common.none')}</option>
               {universes.map((universe) => (
                 <option key={universe.id} value={universe.id}>{universe.title}</option>
               ))}
@@ -361,7 +351,7 @@ export default function CreateStoryPage() {
             </div>
           )}
 
-          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || !selectedUniverseId}>
+          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading}>
             {loading ? t('common.creating') : t('createStory.submit')}
           </Button>
         </form>

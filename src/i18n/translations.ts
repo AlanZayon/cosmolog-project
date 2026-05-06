@@ -214,6 +214,7 @@ const translations = {
   // Create story
   'createStory.title': { pt: 'Nova História', en: 'New Story', ja: '新しいストーリー', es: 'Nueva historia' },
   'createStory.chooseType': { pt: 'Escolha o tipo de história:', en: 'Choose the story type:', ja: 'ストーリーのタイプを選択:', es: 'Elige el tipo de historia:' },
+  'createStory.universeOptional': { pt: 'Escolha um universo se quiser vincular esta história (opcional).', en: 'Choose a universe if you want to link this story (optional).', ja: 'このストーリーを関連付ける場合はユニバースを選択してください（任意）。', es: 'Elige un universo si quieres vincular esta historia (opcional).' },
   'createStory.universeRequired': { pt: 'Escolha um universo para publicar esta história.', en: 'Choose a universe for this story.', ja: 'このストーリーのユニバースを選択してください。', es: 'Elige un universo para esta historia.' },
   'createStory.noUniverses': { pt: 'Você precisa criar um universo antes de publicar uma história.', en: 'You need to create a universe before publishing a story.', ja: 'ストーリーを公開する前にユニバースを作成する必要があります。', es: 'Necesitas crear un universo antes de publicar una historia.' },
   'createStory.createUniverseFirst': { pt: 'Criar universo primeiro', en: 'Create universe first', ja: 'まずユニバースを作成', es: 'Crear universo primero' },
