@@ -13,8 +13,21 @@ import type { TranslationKey } from '@/i18n/translations';
 type Arc = Tables<'arcs'>;
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
 
-export default function ArcPage() {
-  const { id } = useParams<{ id: string }>() as { id: string };
+export type ArcPageProps = {
+  embedExploration?: boolean;
+  arcIdOverride?: string;
+  explorationPushStory?: (storyId: string) => void;
+  explorationPushUniverse?: (universeId: string) => void;
+};
+
+export default function ArcPage({
+  embedExploration = false,
+  arcIdOverride,
+  explorationPushStory,
+  explorationPushUniverse,
+}: ArcPageProps = {}) {
+  const params = useParams<{ id: string }>();
+  const id = (arcIdOverride ?? params?.id) as string | undefined;
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [arc, setArc] = useState<Arc | null>(null);
@@ -26,8 +39,9 @@ export default function ArcPage() {
   }, [id]);
 
   const fetchArc = async () => {
+    if (!id) return;
     setLoading(true);
-    const { data: arcData } = await supabase.from('arcs').select('*').eq('id', id!).single();
+    const { data: arcData } = await supabase.from('arcs').select('*').eq('id', id).single();
     if (!arcData) {
       setArc(null);
       setLoading(false);
@@ -53,13 +67,26 @@ export default function ArcPage() {
     setLoading(false);
   };
 
+  const shell = embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background';
+
+  if (!id) {
+    return (
+      <div className={shell}>
+        {!embedExploration && <Header />}
+        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container max-w-6xl py-6">
-          <ReturnToFeedButton />
-        </div>
+      <div className={shell}>
+        {!embedExploration && <Header />}
+        {!embedExploration && (
+          <div className="container max-w-6xl py-6">
+            <ReturnToFeedButton />
+          </div>
+        )}
         <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
@@ -67,26 +94,40 @@ export default function ArcPage() {
 
   if (!arc) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container max-w-6xl py-6">
-          <ReturnToFeedButton />
-        </div>
+      <div className={shell}>
+        {!embedExploration && <Header />}
+        {!embedExploration && (
+          <div className="container max-w-6xl py-6">
+            <ReturnToFeedButton />
+          </div>
+        )}
         <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className={shell}>
+      {!embedExploration && <Header />}
       <main className="container py-8 max-w-6xl animate-fade-in">
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <ReturnToFeedButton />
-        </div>
-        <Link href={universe ? `/universe/${universe.id}` : '/'} className="text-sm text-primary hover:underline">
-          {t('story.universe')}: {universe?.title || t('common.back')}
-        </Link>
+        {!embedExploration && (
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <ReturnToFeedButton />
+          </div>
+        )}
+        {embedExploration && universe && explorationPushUniverse ? (
+          <button
+            type="button"
+            className="text-sm text-primary hover:underline"
+            onClick={() => explorationPushUniverse(universe.id)}
+          >
+            {t('story.universe')}: {universe.title}
+          </button>
+        ) : (
+          <Link href={universe ? `/universe/${universe.id}` : '/'} className="text-sm text-primary hover:underline">
+            {t('story.universe')}: {universe?.title || t('common.back')}
+          </Link>
+        )}
 
         <section className="mt-4 mb-8 rounded-2xl border border-border bg-card overflow-hidden">
           {arc.cover_image_url && (
@@ -109,7 +150,13 @@ export default function ArcPage() {
           <p className="text-muted-foreground">{t('universe.arcStoriesEmpty')}</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {stories.map((story) => <StoryCard key={story.id} story={story} />)}
+            {stories.map((story) => (
+              <StoryCard
+                key={story.id}
+                story={story}
+                onOpenInFeedExplore={explorationPushStory ? () => explorationPushStory(story.id) : undefined}
+              />
+            ))}
           </div>
         )}
       </main>

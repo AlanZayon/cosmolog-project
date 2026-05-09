@@ -3,7 +3,10 @@ export const FEED_RETURN_KEY = 'cosmolog:feedReturn:v1';
 
 export type StackKind = 'story' | 'arc' | 'universe';
 
-export type StackItem = { kind: StackKind; id: string };
+/** `full` = embedded canonical page inside the exploration shell; default/omit = feed preview reader. */
+export type StackSurface = 'preview' | 'full';
+
+export type StackItem = { kind: StackKind; id: string; surface?: StackSurface };
 
 export type FeedSnapshot = {
   scrollY: number;

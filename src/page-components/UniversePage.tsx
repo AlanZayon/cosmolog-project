@@ -42,11 +42,24 @@ interface Universe {
   created_at: string;
 }
 
+export type UniversePageProps = {
+  embedExploration?: boolean;
+  universeIdOverride?: string;
+  explorationPushStory?: (storyId: string) => void;
+  explorationPushArc?: (arcId: string) => void;
+};
+
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
 type Arc = Tables<'arcs'>;
 
 /* Lista de cards: até sm carrossel horizontal com scroll controlado; a partir de sm mantém grid. */
-function UniverseStoriesShelf({ stories }: { stories: StoryWithProfile[] }) {
+function UniverseStoriesShelf({
+  stories,
+  onOpenStoryExplore,
+}: {
+  stories: StoryWithProfile[];
+  onOpenStoryExplore?: (storyId: string) => void;
+}) {
   return (
     <div
       className={cn(
@@ -64,15 +77,24 @@ function UniverseStoriesShelf({ stories }: { stories: StoryWithProfile[] }) {
             'sm:w-auto sm:min-w-0 sm:max-w-none sm:shrink',
           )}
         >
-          <StoryCard story={story} />
+          <StoryCard
+            story={story}
+            onOpenInFeedExplore={onOpenStoryExplore ? () => onOpenStoryExplore(story.id) : undefined}
+          />
         </div>
       ))}
     </div>
   );
 }
 
-export default function UniversePage() {
-  const { id } = useParams<{ id: string }>() as { id: string };
+export default function UniversePage({
+  embedExploration = false,
+  universeIdOverride,
+  explorationPushStory,
+  explorationPushArc,
+}: UniversePageProps = {}) {
+  const params = useParams<{ id: string }>();
+  const id = (universeIdOverride ?? params?.id) as string | undefined;
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -106,9 +128,13 @@ export default function UniversePage() {
   }, [id, activeType, user]);
 
   const fetchUniverse = async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
-    const { data: universeData } = await (supabase.from('universes') as any).select('*').eq('id', id!).single();
+    const { data: universeData } = await (supabase.from('universes') as any).select('*').eq('id', id).single();
     if (!universeData) {
       setUniverse(null);
       setLoading(false);
@@ -119,7 +145,7 @@ export default function UniversePage() {
     const { data: arcData } = await supabase
       .from('arcs')
       .select('*')
-      .eq('universe_id', id!)
+      .eq('universe_id', id)
       .order('created_at', { ascending: false });
     setArcs(arcData || []);
 
@@ -127,7 +153,7 @@ export default function UniversePage() {
       const { data: followData } = await supabase
         .from('universe_follows')
         .select('*')
-        .eq('universe_id', id!)
+        .eq('universe_id', id)
         .eq('user_id', user.id)
         .maybeSingle();
       setFollowing(!!followData);
@@ -135,7 +161,7 @@ export default function UniversePage() {
       setFollowing(false);
     }
 
-    let query = supabase.from('stories').select('*').eq('universe_id', id!).order('created_at', { ascending: false });
+    let query = supabase.from('stories').select('*').eq('universe_id', id).order('created_at', { ascending: false });
     if (activeType) query = query.eq('type', activeType);
     const { data: storiesData } = await query;
 
@@ -357,13 +383,26 @@ export default function UniversePage() {
   const arcViolations = validateArcFields(arcName.trim(), arcDescription.trim());
   const arcOverLimit = arcViolations.length > 0;
 
+  const uShell = embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background';
+
+  if (!id) {
+    return (
+      <div className={uShell}>
+        {!embedExploration && <Header />}
+        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+      </div>
+    );
+  }
+
   if (loading && !universe) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container max-w-6xl py-6">
-          <ReturnToFeedButton />
-        </div>
+      <div className={uShell}>
+        {!embedExploration && <Header />}
+        {!embedExploration && (
+          <div className="container max-w-6xl py-6">
+            <ReturnToFeedButton />
+          </div>
+        )}
         <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
@@ -371,23 +410,27 @@ export default function UniversePage() {
 
   if (!universe) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container max-w-6xl py-6">
-          <ReturnToFeedButton />
-        </div>
+      <div className={uShell}>
+        {!embedExploration && <Header />}
+        {!embedExploration && (
+          <div className="container max-w-6xl py-6">
+            <ReturnToFeedButton />
+          </div>
+        )}
         <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className={uShell}>
+      {!embedExploration && <Header />}
       <main className="container max-w-6xl overflow-x-hidden py-8 max-sm:py-6 animate-fade-in">
-        <div className="mb-6">
-          <ReturnToFeedButton />
-        </div>
+        {!embedExploration && (
+          <div className="mb-6">
+            <ReturnToFeedButton />
+          </div>
+        )}
         {editing ? (
           <div className="mb-8 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm sm:p-4">
             <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
@@ -458,7 +501,7 @@ export default function UniversePage() {
                     {following ? t('universe.unfollow') : t('universe.follow')}
                   </Button>
                 )}
-                {isOwner && (
+                {isOwner && !embedExploration && (
                   <Button type="button" variant="ghost" size="sm" onClick={startEditing} className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:justify-center max-sm:border max-sm:border-border max-sm:bg-card max-sm:touch-manipulation sm:shrink-0">
                     <Pencil className="mr-1 h-4 w-4 shrink-0 max-sm:inline" aria-hidden /> {t('common.edit')}
                   </Button>
@@ -471,7 +514,7 @@ export default function UniversePage() {
         <section className="mb-10">
           <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
             <h2 className="text-lg font-semibold leading-snug">{t('universe.arcs')}</h2>
-            {isOwner && (
+            {isOwner && !embedExploration && (
               <Button
                 size="sm"
                 type="button"
@@ -491,7 +534,7 @@ export default function UniversePage() {
             )}
           </div>
 
-          {showArcForm && isOwner && (
+          {showArcForm && isOwner && !embedExploration && (
             <div className="mb-6 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm">
               <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
                 <h3 className="min-w-0 font-semibold leading-snug">{editingArcId ? t('universe.editArc') : t('universe.newArc')}</h3>
@@ -572,8 +615,19 @@ export default function UniversePage() {
                               {arc.description}
                             </p>
                           )}
+                          {explorationPushArc && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-3 touch-manipulation"
+                              onClick={() => explorationPushArc(arc.id)}
+                            >
+                              {t('feed.exploreArc')}
+                            </Button>
+                          )}
                         </div>
-                        {isOwner && (
+                        {isOwner && !embedExploration && (
                           <div className="flex w-full shrink-0 gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:flex-none sm:w-auto">
                             <Button type="button" variant="ghost" size="sm" className="max-sm:h-11 max-sm:border max-sm:border-border max-sm:bg-background max-sm:touch-manipulation" onClick={() => startEditingArc(arc)}>
                               <Pencil className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.edit')}
@@ -589,7 +643,7 @@ export default function UniversePage() {
                         {arcStories.length === 0 ? (
                           <p className="text-sm text-muted-foreground max-sm:leading-relaxed">{t('universe.arcStoriesEmpty')}</p>
                         ) : (
-                          <UniverseStoriesShelf stories={arcStories} />
+                          <UniverseStoriesShelf stories={arcStories} onOpenStoryExplore={explorationPushStory} />
                         )}
                       </div>
                     </div>
@@ -603,7 +657,7 @@ export default function UniversePage() {
         <section className="mb-6">
           <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
             <h2 className="text-lg font-semibold leading-snug">{t('universe.stories')}</h2>
-            {isOwner && (
+            {isOwner && !embedExploration && (
               <Button asChild size="sm" className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:justify-center max-sm:touch-manipulation gradient-warm text-primary-foreground sm:shrink-0">
                 <Link href={`/universe/${id}/create-story`} className="inline-flex items-center justify-center gap-1">
                   <Plus className="h-4 w-4 shrink-0" aria-hidden /> {t('universe.newStory')}
@@ -638,7 +692,7 @@ export default function UniversePage() {
           ) : stories.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('universe.noStories')}</p>
-              {isOwner && (
+              {isOwner && !embedExploration && (
                 <Button asChild className="mt-4 gradient-warm text-primary-foreground max-sm:mx-auto max-sm:h-11 max-sm:w-full max-sm:max-w-sm max-sm:touch-manipulation">
                   <Link href={`/universe/${id}/create-story`}>{t('universe.createFirst')}</Link>
                 </Button>
@@ -650,7 +704,7 @@ export default function UniversePage() {
               {unassignedStories.length === 0 ? (
                 <p className="text-sm text-muted-foreground max-sm:leading-relaxed">{t('universe.noStoriesWithoutArc')}</p>
               ) : (
-                <UniverseStoriesShelf stories={unassignedStories} />
+                <UniverseStoriesShelf stories={unassignedStories} onOpenStoryExplore={explorationPushStory} />
               )}
             </div>
           )}

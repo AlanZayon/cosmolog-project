@@ -24,8 +24,18 @@ type StoryWithProfile = Tables<'stories'> & { profiles: { username: string } | n
 type CommentWithProfile = Tables<'comments'> & { profiles: { username: string } | null };
 type Arc = Tables<'arcs'>;
 
-export default function StoryPage() {
-  const { id } = useParams<{ id: string }>() as { id: string };
+export type StoryPageProps = {
+  /** Render without site header; used inside feed exploration full surface. */
+  embedExploration?: boolean;
+  storyIdOverride?: string;
+};
+
+export default function StoryPage({
+  embedExploration = false,
+  storyIdOverride,
+}: StoryPageProps = {}) {
+  const params = useParams<{ id: string }>();
+  const id = (storyIdOverride ?? params?.id) as string | undefined;
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -61,7 +71,9 @@ export default function StoryPage() {
   const [saving, setSaving] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (id) fetchAll(); }, [id, user]);
+  useEffect(() => {
+    if (id) fetchAll();
+  }, [id, user]);
 
   const fetchAll = async () => {
     const storyRes = await supabase.from('stories').select('*').eq('id', id!).single();
@@ -331,13 +343,24 @@ export default function StoryPage() {
     }
   };
 
+  if (!id) {
+    return (
+      <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
+        {!embedExploration && <Header />}
+        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+      </div>
+    );
+  }
+
   if (!story) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container max-w-2xl py-8">
-          <ReturnToFeedButton />
-        </div>
+      <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
+        {!embedExploration && <Header />}
+        {!embedExploration && (
+          <div className="container max-w-2xl py-8">
+            <ReturnToFeedButton />
+          </div>
+        )}
         <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
@@ -357,12 +380,14 @@ export default function StoryPage() {
   const editShortOverLimit = editShortViolations.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
+      {!embedExploration && <Header />}
       <main className="container py-8 max-w-2xl animate-fade-in">
-        <div className="mb-6">
-          <ReturnToFeedButton />
-        </div>
+        {!embedExploration && (
+          <div className="mb-6">
+            <ReturnToFeedButton />
+          </div>
+        )}
         {/* Story header */}
         <div className="mb-8">
           {editing ? (

@@ -10,18 +10,19 @@ import {
   useRef,
   useState,
 } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { ArrowLeft, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StoryFeedPreview from '@/components/feed/StoryFeedPreview';
 import ArcFeedReader from '@/components/feed/ArcFeedReader';
 import UniverseFeedReader from '@/components/feed/UniverseFeedReader';
+import ExplorationFullSurface from '@/components/feed/ExplorationFullSurface';
 import {
   consumeFeedReturn,
-  persistFeedResume,
   writeExploration,
   type FeedSnapshot,
   type StackItem,
+  type StackKind,
 } from '@/lib/feedExplorationStorage';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -35,9 +36,8 @@ type FeedExplorationValue = {
   pop: () => void;
   popToFeed: () => void;
   getFeedSnapshot: () => FeedSnapshot;
-  navigateToFullStory: (storyId: string) => void;
-  navigateToFullArc: (arcId: string) => void;
-  navigateToFullUniverse: (universeId: string) => void;
+  /** Replace preview layer with embedded canonical view, or push full layer. */
+  promoteToFullSurface: (kind: StackKind, id: string) => void;
 };
 
 const FeedExplorationContext = createContext<FeedExplorationValue | null>(null);
@@ -58,13 +58,12 @@ function FeedExplorationStackShell() {
     pushStory,
     pushArc,
     pushUniverse,
-    navigateToFullStory,
-    navigateToFullArc,
-    navigateToFullUniverse,
+    promoteToFullSurface,
   } = useFeedExploration();
 
-  const open = pathname === '/' && stack.length > 0;
-  const top = stack[stack.length - 1];
+  const top = stack.length > 0 ? stack[stack.length - 1] : undefined;
+  const open = pathname === '/' && top != null;
+  const surface = top?.surface ?? 'preview';
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +86,7 @@ function FeedExplorationStackShell() {
     };
   }, [open]);
 
-  if (!open || !top) return null;
+  if (!open || top == null) return null;
 
   return (
     <div
@@ -120,33 +119,36 @@ function FeedExplorationStackShell() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {top.kind === 'story' && (
+        {surface === 'full' && (
+          <ExplorationFullSurface item={top} pushStory={pushStory} pushArc={pushArc} pushUniverse={pushUniverse} />
+        )}
+        {top.kind === 'story' && surface === 'preview' && (
           <StoryFeedPreview
             storyId={top.id}
             enabled
             fullPageMode="action"
-            onOpenFullPage={() => navigateToFullStory(top.id)}
+            onOpenFullPage={() => promoteToFullSurface('story', top.id)}
             onNavigateArc={pushArc}
             onNavigateUniverse={pushUniverse}
             titleAs="h1"
           />
         )}
-        {top.kind === 'arc' && (
+        {top.kind === 'arc' && surface === 'preview' && (
           <ArcFeedReader
             arcId={top.id}
             enabled
             onOpenStory={pushStory}
             onOpenUniverse={pushUniverse}
-            onOpenFullArc={() => navigateToFullArc(top.id)}
+            onOpenFullArc={() => promoteToFullSurface('arc', top.id)}
           />
         )}
-        {top.kind === 'universe' && (
+        {top.kind === 'universe' && surface === 'preview' && (
           <UniverseFeedReader
             universeId={top.id}
             enabled
             onOpenArc={pushArc}
             onOpenStory={pushStory}
-            onOpenFullUniverse={() => navigateToFullUniverse(top.id)}
+            onOpenFullUniverse={() => promoteToFullSurface('universe', top.id)}
           />
         )}
       </div>
@@ -155,7 +157,6 @@ function FeedExplorationStackShell() {
 }
 
 export function FeedExplorationProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [stack, setStack] = useState<StackItem[]>([]);
   const [expandedArcId, setExpandedArcIdState] = useState<string | null>(null);
@@ -275,20 +276,22 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
     };
   }, [stack.length, getFeedSnapshot, syncStorage]);
 
-  const leaveToCanonical = useCallback(
-    (href: string) => {
-      const snap = feedSnapshotRef.current;
-      persistFeedResume(snap);
-      writeExploration({ v: 1, stack: [], feedSnapshot: snap });
-      setStack([]);
-      router.push(href);
+  const promoteToFullSurface = useCallback(
+    (kind: StackKind, entityId: string) => {
+      setStack((prev) => {
+        const top = prev[prev.length - 1];
+        const topSurface = top?.surface ?? 'preview';
+        const canReplace =
+          top && top.kind === kind && top.id === entityId && topSurface !== 'full';
+        const next = canReplace
+          ? [...prev.slice(0, -1), { kind, id: entityId, surface: 'full' as const }]
+          : [...prev, { kind, id: entityId, surface: 'full' as const }];
+        syncStorage(next, feedSnapshotRef.current);
+        return next;
+      });
     },
-    [router],
+    [syncStorage],
   );
-
-  const navigateToFullStory = useCallback((id: string) => leaveToCanonical(`/story/${id}`), [leaveToCanonical]);
-  const navigateToFullArc = useCallback((id: string) => leaveToCanonical(`/arc/${id}`), [leaveToCanonical]);
-  const navigateToFullUniverse = useCallback((id: string) => leaveToCanonical(`/universe/${id}`), [leaveToCanonical]);
 
   useLayoutEffect(() => {
     if (pathname !== '/') return;
@@ -321,9 +324,7 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       pop,
       popToFeed,
       getFeedSnapshot,
-      navigateToFullStory,
-      navigateToFullArc,
-      navigateToFullUniverse,
+      promoteToFullSurface,
     }),
     [
       stack,
@@ -335,9 +336,7 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       pop,
       popToFeed,
       getFeedSnapshot,
-      navigateToFullStory,
-      navigateToFullArc,
-      navigateToFullUniverse,
+      promoteToFullSurface,
     ],
   );
 
