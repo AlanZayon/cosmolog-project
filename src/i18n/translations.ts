@@ -271,6 +271,8 @@ const translations = {
   },
   'feed.expandArc': { pt: 'Expandir arco', en: 'Expand arc', ja: 'アークを展開', es: 'Expandir arco' },
   'feed.collapseArc': { pt: 'Recolher arco', en: 'Collapse arc', ja: 'アークを閉じる', es: 'Contraer arco' },
+  'feed.likeStory': { pt: 'Curtir', en: 'Like', ja: 'いいね', es: 'Me gusta' },
+  'feed.commentStory': { pt: 'Comentar', en: 'Comment', ja: 'コメント', es: 'Comentar' },
 
   // Chapter page
   'chapter.backToStory': { pt: '← Voltar à história', en: '← Back to story', ja: '← ストーリーに戻る', es: '← Volver a la historia' },

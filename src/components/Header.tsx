@@ -22,7 +22,7 @@ import CosmologLogo from "@/components/CosmologLogo";
 const LANGUAGES: Language[] = ["pt", "en", "ja", "es"];
 
 export default function Header() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [search, setSearch] = useState("");
@@ -35,6 +35,9 @@ export default function Header() {
   };
 
   const closeMenu = () => setMenuOpen(false);
+
+  const accountMenuLabel =
+    profile?.username?.trim() || user?.email?.split("@")[0] || t("header.profile");
 
   return (
     <>
@@ -50,10 +53,20 @@ export default function Header() {
               <SheetClose asChild>
                 <Link
                   href="/profile"
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground hover:bg-accent"
+                  className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground hover:bg-accent"
+                  title={t("header.profile")}
+                  aria-label={`${t("header.profile")}: ${accountMenuLabel}`}
                 >
-                  <User className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  {t("header.profile")}
+                  {profile?.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt=""
+                      className="h-10 w-10 shrink-0 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="min-w-0 truncate">{accountMenuLabel}</span>
                 </Link>
               </SheetClose>
             ) : (
@@ -163,8 +176,18 @@ export default function Header() {
                 title={t("header.openMenu")}
                 aria-label={t("header.openMenu")}
                 aria-expanded={menuOpen}
+                className="shrink-0 overflow-hidden"
               >
-                <User className="h-4 w-4" />
+                {profile?.avatar_url ? (
+                  <img
+                    key={profile.avatar_url}
+                    src={profile.avatar_url}
+                    alt=""
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-4 w-4" />
+                )}
               </Button>
             </nav>
           </div>

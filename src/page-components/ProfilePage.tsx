@@ -14,7 +14,7 @@ import { Camera } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -69,6 +69,7 @@ export default function ProfilePage() {
       const { error } = await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
       if (error) throw error;
       toast({ title: t('profile.avatarUpdated') });
+      await refreshProfile();
       fetchProfile();
     } catch (err: any) {
       toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
@@ -83,6 +84,7 @@ export default function ProfilePage() {
     if (error) { toast({ title: t('common.error'), description: error.message, variant: 'destructive' }); return; }
     toast({ title: t('profile.updated') });
     setEditing(false);
+    await refreshProfile();
     fetchProfile();
   };
 

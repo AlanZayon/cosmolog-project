@@ -74,11 +74,7 @@ export function FeedClampScope({ text, className, textClassName, preWrap, childr
 
   return (
     <FeedClampContext.Provider value={ctx}>
-      <div
-        className={cn(className, "relative z-[2]")}
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+      <div className={cn(className, "relative z-[2]")}>
         <div
           ref={ref}
           className={cn(textClassName, preWrap && "whitespace-pre-wrap", !expanded && "max-md:line-clamp-4")}

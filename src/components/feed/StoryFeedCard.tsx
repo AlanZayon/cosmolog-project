@@ -22,28 +22,39 @@ function StoryFeedStatRow({
   story: FeedStoryPayload;
   statRowClassName?: string;
 }) {
+  const { t } = useLanguage();
+
+  const isolateFromCard = (e: React.MouseEvent | React.PointerEvent) => {
+    e.stopPropagation();
+  };
+
+  const statButtonClass =
+    "inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 text-sm tabular-nums text-muted-foreground shadow-sm transition-colors hover:bg-muted/55 hover:text-foreground active:scale-[0.99] touch-manipulation";
+
   return (
-    <div
-      className={statRowClassName}
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
+    <div className={statRowClassName}>
       <div className="flex max-md:flex-nowrap md:flex-wrap md:justify-start [&>*]:touch-manipulation max-md:w-full max-md:items-center max-md:justify-between">
         <div className="flex shrink-0 flex-wrap items-center gap-2 md:gap-3">
-          <span
-            role="presentation"
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 text-sm tabular-nums text-muted-foreground"
+          <button
+            type="button"
+            className={statButtonClass}
+            aria-label={`${t('feed.likeStory')}, ${story.stats.likes}`}
+            onClick={isolateFromCard}
+            onPointerDown={isolateFromCard}
           >
             <Heart className="h-4 w-4 shrink-0" aria-hidden />
             <span>{story.stats.likes}</span>
-          </span>
-          <span
-            role="presentation"
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 text-sm tabular-nums text-muted-foreground"
+          </button>
+          <button
+            type="button"
+            className={statButtonClass}
+            aria-label={`${t('feed.commentStory')}, ${story.stats.comments}`}
+            onClick={isolateFromCard}
+            onPointerDown={isolateFromCard}
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
             <span>{story.stats.comments}</span>
-          </span>
+          </button>
         </div>
         <FeedClampToggle className="hidden max-md:inline-flex shrink-0" />
       </div>
@@ -119,25 +130,25 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
             <h2 className="text-2xl font-semibold font-serif leading-tight">{story.title}</h2>
             <p className="text-sm text-muted-foreground mt-1">{t('common.by')} {story.author.username}</p>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-4 px-5 pb-5">
-          {clampText ? (
-            <FeedClampScope
-              text={clampText}
-              className="mt-0"
-              textClassName={
-                story.preview.kind === 'text'
-                  ? 'text-base leading-relaxed text-foreground/90'
-                  : 'text-base leading-relaxed text-foreground/80'
-              }
-              preWrap={story.preview.kind === 'text'}
-            >
-              <StoryFeedStatRow story={story} statRowClassName="relative z-[2] mt-4" />
-            </FeedClampScope>
-          ) : (
-            <StoryFeedStatRow story={story} statRowClassName="relative z-[2]" />
-          )}
+          <div className="flex flex-col gap-4 px-5 pb-5">
+            {clampText ? (
+              <FeedClampScope
+                text={clampText}
+                className="mt-0"
+                textClassName={
+                  story.preview.kind === 'text'
+                    ? 'text-base leading-relaxed text-foreground/90'
+                    : 'text-base leading-relaxed text-foreground/80'
+                }
+                preWrap={story.preview.kind === 'text'}
+              >
+                <StoryFeedStatRow story={story} statRowClassName="relative z-[2] mt-4" />
+              </FeedClampScope>
+            ) : (
+              <StoryFeedStatRow story={story} statRowClassName="relative z-[2]" />
+            )}
+          </div>
         </div>
       </article>
 
