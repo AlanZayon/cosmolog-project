@@ -22,7 +22,7 @@ export default function StoryCard({ story }: StoryCardProps) {
   const typeConfig = TYPE_CONFIG[storyType];
 
   return (
-    <Link href={`/story/${story.id}`} className="group block">
+    <Link href={`/story/${story.id}`} className="group block min-w-0">
       <div className="rounded-xl overflow-hidden shadow-card bg-card transition-all duration-300 hover:shadow-warm hover:-translate-y-1">
         <div className="aspect-[3/4] bg-muted relative overflow-hidden">
           {story.cover_image_url ? (
@@ -34,8 +34,9 @@ export default function StoryCard({ story }: StoryCardProps) {
           )}
           {typeConfig && (
             <div className="absolute top-2 left-2">
-              <Badge variant="secondary" className="text-[10px] gap-1 bg-background/80 backdrop-blur-sm">
-                {typeConfig.icon} {t(typeConfig.labelKey)}
+              <Badge variant="secondary" className="max-w-[min(100%,12rem)] gap-1 text-[10px] bg-background/80 backdrop-blur-sm max-sm:inline-flex max-sm:max-w-[calc(100%-2.5rem)] max-sm:truncate sm:max-w-none">
+                {typeConfig.icon}{" "}
+                <span className="min-w-0 max-sm:truncate">{t(typeConfig.labelKey)}</span>
               </Badge>
             </div>
           )}

@@ -17,6 +17,21 @@ export const LANGUAGE_FLAGS: Record<Language, string> = {
 const translations = {
   // Header
   'header.search': { pt: 'Buscar histórias...', en: 'Search stories...', ja: 'ストーリーを検索...', es: 'Buscar historias...' },
+  'header.themeLight': { pt: 'Modo claro', en: 'Light mode', ja: 'ライトモード', es: 'Modo claro' },
+  'header.themeDark': { pt: 'Modo escuro', en: 'Dark mode', ja: 'ダークモード', es: 'Modo oscuro' },
+  'header.chooseLanguage': { pt: 'Idioma', en: 'Language', ja: '言語', es: 'Idioma' },
+  'header.logout': { pt: 'Sair', en: 'Sign out', ja: 'ログアウト', es: 'Cerrar sesión' },
+  'header.profile': { pt: 'Perfil', en: 'Profile', ja: 'プロフィール', es: 'Perfil' },
+  'header.mainNav': { pt: 'Menu principal', en: 'Main navigation', ja: 'メインナビ', es: 'Navegación principal' },
+  'header.openMenu': { pt: 'Abrir menu da conta', en: 'Open account menu', ja: 'アカウントメニューを開く', es: 'Abrir menú de cuenta' },
+  'header.menuTitle': { pt: 'Conta', en: 'Account', ja: 'アカウント', es: 'Cuenta' },
+  'header.menuDescription': {
+    pt: 'Menu da conta: perfil, tema, idioma e opções de sessão.',
+    en: 'Account menu: profile, theme, language, and session options.',
+    ja: 'アカウントメニュー：プロフィール・テーマ・言語・セッション関連。',
+    es: 'Menú de cuenta: perfil, tema, idioma y opciones de sesión.',
+  },
+  'header.appearance': { pt: 'Aparência', en: 'Appearance', ja: '表示', es: 'Apariencia' },
   'header.universes': { pt: 'Universos', en: 'Universes', ja: 'ユニバース', es: 'Universos' },
   'header.write': { pt: 'Escrever', en: 'Write', ja: '書く', es: 'Escribir' },
   'header.login': { pt: 'Entrar', en: 'Sign In', ja: 'ログイン', es: 'Iniciar sesión' },
@@ -230,6 +245,18 @@ const translations = {
 
   // Feed / Arc
   'feed.exploreArc': { pt: 'Explorar Arco', en: 'Explore Arc', ja: 'アークを見る', es: 'Explorar arco' },
+  'feed.showMore': { pt: 'Ver mais', en: 'Show more', ja: 'もっと見る', es: 'Ver más' },
+  'feed.showLess': { pt: 'Ver menos', en: 'Show less', ja: '閉じる', es: 'Ver menos' },
+  'feed.storyCountBadge': { pt: '{{n}} hist.', en: '{{n}} stories', ja: '{{n}}本', es: '{{n}} hist.' },
+  'feed.arcCountBadge': { pt: '{{n}} arcos', en: '{{n}} arcs', ja: '{{n}}アーク', es: '{{n}} arcos' },
+  'feed.universeFooterCounts': {
+    pt: '{{stories}} histórias e {{arcs}} arcos',
+    en: '{{stories}} stories and {{arcs}} arcs',
+    ja: 'ストーリー{{stories}}件 · アーク{{arcs}}件',
+    es: '{{stories}} historias y {{arcs}} arcos',
+  },
+  'feed.expandArc': { pt: 'Expandir arco', en: 'Expand arc', ja: 'アークを展開', es: 'Expandir arco' },
+  'feed.collapseArc': { pt: 'Recolher arco', en: 'Collapse arc', ja: 'アークを閉じる', es: 'Contraer arco' },
 
   // Chapter page
   'chapter.backToStory': { pt: '← Voltar à história', en: '← Back to story', ja: '← ストーリーに戻る', es: '← Volver a la historia' },

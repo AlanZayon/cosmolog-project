@@ -1,9 +1,11 @@
+"use client";
+
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import StoryFeedReader from '@/components/feed/StoryFeedReader';
+import { FeedClampScope, FeedClampToggle } from '@/components/feed/FeedClampedDescription';
 import { useLanguage } from '@/hooks/useLanguage';
-import { Heart, MessageCircle, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle } from 'lucide-react';
 import type { FeedStoryPayload } from '@/lib/feed';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -12,20 +14,62 @@ interface StoryFeedCardProps {
   compact?: boolean;
 }
 
+function StoryFeedStatRow({
+  story,
+  statRowClassName,
+}: {
+  story: FeedStoryPayload;
+  statRowClassName?: string;
+}) {
+  return (
+    <div
+      className={statRowClassName}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div className="flex max-md:flex-nowrap md:flex-wrap md:justify-start [&>*]:touch-manipulation max-md:w-full max-md:items-center max-md:justify-between">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 md:gap-3">
+          <span
+            role="presentation"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 text-sm tabular-nums text-muted-foreground"
+          >
+            <Heart className="h-4 w-4 shrink-0" aria-hidden />
+            <span>{story.stats.likes}</span>
+          </span>
+          <span
+            role="presentation"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 text-sm tabular-nums text-muted-foreground"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+            <span>{story.stats.comments}</span>
+          </span>
+        </div>
+        <FeedClampToggle className="hidden max-md:inline-flex shrink-0" />
+      </div>
+    </div>
+  );
+}
+
 export default function StoryFeedCard({ story, compact = false }: StoryFeedCardProps) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
+
+  const clampText =
+    story.preview.kind === 'text'
+      ? story.preview.text || story.description || t('common.noContent')
+      : story.description || null;
 
   if (compact) {
     return (
       <>
         <button
+          type="button"
           onClick={() => setOpen(true)}
-          className="w-full rounded-xl border border-border bg-background p-3 text-left transition-colors hover:bg-accent"
+          className="w-full rounded-xl border border-border bg-background p-3 text-left transition-colors hover:bg-accent touch-manipulation"
         >
           <div className="flex items-start gap-3">
             {story.coverImageUrl && (
-              <img src={story.coverImageUrl} alt={story.title} className="h-16 w-12 rounded-md object-cover border border-border" />
+              <img src={story.coverImageUrl} alt="" className="h-16 w-12 shrink-0 rounded-md object-cover border border-border" />
             )}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold line-clamp-1">{story.title}</p>
@@ -60,7 +104,7 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
         >
           {story.preview.kind === 'image' && story.preview.imageUrl ? (
             <div className="aspect-[16/10] overflow-hidden border-b border-border bg-muted">
-              <img src={story.preview.imageUrl} alt={story.title} className="w-full h-full object-cover" />
+              <img src={story.preview.imageUrl} alt="" className="h-full w-full object-cover" />
             </div>
           ) : null}
 
@@ -73,25 +117,26 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
 
             <h2 className="text-2xl font-semibold font-serif leading-tight">{story.title}</h2>
             <p className="text-sm text-muted-foreground mt-1">{t('common.by')} {story.author.username}</p>
-
-            {story.preview.kind === 'text' ? (
-              <div className="mt-4 text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                {story.preview.text || story.description || t('common.noContent')}
-              </div>
-            ) : story.description ? (
-              <p className="mt-4 text-base leading-relaxed text-foreground/80">{story.description}</p>
-            ) : null}
-
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><Heart className="h-4 w-4" /> {story.stats.likes}</span>
-                <span className="flex items-center gap-1"><MessageCircle className="h-4 w-4" /> {story.stats.comments}</span>
-              </div>
-              <Button type="button" size="sm" className="gradient-warm text-primary-foreground">
-                <BookOpen className="h-4 w-4 mr-1" /> {t('story.readNow')}
-              </Button>
-            </div>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-4 px-5 pb-5">
+          {clampText ? (
+            <FeedClampScope
+              text={clampText}
+              className="mt-0"
+              textClassName={
+                story.preview.kind === 'text'
+                  ? 'text-base leading-relaxed text-foreground/90'
+                  : 'text-base leading-relaxed text-foreground/80'
+              }
+              preWrap={story.preview.kind === 'text'}
+            >
+              <StoryFeedStatRow story={story} statRowClassName="relative z-[2] mt-4" />
+            </FeedClampScope>
+          ) : (
+            <StoryFeedStatRow story={story} statRowClassName="relative z-[2]" />
+          )}
         </div>
       </article>
 

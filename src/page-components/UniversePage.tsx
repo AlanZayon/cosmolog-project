@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, X, ImagePlus, FileText, BookOpen, Image, Layers, Globe, Save } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
+import { cn } from '@/lib/utils';
 
 const TYPE_FILTERS: { value: string; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   { value: 'short_story', labelKey: 'type.short_story', icon: <FileText className="h-3 w-3" /> },
@@ -40,6 +41,32 @@ interface Universe {
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
 type Arc = Tables<'arcs'>;
+
+/* Lista de cards: até sm carrossel horizontal com scroll controlado; a partir de sm mantém grid. */
+function UniverseStoriesShelf({ stories }: { stories: StoryWithProfile[] }) {
+  return (
+    <div
+      className={cn(
+        '-mx-1 flex flex-nowrap gap-3 overflow-x-auto overflow-y-hidden px-1 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'snap-x snap-mandatory',
+        'sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 md:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0 sm:snap-none',
+      )}
+    >
+      {stories.map((story) => (
+        <div
+          key={story.id}
+          className={cn(
+            'shrink-0 snap-start [-webkit-scroll-snap-stop:always] [scroll-snap-stop:always] sm:[scroll-snap-stop:normal]',
+            'w-[clamp(9.75rem,40vw,13.5rem)] min-w-[9.75rem] max-w-[13.5rem]',
+            'sm:w-auto sm:min-w-0 sm:max-w-none sm:shrink',
+          )}
+        >
+          <StoryCard story={story} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function UniversePage() {
   const { id } = useParams<{ id: string }>() as { id: string };
@@ -316,12 +343,14 @@ export default function UniversePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container py-8 max-w-6xl animate-fade-in">
+      <main className="container max-w-6xl overflow-x-hidden py-8 max-sm:py-6 animate-fade-in">
         {editing ? (
-          <div className="space-y-4 p-4 rounded-lg border border-border bg-card mb-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{t('universe.editUniverse')}</h2>
-              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
+          <div className="mb-8 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm sm:p-4">
+            <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
+              <h2 className="min-w-0 text-lg font-semibold leading-snug">{t('universe.editUniverse')}</h2>
+              <Button variant="ghost" size="sm" type="button" className="max-sm:h-10 max-sm:w-10 max-sm:shrink-0 max-sm:p-0 max-sm:touch-manipulation" onClick={() => setEditing(false)} aria-label={t('common.cancel')}>
+                <X className="h-4 w-4" aria-hidden />
+              </Button>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">{t('createUniverse.cover')}</label>
@@ -348,37 +377,44 @@ export default function UniversePage() {
               <label className="text-sm font-medium text-foreground">{t('createUniverse.descLabel')}</label>
               <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={saveEdits} disabled={saving || !editTitle.trim()} size="sm" className="gradient-warm text-primary-foreground">
-                <Save className="h-4 w-4 mr-1" /> {saving ? t('common.saving') : t('common.save')}
+            <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
+              <Button onClick={saveEdits} disabled={saving || !editTitle.trim()} size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
+                <Save className="mr-1 h-4 w-4 shrink-0" aria-hidden />
+                {saving ? t('common.saving') : t('common.save')}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
+              <Button variant="outline" size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation" onClick={() => setEditing(false)}>
+                {t('common.cancel')}
+              </Button>
             </div>
           </div>
         ) : (
           <div className="mb-8">
             {universe.cover_image_url && (
-              <div className="w-full aspect-[16/9] rounded-xl overflow-hidden border border-border mb-4">
-                <img src={universe.cover_image_url} alt={universe.title} className="w-full h-full object-cover" />
+              <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-xl border border-border [-webkit-touch-callout:none]">
+                <img src={universe.cover_image_url} alt={universe.title} className="h-full w-full object-cover" />
               </div>
             )}
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Globe className="h-5 w-5 text-primary" />
-                  <h1 className="text-2xl font-bold font-serif">{universe.title}</h1>
+            <div className="flex flex-col gap-4 max-sm:gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2 max-sm:items-start">
+                  <Globe className="h-5 w-5 shrink-0 text-primary max-sm:mt-0.5" aria-hidden />
+                  <h1 className="text-balance break-words text-2xl font-bold font-serif leading-tight sm:text-3xl">{universe.title}</h1>
                 </div>
-                {universe.description && <p className="text-muted-foreground mt-1">{universe.description}</p>}
+                {universe.description && (
+                  <p className="mt-1 whitespace-pre-wrap break-words text-pretty leading-relaxed text-muted-foreground max-sm:text-sm">
+                    {universe.description}
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full shrink-0 flex-wrap items-center gap-2 max-sm:flex-nowrap max-sm:flex-col sm:w-auto sm:justify-end">
                 {!isOwner && user && (
-                  <Button variant="outline" size="sm" onClick={toggleFollow} className="shrink-0">
+                  <Button type="button" variant="outline" size="sm" onClick={toggleFollow} className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:touch-manipulation sm:shrink-0">
                     {following ? t('universe.unfollow') : t('universe.follow')}
                   </Button>
                 )}
                 {isOwner && (
-                  <Button variant="ghost" size="sm" onClick={startEditing} className="shrink-0">
-                    <Pencil className="h-4 w-4 mr-1" /> {t('common.edit')}
+                  <Button type="button" variant="ghost" size="sm" onClick={startEditing} className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:justify-center max-sm:border max-sm:border-border max-sm:bg-card max-sm:touch-manipulation sm:shrink-0">
+                    <Pencil className="mr-1 h-4 w-4 shrink-0 max-sm:inline" aria-hidden /> {t('common.edit')}
                   </Button>
                 )}
               </div>
@@ -387,12 +423,14 @@ export default function UniversePage() {
         )}
 
         <section className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">{t('universe.arcs')}</h2>
+          <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
+            <h2 className="text-lg font-semibold leading-snug">{t('universe.arcs')}</h2>
             {isOwner && (
               <Button
                 size="sm"
+                type="button"
                 variant="outline"
+                className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:justify-center max-sm:touch-manipulation sm:shrink-0"
                 onClick={() => {
                   if (showArcForm && !editingArcId) {
                     resetArcForm();
@@ -402,16 +440,18 @@ export default function UniversePage() {
                   }
                 }}
               >
-                <Plus className="h-4 w-4 mr-1" /> {t('universe.newArc')}
+                <Plus className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('universe.newArc')}
               </Button>
             )}
           </div>
 
           {showArcForm && isOwner && (
-            <div className="space-y-4 p-4 rounded-lg border border-border bg-card mb-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{editingArcId ? t('universe.editArc') : t('universe.newArc')}</h3>
-                <Button variant="ghost" size="sm" onClick={resetArcForm}><X className="h-4 w-4" /></Button>
+            <div className="mb-6 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm">
+              <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
+                <h3 className="min-w-0 font-semibold leading-snug">{editingArcId ? t('universe.editArc') : t('universe.newArc')}</h3>
+                <Button variant="ghost" size="sm" type="button" className="max-sm:h-10 max-sm:w-10 max-sm:shrink-0 max-sm:p-0 max-sm:touch-manipulation" onClick={resetArcForm} aria-label={t('common.cancel')}>
+                  <X className="h-4 w-4" aria-hidden />
+                </Button>
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">{t('universe.arcCover')}</label>
@@ -450,11 +490,13 @@ export default function UniversePage() {
                   ))}
                 </select>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={saveArc} disabled={savingArc || !arcName.trim()} size="sm" className="gradient-warm text-primary-foreground">
+              <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
+                <Button type="button" onClick={saveArc} disabled={savingArc || !arcName.trim()} size="sm" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
                   {savingArc ? t('common.saving') : t('common.save')}
                 </Button>
-                <Button variant="outline" size="sm" onClick={resetArcForm}>{t('common.cancel')}</Button>
+                <Button variant="outline" size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation" onClick={resetArcForm}>
+                  {t('common.cancel')}
+                </Button>
               </div>
             </div>
           )}
@@ -466,38 +508,40 @@ export default function UniversePage() {
               {arcs.map((arc) => {
                 const arcStories = arcStoryMap.get(arc.id) || [];
                 return (
-                  <div key={arc.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                  <div key={arc.id} className="overflow-hidden rounded-xl border border-border bg-card max-sm:shadow-sm">
                     {arc.cover_image_url && (
-                      <div className="aspect-[16/5] overflow-hidden border-b border-border">
-                        <img src={arc.cover_image_url} alt={arc.name} className="w-full h-full object-cover" />
+                      <div className="aspect-[16/5] overflow-hidden border-b border-border [-webkit-touch-callout:none] max-sm:aspect-[16/6]">
+                        <img src={arc.cover_image_url} alt="" className="h-full w-full object-cover" />
                       </div>
                     )}
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-primary mb-1">{t(`arcType.${arc.type}` as TranslationKey)}</p>
-                          <h3 className="text-xl font-semibold">{arc.name}</h3>
-                          {arc.description && <p className="text-sm text-muted-foreground mt-2">{arc.description}</p>}
+                    <div className="space-y-4 p-4 max-sm:p-3">
+                      <div className="flex items-start justify-between gap-3 max-sm:flex-col max-sm:gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <p className="mb-1 break-words text-xs uppercase tracking-wide text-primary">{t(`arcType.${arc.type}` as TranslationKey)}</p>
+                          <h3 className="text-balance text-xl font-semibold leading-snug">{arc.name}</h3>
+                          {arc.description && (
+                            <p className="whitespace-pre-wrap break-words text-pretty text-sm leading-relaxed text-muted-foreground">
+                              {arc.description}
+                            </p>
+                          )}
                         </div>
                         {isOwner && (
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => startEditingArc(arc)}>
-                              <Pencil className="h-4 w-4 mr-1" /> {t('common.edit')}
+                          <div className="flex w-full shrink-0 gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:flex-none sm:w-auto">
+                            <Button type="button" variant="ghost" size="sm" className="max-sm:h-11 max-sm:border max-sm:border-border max-sm:bg-background max-sm:touch-manipulation" onClick={() => startEditingArc(arc)}>
+                              <Pencil className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.edit')}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => deleteArc(arc.id)}>
-                              <X className="h-4 w-4 mr-1" /> {t('common.delete')}
+                            <Button type="button" variant="ghost" size="sm" className="max-sm:h-11 max-sm:border max-sm:border-border max-sm:bg-background max-sm:text-destructive max-sm:touch-manipulation hover:text-destructive" onClick={() => deleteArc(arc.id)}>
+                              <X className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.delete')}
                             </Button>
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-4">
+                      <div className="border-t border-border pt-4">
                         {arcStories.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">{t('universe.arcStoriesEmpty')}</p>
+                          <p className="text-sm text-muted-foreground max-sm:leading-relaxed">{t('universe.arcStoriesEmpty')}</p>
                         ) : (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {arcStories.map((story) => <StoryCard key={story.id} story={story} />)}
-                          </div>
+                          <UniverseStoriesShelf stories={arcStories} />
                         )}
                       </div>
                     </div>
@@ -509,29 +553,34 @@ export default function UniversePage() {
         </section>
 
         <section className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">{t('universe.stories')}</h2>
+          <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
+            <h2 className="text-lg font-semibold leading-snug">{t('universe.stories')}</h2>
             {isOwner && (
-              <Button asChild size="sm" className="gradient-warm text-primary-foreground">
-                <Link href={`/universe/${id}/create-story`}><Plus className="h-4 w-4 mr-1" /> {t('universe.newStory')}</Link>
+              <Button asChild size="sm" className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:justify-center max-sm:touch-manipulation gradient-warm text-primary-foreground sm:shrink-0">
+                <Link href={`/universe/${id}/create-story`} className="inline-flex items-center justify-center gap-1">
+                  <Plus className="h-4 w-4 shrink-0" aria-hidden /> {t('universe.newStory')}
+                </Link>
               </Button>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="mb-6 flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:snap-x max-sm:snap-mandatory max-sm:pb-2 [-ms-overflow-style:none] max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden">
             <button
+              type="button"
               onClick={() => setActiveType(null)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1 ${!activeType ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors max-sm:snap-start max-sm:touch-manipulation max-sm:py-2.5 max-sm:text-[11px] max-sm:font-medium max-sm:uppercase max-sm:tracking-wide ${!activeType ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground'}`}
             >
               {t('common.all')}
             </button>
-            {TYPE_FILTERS.map(tf => (
+            {TYPE_FILTERS.map((tf) => (
               <button
                 key={tf.value}
+                type="button"
                 onClick={() => setActiveType(activeType === tf.value ? null : tf.value)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1 ${activeType === tf.value ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors max-sm:snap-start max-sm:touch-manipulation max-sm:py-2.5 max-sm:text-[11px] ${activeType === tf.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground'}`}
               >
-                {tf.icon} {t(tf.labelKey)}
+                <span className="shrink-0">{tf.icon}</span>
+                <span className="max-sm:max-w-[10rem] max-sm:text-balance max-sm:break-words">{t(tf.labelKey)}</span>
               </button>
             ))}
           </div>
@@ -542,20 +591,18 @@ export default function UniversePage() {
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('universe.noStories')}</p>
               {isOwner && (
-                <Button asChild className="mt-4 gradient-warm text-primary-foreground">
+                <Button asChild className="mt-4 gradient-warm text-primary-foreground max-sm:mx-auto max-sm:h-11 max-sm:w-full max-sm:max-w-sm max-sm:touch-manipulation">
                   <Link href={`/universe/${id}/create-story`}>{t('universe.createFirst')}</Link>
                 </Button>
               )}
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="font-semibold mb-4">{t('universe.storiesWithoutArc')}</h3>
+            <div className="rounded-xl border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm">
+              <h3 className="mb-4 break-words text-balance font-semibold">{t('universe.storiesWithoutArc')}</h3>
               {unassignedStories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('universe.noStoriesWithoutArc')}</p>
+                <p className="text-sm text-muted-foreground max-sm:leading-relaxed">{t('universe.noStoriesWithoutArc')}</p>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {unassignedStories.map((story) => <StoryCard key={story.id} story={story} />)}
-                </div>
+                <UniverseStoriesShelf stories={unassignedStories} />
               )}
             </div>
           )}
