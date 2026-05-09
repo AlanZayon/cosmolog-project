@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Header from '@/components/Header';
+import ReturnToFeedButton from '@/components/feed/ReturnToFeedButton';
 import StoryCard from '@/components/StoryCard';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,17 +54,36 @@ export default function ArcPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-background"><Header /><div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div></div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container max-w-6xl py-6">
+          <ReturnToFeedButton />
+        </div>
+        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+      </div>
+    );
   }
 
   if (!arc) {
-    return <div className="min-h-screen bg-background"><Header /><div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div></div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container max-w-6xl py-6">
+          <ReturnToFeedButton />
+        </div>
+        <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8 max-w-6xl animate-fade-in">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <ReturnToFeedButton />
+        </div>
         <Link href={universe ? `/universe/${universe.id}` : '/'} className="text-sm text-primary hover:underline">
           {t('story.universe')}: {universe?.title || t('common.back')}
         </Link>

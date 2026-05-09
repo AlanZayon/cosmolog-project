@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
+import ReturnToFeedButton from '@/components/feed/ReturnToFeedButton';
 import { Heart, MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, FileText, Image, Layers, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import TagInput from '@/components/TagInput';
@@ -330,7 +331,17 @@ export default function StoryPage() {
     }
   };
 
-  if (!story) return <div className="min-h-screen bg-background"><Header /><div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div></div>;
+  if (!story) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container max-w-2xl py-8">
+          <ReturnToFeedButton />
+        </div>
+        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+      </div>
+    );
+  }
 
   const isAuthor = user?.id === story.author_id;
   const storyType = (story as any).type || 'chapters';
@@ -349,6 +360,9 @@ export default function StoryPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8 max-w-2xl animate-fade-in">
+        <div className="mb-6">
+          <ReturnToFeedButton />
+        </div>
         {/* Story header */}
         <div className="mb-8">
           {editing ? (

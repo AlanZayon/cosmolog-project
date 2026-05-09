@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useFeedExploration } from '@/components/feed/FeedExplorationContext';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Globe2, Library } from 'lucide-react';
@@ -20,9 +20,8 @@ interface UniverseFeedCardProps {
 
 export default function UniverseFeedCard({ universe }: UniverseFeedCardProps) {
   const { t } = useLanguage();
-  const router = useRouter();
-  const href = `/universe/${universe.id}`;
-  const open = () => router.push(href);
+  const { pushUniverse } = useFeedExploration();
+  const open = () => pushUniverse(universe.id);
 
   const footer = t('feed.universeFooterCounts')
     .replace(/\{\{stories\}\}/g, String(universe.storyCount))

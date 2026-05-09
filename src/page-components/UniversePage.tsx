@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
+import ReturnToFeedButton from '@/components/feed/ReturnToFeedButton';
 import CharacterMeter from '@/components/CharacterMeter';
 import StoryCard from '@/components/StoryCard';
 import { useToast } from '@/hooks/use-toast';
@@ -356,24 +357,37 @@ export default function UniversePage() {
   const arcViolations = validateArcFields(arcName.trim(), arcDescription.trim());
   const arcOverLimit = arcViolations.length > 0;
 
-  if (loading && !universe) return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
-    </div>
-  );
+  if (loading && !universe) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container max-w-6xl py-6">
+          <ReturnToFeedButton />
+        </div>
+        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+      </div>
+    );
+  }
 
-  if (!universe) return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
-    </div>
-  );
+  if (!universe) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container max-w-6xl py-6">
+          <ReturnToFeedButton />
+        </div>
+        <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container max-w-6xl overflow-x-hidden py-8 max-sm:py-6 animate-fade-in">
+        <div className="mb-6">
+          <ReturnToFeedButton />
+        </div>
         {editing ? (
           <div className="mb-8 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm sm:p-4">
             <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">

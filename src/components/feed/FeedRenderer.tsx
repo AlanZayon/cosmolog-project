@@ -1,7 +1,9 @@
-import { useState } from 'react';
+'use client';
+
 import StoryFeedCard from '@/components/feed/StoryFeedCard';
 import ArcFeedCard from '@/components/feed/ArcFeedCard';
 import UniverseFeedCard from '@/components/feed/UniverseFeedCard';
+import { useFeedExploration } from '@/components/feed/FeedExplorationContext';
 import type { FeedItem } from '@/lib/feed';
 
 interface FeedRendererProps {
@@ -9,7 +11,7 @@ interface FeedRendererProps {
 }
 
 export default function FeedRenderer({ items }: FeedRendererProps) {
-  const [expandedArcId, setExpandedArcId] = useState<string | null>(null);
+  const { expandedArcId, setExpandedArcId } = useFeedExploration();
 
   return (
     <div className="space-y-6">
@@ -24,7 +26,7 @@ export default function FeedRenderer({ items }: FeedRendererProps) {
               key={`${item.type}-${item.id}`}
               arc={item.payload}
               expanded={expandedArcId === item.id}
-              onToggle={() => setExpandedArcId((current) => current === item.id ? null : item.id)}
+              onToggle={() => setExpandedArcId(expandedArcId === item.id ? null : item.id)}
             />
           );
         }

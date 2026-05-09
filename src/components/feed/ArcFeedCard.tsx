@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useFeedExploration } from '@/components/feed/FeedExplorationContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -24,11 +24,10 @@ interface ArcFeedCardProps {
 
 export default function ArcFeedCard({ arc, expanded, onToggle }: ArcFeedCardProps) {
   const { t } = useLanguage();
-  const router = useRouter();
-  const arcHref = `/arc/${arc.id}`;
+  const { pushArc } = useFeedExploration();
 
-  const goToArc = () => {
-    router.push(arcHref);
+  const openArcPreview = () => {
+    pushArc(arc.id);
   };
 
   return (
@@ -39,11 +38,11 @@ export default function ArcFeedCard({ arc, expanded, onToggle }: ArcFeedCardProp
         feedCardArticleClasses,
         'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       )}
-      onClick={goToArc}
+      onClick={openArcPreview}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          goToArc();
+          openArcPreview();
         }
       }}
     >
