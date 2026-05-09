@@ -91,6 +91,20 @@ const translations = {
   'common.saving': { pt: 'Salvando...', en: 'Saving...', ja: '保存中...', es: 'Guardando...' },
   'common.loading': { pt: 'Carregando...', en: 'Loading...', ja: '読み込み中...', es: 'Cargando...' },
   'common.error': { pt: 'Erro', en: 'Error', ja: 'エラー', es: 'Error' },
+
+  // Text length validation (universe, arc, story, chapter)
+  'validation.charLimitsTitle': {
+    pt: 'Limite de caracteres excedido',
+    en: 'Character limit exceeded',
+    ja: '文字数の上限を超えています',
+    es: 'Límite de caracteres superado',
+  },
+  'validation.charLimitExceeded': {
+    pt: '{{field}}: no máximo {{max}} caracteres (atual: {{current}}).',
+    en: '{{field}}: maximum {{max}} characters (currently {{current}}).',
+    ja: '{{field}}: 最大 {{max}} 文字まで（現在 {{current}}）。',
+    es: '{{field}}: máximo {{max}} caracteres (actual: {{current}}).',
+  },
   'common.send': { pt: 'Enviar', en: 'Send', ja: '送信', es: 'Enviar' },
   'common.back': { pt: '← Voltar', en: '← Back', ja: '← 戻る', es: '← Volver' },
   'common.all': { pt: 'Todos', en: 'All', ja: 'すべて', es: 'Todos' },

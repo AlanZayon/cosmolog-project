@@ -13,7 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import TagInput from '@/components/TagInput';
 import ComicPageUploader from '@/components/ComicPageUploader';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
+import CharacterMeter from '@/components/CharacterMeter';
 import { useToast } from '@/hooks/use-toast';
+import { CONTENT_LIMITS, describeViolations, validateChapterTitle, validateStoryMeta, validateStoryShortBody } from '@/lib/contentLimits';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -126,12 +128,22 @@ export default function StoryPage() {
   };
 
   const addChapter = async () => {
-    if (!chapterTitle.trim()) return;
+    const chTitle = chapterTitle.trim();
+    if (!chTitle) return;
+    const chV = validateChapterTitle(chTitle);
+    if (chV.length) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, chV),
+        variant: 'destructive',
+      });
+      return;
+    }
     setAddingChapter(true);
     const nextNum = chapters.length + 1;
     const { error } = await supabase.from('chapters').insert({
       story_id: id!,
-      title: chapterTitle,
+      title: chTitle,
       content: chapterContent,
       chapter_number: nextNum,
     });
@@ -179,6 +191,17 @@ export default function StoryPage() {
 
   const saveEdits = async () => {
     if (!story || !user || !editTitle.trim()) return;
+    const titleT = editTitle.trim();
+    const descT = editDescription.trim();
+    const mv = validateStoryMeta(titleT, descT);
+    if (mv.length) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, mv),
+        variant: 'destructive',
+      });
+      return;
+    }
     setSaving(true);
     try {
       let cover_image_url = story.cover_image_url;
@@ -194,8 +217,8 @@ export default function StoryPage() {
       }
 
       const { error } = await supabase.from('stories').update({
-        title: editTitle.trim(),
-        description: editDescription.trim() || null,
+        title: titleT,
+        description: descT || null,
         cover_image_url,
         tags: editTags,
         arc_id: editArcId || null,
@@ -239,9 +262,20 @@ export default function StoryPage() {
 
   const saveContent = async () => {
     if (!story || !user) return;
+    const type = (story as any).type || 'chapters';
+    if (type === 'short_story') {
+      const sv = validateStoryShortBody(editContent);
+      if (sv.length) {
+        toast({
+          title: t('validation.charLimitsTitle'),
+          description: describeViolations(t, sv),
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
     setSavingContent(true);
     try {
-      const type = (story as any).type || 'chapters';
 
       if (type === 'short_story') {
         const { error } = await supabase.from('stories').update({ content: editContent } as any).eq('id', story.id);
@@ -301,6 +335,16 @@ export default function StoryPage() {
   const isAuthor = user?.id === story.author_id;
   const storyType = (story as any).type || 'chapters';
 
+  const editMetaViolations = validateStoryMeta(editTitle.trim(), editDescription.trim());
+  const editMetaOverLimit = editMetaViolations.length > 0;
+
+  const chapterFormViolations = validateChapterTitle(chapterTitle.trim());
+  const chapterFormOverLimit = chapterFormViolations.length > 0;
+
+  const editShortViolations =
+    editingContent && storyType === 'short_story' ? validateStoryShortBody(editContent) : [];
+  const editShortOverLimit = editShortViolations.length > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -333,10 +377,12 @@ export default function StoryPage() {
               <div>
                 <label className="text-sm font-medium text-foreground">{t('story.title')}</label>
                 <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+                <CharacterMeter length={editTitle.length} max={CONTENT_LIMITS.storyTitle} className="mt-1 text-right" />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{t('story.description')}</label>
                 <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} />
+                <CharacterMeter length={editDescription.length} max={CONTENT_LIMITS.storyDescription} className="mt-1 text-right" />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">{t('story.tags')}</label>
@@ -358,7 +404,7 @@ export default function StoryPage() {
                 </div>
               )}
               <div className="flex gap-2">
-                <Button onClick={saveEdits} disabled={saving || !editTitle.trim()} size="sm" className="gradient-warm text-primary-foreground">
+                <Button onClick={saveEdits} disabled={saving || !editTitle.trim() || editMetaOverLimit} size="sm" className="gradient-warm text-primary-foreground">
                   {saving ? t('common.saving') : t('common.save')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={cancelEditing}>Cancelar</Button>
@@ -414,8 +460,9 @@ export default function StoryPage() {
                   <Button variant="ghost" size="sm" onClick={cancelEditingContent}><X className="h-4 w-4" /></Button>
                 </div>
                 <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={12} className="font-serif" />
+                <CharacterMeter length={editContent.length} max={CONTENT_LIMITS.storyShortBody} className="text-right" />
                 <div className="flex gap-2">
-                  <Button onClick={saveContent} disabled={savingContent} size="sm" className="gradient-warm text-primary-foreground">
+                  <Button onClick={saveContent} disabled={savingContent || editShortOverLimit} size="sm" className="gradient-warm text-primary-foreground">
                     <Save className="h-4 w-4 mr-1" /> {savingContent ? t('common.saving') : t('common.save')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={cancelEditingContent}>Cancelar</Button>
@@ -451,8 +498,9 @@ export default function StoryPage() {
             {showAddChapter && (
               <div className="space-y-3 mb-4 p-4 rounded-lg border border-border bg-card">
                 <Input placeholder={t('story.chapterTitlePlaceholder')} value={chapterTitle} onChange={e => setChapterTitle(e.target.value)} />
+                <CharacterMeter length={chapterTitle.length} max={CONTENT_LIMITS.chapterTitle} className="mt-1 text-right" />
                 <Textarea placeholder={t('story.chapterContentPlaceholder')} value={chapterContent} onChange={e => setChapterContent(e.target.value)} rows={8} />
-                <Button onClick={addChapter} disabled={addingChapter} size="sm" className="gradient-warm text-primary-foreground">
+                <Button onClick={addChapter} disabled={addingChapter || chapterFormOverLimit || !chapterTitle.trim()} size="sm" className="gradient-warm text-primary-foreground">
                   {addingChapter ? t('common.saving') : t('story.saveChapter')}
                 </Button>
               </div>

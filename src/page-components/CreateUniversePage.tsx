@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import { useRouter } from "next/navigation";
 import { useToast } from '@/hooks/use-toast';
+import CharacterMeter from '@/components/CharacterMeter';
+import { CONTENT_LIMITS, describeViolations, validateUniverseFields } from '@/lib/contentLimits';
 import { ImagePlus, X } from 'lucide-react';
 
 export default function CreateUniversePage() {
@@ -44,9 +46,22 @@ export default function CreateUniversePage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const titleTrim = title.trim();
+  const descTrim = description.trim();
+  const universeViolations = validateUniverseFields(titleTrim, descTrim);
+  const universeOverLimit = universeViolations.length > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !title.trim()) return;
+    if (!user || !titleTrim) return;
+    if (universeOverLimit) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, universeViolations),
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     try {
       let cover_image_url: string | null = null;
@@ -60,8 +75,8 @@ export default function CreateUniversePage() {
       }
 
       const { data, error } = await (supabase.from('universes') as any).insert({
-        title: title.trim(),
-        description: description.trim() || null,
+        title: titleTrim,
+        description: descTrim || null,
         cover_image_url,
         owner_id: user.id,
       }).select().single();
@@ -102,12 +117,14 @@ export default function CreateUniversePage() {
           <div>
             <label className="text-sm font-medium text-foreground">{t('createUniverse.nameLabel')}</label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('createUniverse.namePlaceholder')} required />
+            <CharacterMeter length={title.length} max={CONTENT_LIMITS.universeTitle} className="mt-1 text-right" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">{t('createUniverse.descLabel')}</label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('createUniverse.descPlaceholder')} rows={4} />
+            <CharacterMeter length={description.length} max={CONTENT_LIMITS.universeDescription} className="mt-1 text-right" />
           </div>
-          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading}>
+          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || universeOverLimit || !titleTrim}>
             {loading ? t('common.creating') : t('createUniverse.submit')}
           </Button>
         </form>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import StoryFeedReader from '@/components/feed/StoryFeedReader';
+import { feedCardArticleClasses } from '@/components/feed/feedCardArticleClasses';
 import { FeedClampScope, FeedClampToggle } from '@/components/feed/FeedClampedDescription';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Heart, MessageCircle } from 'lucide-react';
@@ -89,7 +90,7 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
 
   return (
     <>
-      <article className="rounded-2xl border border-border bg-card overflow-hidden shadow-card">
+      <article className={feedCardArticleClasses}>
         <div
           role="button"
           tabIndex={0}

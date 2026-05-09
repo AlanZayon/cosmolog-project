@@ -10,10 +10,12 @@ import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { ImagePlus, X, BookOpen, FileText, Image, Layers } from 'lucide-react';
+import CharacterMeter from '@/components/CharacterMeter';
 import TagInput from '@/components/TagInput';
 import ComicPageUploader from '@/components/ComicPageUploader';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
 import type { TranslationKey } from '@/i18n/translations';
+import { CONTENT_LIMITS, describeViolations, validateStoryMeta, validateStoryShortBody } from '@/lib/contentLimits';
 
 type StoryType = 'short_story' | 'chapters' | 'comic' | 'illustrated';
 type Universe = Tables<'universes'>;
@@ -143,16 +145,31 @@ export default function CreateStoryPage() {
     return data.publicUrl;
   };
 
+  const metaViolationsCreate = validateStoryMeta(title.trim(), description.trim());
+  const shortBodyViolationsCreate = storyType === 'short_story' ? validateStoryShortBody(content) : [];
+  const createStoryViolations = [...metaViolationsCreate, ...shortBodyViolationsCreate];
+  const createStoryOverLimit = createStoryViolations.length > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !storyType) return;
+    if (createStoryOverLimit) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, createStoryViolations),
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     try {
       const cover_image_url = coverFile ? await uploadFile('covers', coverFile) : null;
+      const titleT = title.trim();
+      const descT = description.trim();
 
       const { data, error } = await supabase.from('stories').insert({
-        title,
-        description,
+        title: titleT,
+        description: descT || null,
         author_id: user.id,
         tags,
         type: storyType,
@@ -314,10 +331,12 @@ export default function CreateStoryPage() {
           <div>
             <label className="text-sm font-medium text-foreground">{t('story.title')}</label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('createStory.titlePlaceholder')} required />
+            <CharacterMeter length={title.length} max={CONTENT_LIMITS.storyTitle} className="mt-1 text-right" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">{t('story.description')}</label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('createStory.descPlaceholder')} rows={3} />
+            <CharacterMeter length={description.length} max={CONTENT_LIMITS.storyDescription} className="mt-1 text-right" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">{t('story.tags')}</label>
@@ -328,6 +347,7 @@ export default function CreateStoryPage() {
             <div>
               <label className="text-sm font-medium text-foreground">{t('createStory.contentLabel')}</label>
               <Textarea value={content} onChange={e => setContent(e.target.value)} placeholder={t('createStory.contentPlaceholder')} rows={12} required />
+              <CharacterMeter length={content.length} max={CONTENT_LIMITS.storyShortBody} className="mt-1 text-right" />
             </div>
           )}
 
@@ -351,7 +371,7 @@ export default function CreateStoryPage() {
             </div>
           )}
 
-          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading}>
+          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || createStoryOverLimit}>
             {loading ? t('common.creating') : t('createStory.submit')}
           </Button>
         </form>

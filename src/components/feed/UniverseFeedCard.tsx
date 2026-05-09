@@ -7,6 +7,8 @@ import { Globe2, Library } from 'lucide-react';
 import type { FeedUniversePayload } from '@/lib/feed';
 import type { TranslationKey } from '@/i18n/translations';
 import { FeedClampScope, FeedClampToggle } from '@/components/feed/FeedClampedDescription';
+import { feedCardArticleClasses } from '@/components/feed/feedCardArticleClasses';
+import { cn } from '@/lib/utils';
 
 function fillN(key: TranslationKey, n: number, t: (k: TranslationKey) => string) {
   return t(key).replace(/\{\{n\}\}/g, String(n));
@@ -28,7 +30,10 @@ export default function UniverseFeedCard({ universe }: UniverseFeedCardProps) {
 
   return (
     <article
-      className="rounded-2xl border border-border bg-card overflow-hidden outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
+      className={cn(
+        feedCardArticleClasses,
+        'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      )}
       role="link"
       tabIndex={0}
       aria-label={`${universe.title} — ${footer}`}

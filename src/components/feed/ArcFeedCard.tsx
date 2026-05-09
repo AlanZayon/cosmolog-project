@@ -9,6 +9,8 @@ import { ChevronDown, ChevronUp, Layers3 } from 'lucide-react';
 import type { FeedArcPayload, FeedStoryPayload } from '@/lib/feed';
 import type { TranslationKey } from '@/i18n/translations';
 import { FeedClampScope, FeedClampToggle } from '@/components/feed/FeedClampedDescription';
+import { feedCardArticleClasses } from '@/components/feed/feedCardArticleClasses';
+import { cn } from '@/lib/utils';
 
 function fillN(key: TranslationKey, n: number, t: (k: TranslationKey) => string) {
   return t(key).replace(/\{\{n\}\}/g, String(n));
@@ -33,7 +35,10 @@ export default function ArcFeedCard({ arc, expanded, onToggle }: ArcFeedCardProp
     <article
       tabIndex={0}
       aria-label={arc.name}
-      className="cursor-pointer rounded-2xl border border-border bg-card overflow-hidden outline-none transition-colors hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className={cn(
+        feedCardArticleClasses,
+        'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      )}
       onClick={goToArc}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {

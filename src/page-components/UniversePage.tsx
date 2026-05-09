@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
+import CharacterMeter from '@/components/CharacterMeter';
 import StoryCard from '@/components/StoryCard';
 import { useToast } from '@/hooks/use-toast';
+import { CONTENT_LIMITS, describeViolations, validateArcFields, validateUniverseFields } from '@/lib/contentLimits';
 import { Plus, Pencil, X, ImagePlus, FileText, BookOpen, Image, Layers, Globe, Save } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
@@ -178,7 +180,18 @@ export default function UniversePage() {
   };
 
   const saveArc = async () => {
-    if (!user || !universe || !arcName.trim()) return;
+    const nT = arcName.trim();
+    const descT = arcDescription.trim();
+    if (!user || !universe || !nT) return;
+    const aV = validateArcFields(nT, descT);
+    if (aV.length) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, aV),
+        variant: 'destructive',
+      });
+      return;
+    }
     setSavingArc(true);
     try {
       let cover_image_url = editingArcId
@@ -193,8 +206,8 @@ export default function UniversePage() {
 
       if (editingArcId) {
         const { error } = await supabase.from('arcs').update({
-          name: arcName.trim(),
-          description: arcDescription.trim() || null,
+          name: nT,
+          description: descT || null,
           type: arcType,
           cover_image_url,
         }).eq('id', editingArcId);
@@ -203,8 +216,8 @@ export default function UniversePage() {
       } else {
         const { error } = await supabase.from('arcs').insert({
           universe_id: universe.id,
-          name: arcName.trim(),
-          description: arcDescription.trim() || null,
+          name: nT,
+          description: descT || null,
           type: arcType,
           cover_image_url,
         });
@@ -282,6 +295,17 @@ export default function UniversePage() {
 
   const saveEdits = async () => {
     if (!universe || !user || !editTitle.trim()) return;
+    const tT = editTitle.trim();
+    const dT = editDescription.trim();
+    const uniV = validateUniverseFields(tT, dT);
+    if (uniV.length) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, uniV),
+        variant: 'destructive',
+      });
+      return;
+    }
     setSaving(true);
     try {
       let cover_image_url = universe.cover_image_url;
@@ -296,8 +320,8 @@ export default function UniversePage() {
       }
 
       const { error } = await (supabase.from('universes') as any).update({
-        title: editTitle.trim(),
-        description: editDescription.trim() || null,
+        title: tT,
+        description: dT || null,
         cover_image_url,
       }).eq('id', universe.id);
       if (error) throw error;
@@ -325,6 +349,12 @@ export default function UniversePage() {
     () => stories.filter((story) => !story.arc_id),
     [stories],
   );
+
+  const editUniverseViolations = validateUniverseFields(editTitle.trim(), editDescription.trim());
+  const editUniverseOverLimit = editUniverseViolations.length > 0;
+
+  const arcViolations = validateArcFields(arcName.trim(), arcDescription.trim());
+  const arcOverLimit = arcViolations.length > 0;
 
   if (loading && !universe) return (
     <div className="min-h-screen bg-background">
@@ -372,13 +402,15 @@ export default function UniversePage() {
             <div>
               <label className="text-sm font-medium text-foreground">{t('createUniverse.nameLabel')}</label>
               <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+              <CharacterMeter length={editTitle.length} max={CONTENT_LIMITS.universeTitle} className="mt-1 text-right" />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">{t('createUniverse.descLabel')}</label>
               <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} />
+              <CharacterMeter length={editDescription.length} max={CONTENT_LIMITS.universeDescription} className="mt-1 text-right" />
             </div>
             <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
-              <Button onClick={saveEdits} disabled={saving || !editTitle.trim()} size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
+              <Button onClick={saveEdits} disabled={saving || !editTitle.trim() || editUniverseOverLimit} size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
                 <Save className="mr-1 h-4 w-4 shrink-0" aria-hidden />
                 {saving ? t('common.saving') : t('common.save')}
               </Button>
@@ -473,10 +505,12 @@ export default function UniversePage() {
               <div>
                 <label className="text-sm font-medium text-foreground">{t('universe.arcName')}</label>
                 <Input value={arcName} onChange={(e) => setArcName(e.target.value)} />
+                <CharacterMeter length={arcName.length} max={CONTENT_LIMITS.arcName} className="mt-1 text-right" />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{t('universe.arcDescription')}</label>
                 <Textarea value={arcDescription} onChange={(e) => setArcDescription(e.target.value)} rows={3} />
+                <CharacterMeter length={arcDescription.length} max={CONTENT_LIMITS.arcDescription} className="mt-1 text-right" />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{t('universe.arcType')}</label>
@@ -491,7 +525,7 @@ export default function UniversePage() {
                 </select>
               </div>
               <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
-                <Button type="button" onClick={saveArc} disabled={savingArc || !arcName.trim()} size="sm" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
+                <Button type="button" onClick={saveArc} disabled={savingArc || !arcName.trim() || arcOverLimit} size="sm" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
                   {savingArc ? t('common.saving') : t('common.save')}
                 </Button>
                 <Button variant="outline" size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation" onClick={resetArcForm}>

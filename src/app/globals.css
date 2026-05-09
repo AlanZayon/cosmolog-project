@@ -49,6 +49,8 @@
     --gradient-hero: linear-gradient(135deg, hsl(220 20% 10%), hsl(220 15% 18%));
     --shadow-warm: 0 10px 40px -12px hsl(25 95% 53% / 0.25);
     --shadow-card: 0 2px 12px -2px hsl(220 20% 10% / 0.08);
+    /* Slightly deeper than --shadow-card; used for feed card hover (unified story / arc / universe). */
+    --shadow-card-hover: 0 3px 14px -3px hsl(220 20% 10% / 0.11);
 
     --font-sans: "Inter", system-ui, sans-serif;
     --font-serif: "Merriweather", Georgia, serif;
@@ -96,6 +98,7 @@
     --gradient-hero: linear-gradient(135deg, hsl(220 20% 7%), hsl(220 15% 12%));
     --shadow-warm: 0 10px 40px -12px hsl(25 95% 53% / 0.35);
     --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.3);
+    --shadow-card-hover: 0 4px 18px -4px hsl(0 0% 0% / 0.38);
   }
 
   * {
