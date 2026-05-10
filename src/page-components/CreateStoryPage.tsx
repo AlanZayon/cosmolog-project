@@ -9,17 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
-import { ImagePlus, X, BookOpen, FileText, Image, Layers } from 'lucide-react';
+import { ImagePlus, X, BookOpen, FileText, Image, Layers, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import CharacterMeter from '@/components/CharacterMeter';
 import TagInput from '@/components/TagInput';
 import ComicPageUploader from '@/components/ComicPageUploader';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
 import type { TranslationKey } from '@/i18n/translations';
-import { CONTENT_LIMITS, describeViolations, validateStoryMeta, validateStoryShortBody } from '@/lib/contentLimits';
+import { CONTENT_LIMITS, describeViolations, validateStoryMeta, validateStoryShortBody, validateChapterTitle } from '@/lib/contentLimits';
 
 type StoryType = 'short_story' | 'chapters' | 'comic' | 'illustrated';
 type Universe = Tables<'universes'>;
 type Arc = Tables<'arcs'>;
+type DraftChapter = { title: string; content: string };
 
 const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: TranslationKey; icon: React.ReactNode }[] = [
   { value: 'short_story', labelKey: 'typeLabel.short_story', descKey: 'typeDesc.short_story', icon: <FileText className="h-5 w-5" /> },
@@ -52,6 +53,7 @@ export default function CreateStoryPage() {
   const [content, setContent] = useState('');
   const [comicPages, setComicPages] = useState<{ file?: File; preview: string }[]>([]);
   const [illustratedBlocks, setIllustratedBlocks] = useState<IllustratedBlockItem[]>([]);
+  const [draftChapters, setDraftChapters] = useState<DraftChapter[]>([]);
 
   useEffect(() => {
     if (!user) router.push("/login");
@@ -147,12 +149,28 @@ export default function CreateStoryPage() {
 
   const metaViolationsCreate = validateStoryMeta(title.trim(), description.trim());
   const shortBodyViolationsCreate = storyType === 'short_story' ? validateStoryShortBody(content) : [];
-  const createStoryViolations = [...metaViolationsCreate, ...shortBodyViolationsCreate];
+  const chapterTitleViolationsCreate =
+    storyType === 'chapters'
+      ? draftChapters.flatMap((ch) => {
+          const tCh = ch.title.trim();
+          const cCh = ch.content.trim();
+          if (!tCh && !cCh) return [];
+          return validateChapterTitle(tCh);
+        })
+      : [];
+  const createStoryViolations = [...metaViolationsCreate, ...shortBodyViolationsCreate, ...chapterTitleViolationsCreate];
+  const chapterMissingTitle =
+    storyType === 'chapters' && draftChapters.some((ch) => ch.content.trim() !== '' && ch.title.trim() === '');
   const createStoryOverLimit = createStoryViolations.length > 0;
+  const createStoryBlocked = createStoryOverLimit || chapterMissingTitle;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !storyType) return;
+    if (chapterMissingTitle) {
+      toast({ title: t('common.error'), description: t('createStory.chapterNeedsTitle'), variant: 'destructive' });
+      return;
+    }
     if (createStoryOverLimit) {
       toast({
         title: t('validation.charLimitsTitle'),
@@ -209,6 +227,21 @@ export default function CreateStoryPage() {
             content: blockContent,
             block_order: i + 1,
           } as any);
+        }
+      }
+
+      if (storyType === 'chapters' && draftChapters.length > 0) {
+        let chapterNum = 1;
+        for (const ch of draftChapters) {
+          const chTitle = ch.title.trim();
+          if (!chTitle) continue;
+          const { error: chError } = await supabase.from('chapters').insert({
+            story_id: storyId,
+            title: chTitle,
+            content: ch.content.trim(),
+            chapter_number: chapterNum++,
+          } as any);
+          if (chError) throw chError;
         }
       }
 
@@ -352,8 +385,88 @@ export default function CreateStoryPage() {
           )}
 
           {storyType === 'chapters' && (
-            <div className="p-3 rounded-lg border border-border bg-muted/30">
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">{t('createStory.chaptersHint')}</p>
+              <label className="text-sm font-medium text-foreground block">{t('story.chapters')}</label>
+              <div className="space-y-3">
+                {draftChapters.map((ch, i) => (
+                  <div key={i} className="p-3 rounded-lg border border-border bg-card space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground font-medium">{t('story.chapters')} {i + 1}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (i === 0) return;
+                            const next = [...draftChapters];
+                            [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                            setDraftChapters(next);
+                          }}
+                          disabled={i === 0}
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+                          aria-label={t('common.previous')}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (i >= draftChapters.length - 1) return;
+                            const next = [...draftChapters];
+                            [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                            setDraftChapters(next);
+                          }}
+                          disabled={i === draftChapters.length - 1}
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+                          aria-label={t('common.next')}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDraftChapters(draftChapters.filter((_, j) => j !== i))}
+                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          aria-label={t('common.delete')}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <Input
+                        value={ch.title}
+                        onChange={(e) => {
+                          const next = [...draftChapters];
+                          next[i] = { ...next[i], title: e.target.value };
+                          setDraftChapters(next);
+                        }}
+                        placeholder={t('story.chapterTitlePlaceholder')}
+                      />
+                      <CharacterMeter length={ch.title.length} max={CONTENT_LIMITS.chapterTitle} className="mt-1 text-right" />
+                    </div>
+                    <Textarea
+                      value={ch.content}
+                      onChange={(e) => {
+                        const next = [...draftChapters];
+                        next[i] = { ...next[i], content: e.target.value };
+                        setDraftChapters(next);
+                      }}
+                      placeholder={t('story.chapterContentPlaceholder')}
+                      rows={6}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setDraftChapters([...draftChapters, { title: '', content: '' }])}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                {t('createStory.addChapter')}
+              </Button>
             </div>
           )}
 
@@ -371,7 +484,7 @@ export default function CreateStoryPage() {
             </div>
           )}
 
-          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || createStoryOverLimit}>
+          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || createStoryBlocked}>
             {loading ? t('common.creating') : t('createStory.submit')}
           </Button>
         </form>
