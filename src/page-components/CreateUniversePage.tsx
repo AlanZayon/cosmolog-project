@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,6 +96,11 @@ export default function CreateUniversePage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8 max-w-lg animate-fade-in">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" className="-ml-2 h-9 px-2" asChild>
+            <Link href="/universes">{t('common.back')}</Link>
+          </Button>
+        </div>
         <h1 className="text-2xl font-bold font-serif mb-6">{t('createUniverse.title')}</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

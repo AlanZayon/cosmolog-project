@@ -46,7 +46,12 @@ export default function UniversesPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8 max-w-3xl animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" className="-ml-2 h-9 px-2" asChild>
+            <Link href="/">{t('common.back')}</Link>
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold font-serif">{t('universes.title')}</h1>
           <Button asChild className="gradient-warm text-primary-foreground">
             <Link href="/universes/create"><Plus className="h-4 w-4 mr-1" /> {t('universes.new')}</Link>

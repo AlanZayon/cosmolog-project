@@ -142,6 +142,19 @@
   }
 }
 
+@layer utilities {
+  /** Scroll without showing a track (drawers / compact menus) */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
 @layer components {
   .gradient-warm {
     background: var(--gradient-warm);

@@ -42,12 +42,16 @@ export default function Header() {
   return (
     <>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="right" className="flex w-full flex-col gap-6 sm:max-w-sm">
-          <SheetHeader>
+        <SheetContent
+          side="right"
+          className="flex h-full max-h-dvh w-full flex-col gap-0 overflow-hidden p-6 sm:max-w-sm"
+        >
+          <SheetHeader className="shrink-0 space-y-1 pr-10 text-left">
             <SheetTitle>{t("header.menuTitle")}</SheetTitle>
             <SheetDescription className="sr-only">{t("header.menuDescription")}</SheetDescription>
           </SheetHeader>
 
+          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-0.5 pb-4 scrollbar-none">
           <div className="flex flex-col gap-1">
             {user ? (
               <SheetClose asChild>
@@ -96,29 +100,29 @@ export default function Header() {
           <hr className="border-border" />
 
           <div>
-            <p className="mb-3 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t("header.appearance")}
             </p>
-            <Button type="button" variant="outline" className="h-auto w-full justify-start gap-3 px-3 py-3 font-normal" onClick={toggleTheme}>
+            <Button type="button" variant="outline" className="h-auto w-full justify-start gap-3 px-3 py-2.5 font-normal" onClick={toggleTheme}>
               {theme === "light" ? <Moon className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0" />}
               {theme === "light" ? t("header.themeDark") : t("header.themeLight")}
             </Button>
           </div>
 
           <div>
-            <p className="mb-3 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t("header.chooseLanguage")}
             </p>
-            <div className="flex flex-col gap-0.5">
+            <div className="grid grid-cols-2 gap-1.5">
               {LANGUAGES.map((lang) => (
                 <button
                   key={lang}
                   type="button"
                   onClick={() => setLanguage(lang)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-accent ${lang === language ? "bg-accent font-medium" : ""}`}
+                  className={`flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left text-sm hover:bg-accent ${lang === language ? "border-border bg-accent font-medium" : ""}`}
                 >
-                  <span className="text-lg leading-none">{LANGUAGE_FLAGS[lang]}</span>
-                  {LANGUAGE_LABELS[lang]}
+                  <span className="text-base leading-none">{LANGUAGE_FLAGS[lang]}</span>
+                  <span className="truncate text-xs">{LANGUAGE_LABELS[lang]}</span>
                 </button>
               ))}
             </div>
@@ -126,7 +130,7 @@ export default function Header() {
 
           {user ? (
             <>
-              <hr className="border-border mt-auto" />
+              <hr className="border-border" />
               <Button
                 type="button"
                 variant="outline"
@@ -141,6 +145,7 @@ export default function Header() {
               </Button>
             </>
           ) : null}
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -154,20 +159,45 @@ export default function Header() {
 
             <nav
               aria-label={t("header.mainNav")}
-              className="flex shrink-0 items-center gap-0.5 md:order-3 md:gap-1"
+              className="flex shrink-0 items-center gap-1 md:order-3 md:gap-1.5"
             >
-              <Button variant="ghost" size="sm" asChild className="px-2 md:px-3">
+              <Button variant="outline" size="sm" asChild className="h-10 gap-1.5 px-2 font-medium sm:h-9 sm:px-2.5 md:px-3">
                 <Link href="/universes" title={t("header.universes")}>
-                  <Globe className="h-4 w-4 md:mr-1.5" />
-                  <span className="hidden md:inline">{t("header.universes")}</span>
+                  <Globe className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="hidden min-[400px]:inline">{t("header.universes")}</span>
                 </Link>
               </Button>
-              <Button variant="ghost" size="sm" asChild className="px-2 md:px-3">
+              <Button
+                size="sm"
+                asChild
+                className="h-10 gap-1.5 px-2.5 text-sm font-semibold shadow-sm hover:opacity-95 sm:h-9 sm:px-3 gradient-warm text-primary-foreground border-0"
+              >
                 <Link href="/create" title={t("header.write")}>
-                  <PenTool className="h-4 w-4 md:mr-1.5" />
-                  <span className="hidden md:inline">{t("header.write")}</span>
+                  <PenTool className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="hidden min-[400px]:inline">{t("header.write")}</span>
                 </Link>
               </Button>
+              {!user ? (
+                <>
+                  <Button variant="outline" size="sm" asChild className="h-10 shrink-0 gap-1 px-2 font-medium sm:h-9 sm:px-2.5">
+                    <Link href="/login" title={t("header.login")} aria-label={t("header.login")}>
+                      <LogIn className="h-4 w-4 shrink-0 sm:mr-0.5" aria-hidden />
+                      <span className="hidden min-[480px]:inline">{t("header.login")}</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="hidden h-10 shrink-0 gap-1 border-2 border-primary/35 bg-background px-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-primary/10 min-[520px]:inline-flex sm:h-9"
+                  >
+                    <Link href="/signup" title={t("header.signup")}>
+                      <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
+                      <span>{t("header.signup")}</span>
+                    </Link>
+                  </Button>
+                </>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -254,11 +255,18 @@ export default function CreateStoryPage() {
     }
   };
 
+  const backHref = universeId ? `/universe/${universeId}` : '/';
+
   if (!storyType) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container py-8 max-w-lg animate-fade-in">
+          <div className="mb-6">
+            <Button variant="ghost" size="sm" className="-ml-2 h-9 px-2" asChild>
+              <Link href={backHref}>{t('common.back')}</Link>
+            </Button>
+          </div>
           <h1 className="text-2xl font-bold font-serif mb-6">{t('createStory.title')}</h1>
           {loadingRelations ? (
             <p className="text-muted-foreground mb-4">{t('common.loading')}</p>
@@ -305,11 +313,18 @@ export default function CreateStoryPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container py-8 max-w-lg animate-fade-in">
-        <div className="flex items-center gap-2 mb-6">
-          <Button variant="ghost" size="sm" onClick={() => setStoryType(null)}>{t('common.back')}</Button>
-          <h1 className="text-2xl font-bold font-serif">
-            {t(STORY_TYPES.find(st => st.value === storyType)!.labelKey)}
-          </h1>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button variant="ghost" size="sm" className="-ml-2 h-9 shrink-0 px-2" onClick={() => setStoryType(null)}>
+              {t('common.back')}
+            </Button>
+            <h1 className="text-2xl font-bold font-serif">
+              {t(STORY_TYPES.find(st => st.value === storyType)!.labelKey)}
+            </h1>
+          </div>
+          <Button variant="ghost" size="sm" className="h-9 shrink-0 text-muted-foreground hover:text-foreground" asChild>
+            <Link href={backHref}>{t('header.home')}</Link>
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

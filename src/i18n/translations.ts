@@ -36,6 +36,7 @@ const translations = {
   'header.write': { pt: 'Escrever', en: 'Write', ja: '書く', es: 'Escribir' },
   'header.login': { pt: 'Entrar', en: 'Sign In', ja: 'ログイン', es: 'Iniciar sesión' },
   'header.signup': { pt: 'Cadastrar', en: 'Sign Up', ja: '新規登録', es: 'Registrarse' },
+  'header.home': { pt: 'Início', en: 'Home', ja: 'ホーム', es: 'Inicio' },
 
   // Index
   'index.title.discover': { pt: 'Descubra', en: 'Discover', ja: '発見しよう', es: 'Descubre' },
@@ -63,6 +64,54 @@ const translations = {
   'index.mostRecent': { pt: '📖 Mais Recentes', en: '📖 Most Recent', ja: '📖 最新', es: '📖 Más recientes' },
   'index.noStories': { pt: 'Nenhuma história encontrada.', en: 'No stories found.', ja: 'ストーリーが見つかりません。', es: 'No se encontraron historias.' },
   'index.loading': { pt: 'Carregando histórias...', en: 'Loading stories...', ja: 'ストーリーを読み込み中...', es: 'Cargando historias...' },
+  'index.ctaWrite': {
+    pt: 'Escrever uma história',
+    en: 'Write a story',
+    ja: 'ストーリーを書く',
+    es: 'Escribir una historia',
+  },
+  'index.ctaUniverses': {
+    pt: 'Explorar universos',
+    en: 'Explore universes',
+    ja: 'ユニバースを見る',
+    es: 'Explorar universos',
+  },
+  'index.ctaLead': {
+    pt: 'Por onde você quer começar?',
+    en: 'Where do you want to start?',
+    ja: 'どこから始めますか？',
+    es: '¿Por dónde quieres empezar?',
+  },
+  'index.ctaBrowseFeed': {
+    pt: 'Só explorar o feed',
+    en: 'Browse the feed first',
+    ja: 'まずフィードを見る',
+    es: 'Solo explorar el feed',
+  },
+  'index.guestHint': {
+    pt: 'Conta grátis para publicar e curtir.',
+    en: 'Free account to publish and like stories.',
+    ja: '投稿といいねに無料アカウント。',
+    es: 'Cuenta gratis para publicar y dar me gusta.',
+  },
+  'index.feedSectionTitle': {
+    pt: 'Da comunidade',
+    en: 'From the community',
+    ja: 'コミュニティから',
+    es: 'De la comunidad',
+  },
+  'index.feedSectionHint': {
+    pt: 'Histórias, arcos e universos em um só lugar.',
+    en: 'Stories, arcs, and universes in one place.',
+    ja: 'ストーリー、アーク、ユニバースがここに。',
+    es: 'Historias, arcos y universos en un solo lugar.',
+  },
+  'index.feedMechanicsLabel': {
+    pt: 'Como este feed funciona',
+    en: 'How this feed works',
+    ja: 'このフィードの仕組み',
+    es: 'Cómo funciona este feed',
+  },
 
   // Story types
   'type.short_story': { pt: 'Contos', en: 'Short Stories', ja: '短編', es: 'Cuentos' },
