@@ -6,7 +6,9 @@ import { useLanguage } from '@/hooks/useLanguage';
 import StoryCard from '@/components/StoryCard';
 import { Globe2, Library } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
-import { cn } from '@/lib/utils';
+import { HorizontalScrollStrip } from '@/components/browse/HorizontalScrollStrip';
+import { browseStoryTileClassNarrow } from '@/components/browse/BrowseContentRow';
+import { UniverseArcShelfTile } from '@/components/universe/UniverseArcShelfTile';
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
 type Arc = Tables<'arcs'>;
@@ -62,8 +64,8 @@ export default function UniverseFeedReader({
       setUniverse(universeData);
 
       const [{ data: arcData }, { data: storiesData }] = await Promise.all([
-        supabase.from('arcs').select('*').eq('universe_id', universeId).order('created_at', { ascending: false }),
-        supabase.from('stories').select('*').eq('universe_id', universeId).order('created_at', { ascending: false }),
+        supabase.from('arcs').select('*').eq('universe_id', universeId).order('created_at', { ascending: true }),
+        supabase.from('stories').select('*').eq('universe_id', universeId).order('created_at', { ascending: true }),
       ]);
 
       if (cancelled) return;
@@ -95,10 +97,19 @@ export default function UniverseFeedReader({
       if (!groups.has(story.arc_id)) groups.set(story.arc_id, []);
       groups.get(story.arc_id)!.push(story);
     }
+    const t = (a: StoryWithProfile, b: StoryWithProfile) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    for (const list of groups.values()) list.sort(t);
     return groups;
   }, [stories]);
 
-  const unassignedStories = useMemo(() => stories.filter((s) => !s.arc_id), [stories]);
+  const unassignedStories = useMemo(
+    () =>
+      stories
+        .filter((s) => !s.arc_id)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [stories],
+  );
 
   if (loading) {
     return (
@@ -116,7 +127,7 @@ export default function UniverseFeedReader({
 
   return (
     <div className={peekLayer ? 'relative' : 'min-h-full bg-background'}>
-      <div className={peekLayer ? 'mx-auto max-w-none px-0 py-0' : 'mx-auto max-w-6xl px-4 py-6 sm:px-8'}>
+      <div className={peekLayer ? 'mx-auto max-w-none px-0 py-0' : 'mx-auto w-full min-w-0 max-w-6xl px-4 py-6 sm:px-8'}>
         {universe.cover_image_url && (
           <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-xl border border-border">
             <img src={universe.cover_image_url} alt={universe.title} className="h-full w-full object-cover" />
@@ -170,31 +181,17 @@ export default function UniverseFeedReader({
           {arcs.length === 0 ? (
             <p className="text-muted-foreground">{t('universe.noArcs')}</p>
           ) : (
-            <div className="space-y-4">
-              {arcs.map((arc) => {
-                const arcStories = arcStoryMap.get(arc.id) || [];
-                return (
-                  <div key={arc.id} className="overflow-hidden rounded-xl border border-border bg-card">
-                    {arc.cover_image_url && (
-                      <div className="aspect-[16/5] overflow-hidden border-b border-border">
-                        <img src={arc.cover_image_url} alt="" className="h-full w-full object-cover" />
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold leading-snug">{arc.name}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {t('feed.storyCountBadge').replace(/\{\{n\}\}/g, String(arcStories.length))}
-                        </p>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" className="shrink-0 touch-manipulation" onClick={() => onOpenArc(arc.id)}>
-                        {t('feed.exploreArc')}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <HorizontalScrollStrip>
+              {arcs.map((arc) => (
+                <UniverseArcShelfTile
+                  key={arc.id}
+                  arc={arc}
+                  storyCount={(arcStoryMap.get(arc.id) || []).length}
+                  embedExploration
+                  explorationPushArc={onOpenArc}
+                />
+              ))}
+            </HorizontalScrollStrip>
           )}
         </section>
 
@@ -207,24 +204,13 @@ export default function UniverseFeedReader({
           {unassignedStories.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('universe.noStoriesWithoutArc')}</p>
           ) : (
-            <div
-              className={cn(
-                '-mx-1 flex flex-nowrap gap-3 overflow-x-auto px-1 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-                'snap-x snap-mandatory sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 md:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0 sm:snap-none',
-              )}
-            >
+            <HorizontalScrollStrip>
               {unassignedStories.map((story) => (
-                <div
-                  key={story.id}
-                  className={cn(
-                    'shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink',
-                    'w-[clamp(9.75rem,40vw,13.5rem)] min-w-[9.75rem] max-w-[13.5rem] sm:max-w-none',
-                  )}
-                >
+                <div key={story.id} className={browseStoryTileClassNarrow()}>
                   <StoryCard story={story} onOpenInFeedExplore={() => onOpenStory(story.id)} />
                 </div>
               ))}
-            </div>
+            </HorizontalScrollStrip>
           )}
         </section>
       </div>

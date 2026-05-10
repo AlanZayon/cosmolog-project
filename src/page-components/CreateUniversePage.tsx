@@ -83,7 +83,7 @@ export default function CreateUniversePage() {
 
       if (error) throw error;
       toast({ title: t('createUniverse.success') });
-      router.push(`/universe/${data.id}`);
+      router.replace(`/universe/${data.id}`);
     } catch (err: any) {
       toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     } finally {

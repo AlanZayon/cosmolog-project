@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Header from '@/components/Header';
-import ReturnToFeedButton from '@/components/feed/ReturnToFeedButton';
+import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
 import StoryCard from '@/components/StoryCard';
+import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -84,7 +86,7 @@ export default function ArcPage({
         {!embedExploration && <Header />}
         {!embedExploration && (
           <div className="container max-w-6xl py-6">
-            <ReturnToFeedButton />
+            <PreviousScreenBackButton />
           </div>
         )}
         <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
@@ -98,7 +100,7 @@ export default function ArcPage({
         {!embedExploration && <Header />}
         {!embedExploration && (
           <div className="container max-w-6xl py-6">
-            <ReturnToFeedButton />
+            <PreviousScreenBackButton />
           </div>
         )}
         <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
@@ -109,55 +111,74 @@ export default function ArcPage({
   return (
     <div className={shell}>
       {!embedExploration && <Header />}
-      <main className="container py-8 max-w-6xl animate-fade-in">
+      <main className="container min-w-0 max-w-6xl py-8 animate-fade-in">
         {!embedExploration && (
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <ReturnToFeedButton />
+            <PreviousScreenBackButton />
           </div>
         )}
-        {embedExploration && universe && explorationPushUniverse ? (
-          <button
-            type="button"
-            className="text-sm text-primary hover:underline"
-            onClick={() => explorationPushUniverse(universe.id)}
-          >
-            {t('story.universe')}: {universe.title}
-          </button>
-        ) : (
-          <Link href={universe ? `/universe/${universe.id}` : '/'} className="text-sm text-primary hover:underline">
-            {t('story.universe')}: {universe?.title || t('common.back')}
-          </Link>
-        )}
+        <div className={cn('mb-6', !embedExploration && '-mx-8 px-8')}>
+          {embedExploration && universe && explorationPushUniverse ? (
+            <button
+              type="button"
+              className="text-sm text-primary hover:underline"
+              onClick={() => explorationPushUniverse(universe.id)}
+            >
+              {t('story.universe')}: {universe.title}
+            </button>
+          ) : (
+            <Link href={universe ? `/universe/${universe.id}` : '/'} className="text-sm text-primary hover:underline">
+              {t('story.universe')}: {universe?.title || t('common.back')}
+            </Link>
+          )}
+        </div>
 
-        <section className="mt-4 mb-8 rounded-2xl border border-border bg-card overflow-hidden">
-          {arc.cover_image_url && (
-            <div className="aspect-[16/6] overflow-hidden border-b border-border">
-              <img src={arc.cover_image_url} alt={arc.name} className="w-full h-full object-cover" />
+        <div className={cn('relative mb-10', !embedExploration && '-mx-8')}>
+          {arc.cover_image_url ? (
+            <div className="relative overflow-hidden border border-border sm:rounded-2xl">
+              <div className="relative aspect-[2/1] min-h-[12rem] max-h-[min(44vh,22rem)] w-full sm:aspect-[21/9] sm:max-h-[min(48vh,26rem)]">
+                <img src={arc.cover_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background from-[38%] via-background/65 to-transparent" aria-hidden />
+                <div className="absolute inset-0 bg-gradient-to-r from-background/85 via-transparent to-transparent sm:from-background/70" aria-hidden />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 space-y-2 p-5 md:p-8">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{t(`arcType.${arc.type}` as TranslationKey)}</Badge>
+                  <Badge variant="secondary">{t('feed.storyCountBadge').replace(/\{\{n\}\}/g, String(stories.length))}</Badge>
+                  {universe ? <Badge variant="secondary">{universe.title}</Badge> : null}
+                </div>
+                <h1 className="text-balance font-serif text-2xl font-bold tracking-tight sm:text-4xl">{arc.name}</h1>
+                {arc.description ? (
+                  <p className="max-w-3xl text-pretty text-sm leading-relaxed text-foreground/85 line-clamp-4 sm:text-base">{arc.description}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-card via-background to-muted/40 p-6 md:p-8">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">{t(`arcType.${arc.type}` as TranslationKey)}</Badge>
+                <Badge variant="secondary">{t('feed.storyCountBadge').replace(/\{\{n\}\}/g, String(stories.length))}</Badge>
+                {universe ? <Badge variant="secondary">{universe.title}</Badge> : null}
+              </div>
+              <h1 className="mt-3 text-balance font-serif text-2xl font-bold tracking-tight sm:text-4xl">{arc.name}</h1>
+              {arc.description ? <p className="mt-3 max-w-3xl text-pretty text-foreground/80">{arc.description}</p> : null}
             </div>
           )}
-          <div className="p-6">
-            <div className="flex flex-wrap gap-2 mb-3">
-              <Badge variant="outline">{t(`arcType.${arc.type}` as TranslationKey)}</Badge>
-              <Badge variant="secondary">{stories.length} histórias</Badge>
-              {universe && <Badge variant="secondary">{universe.title}</Badge>}
-            </div>
-            <h1 className="text-3xl font-bold font-serif">{arc.name}</h1>
-            {arc.description && <p className="mt-3 text-foreground/80 max-w-2xl">{arc.description}</p>}
-          </div>
-        </section>
+        </div>
 
         {stories.length === 0 ? (
           <p className="text-muted-foreground">{t('universe.arcStoriesEmpty')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <BrowseContentRow title={t('arc.storiesInArc')} bleed={!embedExploration}>
             {stories.map((story) => (
-              <StoryCard
-                key={story.id}
-                story={story}
-                onOpenInFeedExplore={explorationPushStory ? () => explorationPushStory(story.id) : undefined}
-              />
+              <div key={story.id} className={browseStoryTileClass()}>
+                <StoryCard
+                  story={story}
+                  onOpenInFeedExplore={explorationPushStory ? () => explorationPushStory(story.id) : undefined}
+                />
+              </div>
             ))}
-          </div>
+          </BrowseContentRow>
         )}
       </main>
     </div>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
-import ReturnToFeedButton from '@/components/feed/ReturnToFeedButton';
+import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
 import CharacterMeter from '@/components/CharacterMeter';
 import StoryCard from '@/components/StoryCard';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,9 @@ import { Plus, Pencil, X, ImagePlus, FileText, BookOpen, Image, Layers, Globe, S
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 import { cn } from '@/lib/utils';
+import { BrowseContentRow, browseStoryTileClassNarrow } from '@/components/browse/BrowseContentRow';
+import { HorizontalScrollStrip } from '@/components/browse/HorizontalScrollStrip';
+import { UniverseArcShelfTile } from '@/components/universe/UniverseArcShelfTile';
 
 const TYPE_FILTERS: { value: string; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   { value: 'short_story', labelKey: 'type.short_story', icon: <FileText className="h-3 w-3" /> },
@@ -52,7 +55,7 @@ export type UniversePageProps = {
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
 type Arc = Tables<'arcs'>;
 
-/* Lista de cards: até sm carrossel horizontal com scroll controlado; a partir de sm mantém grid. */
+/** Netflix-style horizontal shelf of story posters (scroll + snap). */
 function UniverseStoriesShelf({
   stories,
   onOpenStoryExplore,
@@ -61,29 +64,16 @@ function UniverseStoriesShelf({
   onOpenStoryExplore?: (storyId: string) => void;
 }) {
   return (
-    <div
-      className={cn(
-        '-mx-1 flex flex-nowrap gap-3 overflow-x-auto overflow-y-hidden px-1 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        'snap-x snap-mandatory',
-        'sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 md:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0 sm:snap-none',
-      )}
-    >
+    <HorizontalScrollStrip>
       {stories.map((story) => (
-        <div
-          key={story.id}
-          className={cn(
-            'shrink-0 snap-start [-webkit-scroll-snap-stop:always] [scroll-snap-stop:always] sm:[scroll-snap-stop:normal]',
-            'w-[clamp(9.75rem,40vw,13.5rem)] min-w-[9.75rem] max-w-[13.5rem]',
-            'sm:w-auto sm:min-w-0 sm:max-w-none sm:shrink',
-          )}
-        >
+        <div key={story.id} className={browseStoryTileClassNarrow()}>
           <StoryCard
             story={story}
             onOpenInFeedExplore={onOpenStoryExplore ? () => onOpenStoryExplore(story.id) : undefined}
           />
         </div>
       ))}
-    </div>
+    </HorizontalScrollStrip>
   );
 }
 
@@ -146,7 +136,7 @@ export default function UniversePage({
       .from('arcs')
       .select('*')
       .eq('universe_id', id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
     setArcs(arcData || []);
 
     if (user) {
@@ -161,7 +151,7 @@ export default function UniversePage({
       setFollowing(false);
     }
 
-    let query = supabase.from('stories').select('*').eq('universe_id', id).order('created_at', { ascending: false });
+    let query = supabase.from('stories').select('*').eq('universe_id', id).order('created_at', { ascending: true });
     if (activeType) query = query.eq('type', activeType);
     const { data: storiesData } = await query;
 
@@ -369,11 +359,17 @@ export default function UniversePage({
       if (!groups.has(story.arc_id)) groups.set(story.arc_id, []);
       groups.get(story.arc_id)!.push(story);
     }
+    const t = (a: StoryWithProfile, b: StoryWithProfile) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    for (const list of groups.values()) list.sort(t);
     return groups;
   }, [stories]);
 
   const unassignedStories = useMemo(
-    () => stories.filter((story) => !story.arc_id),
+    () =>
+      stories
+        .filter((story) => !story.arc_id)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
     [stories],
   );
 
@@ -382,6 +378,8 @@ export default function UniversePage({
 
   const arcViolations = validateArcFields(arcName.trim(), arcDescription.trim());
   const arcOverLimit = arcViolations.length > 0;
+
+  const editingArc = editingArcId ? arcs.find((a) => a.id === editingArcId) ?? null : null;
 
   const uShell = embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background';
 
@@ -400,7 +398,7 @@ export default function UniversePage({
         {!embedExploration && <Header />}
         {!embedExploration && (
           <div className="container max-w-6xl py-6">
-            <ReturnToFeedButton />
+            <PreviousScreenBackButton />
           </div>
         )}
         <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
@@ -414,7 +412,7 @@ export default function UniversePage({
         {!embedExploration && <Header />}
         {!embedExploration && (
           <div className="container max-w-6xl py-6">
-            <ReturnToFeedButton />
+            <PreviousScreenBackButton />
           </div>
         )}
         <div className="container py-20 text-center text-muted-foreground">{t('universe.notFound')}</div>
@@ -422,15 +420,63 @@ export default function UniversePage({
     );
   }
 
+  const arcEditorFields = (
+    <>
+      <div>
+        <label className="text-sm font-medium text-foreground mb-2 block">{t('universe.arcCover')}</label>
+        <input ref={arcCoverInputRef} type="file" accept="image/*" onChange={handleArcCoverSelect} className="hidden" />
+        {arcCoverPreview ? (
+          <div className="relative w-full aspect-[16/9] max-w-sm rounded-lg overflow-hidden border border-border">
+            <img src={arcCoverPreview} alt="Preview" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => { setArcCoverFile(null); setArcCoverPreview(null); }} className="absolute top-2 right-2 p-1 rounded-full bg-background/80 hover:bg-background text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => arcCoverInputRef.current?.click()} className="flex flex-col items-center justify-center w-full aspect-[16/9] max-w-sm rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors bg-muted/30">
+            <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
+            <span className="text-xs text-muted-foreground">{t('universe.addArcCover')}</span>
+          </button>
+        )}
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground">{t('universe.arcName')}</label>
+        <Input value={arcName} onChange={(e) => setArcName(e.target.value)} />
+        <CharacterMeter length={arcName.length} max={CONTENT_LIMITS.arcName} className="mt-1 text-right" />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground">{t('universe.arcDescription')}</label>
+        <Textarea value={arcDescription} onChange={(e) => setArcDescription(e.target.value)} rows={3} />
+        <CharacterMeter length={arcDescription.length} max={CONTENT_LIMITS.arcDescription} className="mt-1 text-right" />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground">{t('universe.arcType')}</label>
+        <select
+          value={arcType}
+          onChange={(e) => setArcType(e.target.value as Arc['type'])}
+          className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+        >
+          {ARC_TYPES.map((option) => (
+            <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
+        <Button type="button" onClick={saveArc} disabled={savingArc || !arcName.trim() || arcOverLimit} size="sm" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
+          {savingArc ? t('common.saving') : t('common.save')}
+        </Button>
+        <Button variant="outline" size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation" onClick={resetArcForm}>
+          {t('common.cancel')}
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className={uShell}>
       {!embedExploration && <Header />}
-      <main className="container max-w-6xl overflow-x-hidden py-8 max-sm:py-6 animate-fade-in">
-        {!embedExploration && (
-          <div className="mb-6">
-            <ReturnToFeedButton />
-          </div>
-        )}
+      <main className="container min-w-0 max-w-6xl py-8 max-sm:py-6 animate-fade-in">
+        {!embedExploration && <PreviousScreenBackButton className="-mt-1 mb-4" />}
         {editing ? (
           <div className="mb-8 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm sm:p-4">
             <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
@@ -477,37 +523,69 @@ export default function UniversePage({
             </div>
           </div>
         ) : (
-          <div className="mb-8">
-            {universe.cover_image_url && (
-              <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-xl border border-border [-webkit-touch-callout:none]">
-                <img src={universe.cover_image_url} alt={universe.title} className="h-full w-full object-cover" />
+          <div className={cn('relative mb-10', !embedExploration && '-mx-8')}>
+            {universe.cover_image_url ? (
+              <div className="relative overflow-hidden border-b border-border sm:rounded-2xl sm:border sm:border-border">
+                <div className="relative aspect-[2/1] min-h-[13rem] max-h-[min(42vh,24rem)] w-full sm:aspect-[21/9] sm:max-h-[min(46vh,28rem)]">
+                  <img
+                    src={universe.cover_image_url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover [-webkit-touch-callout:none]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background from-[36%] via-background/60 to-transparent" aria-hidden />
+                  <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/25 to-transparent sm:from-background/75" aria-hidden />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-5 pb-7 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:p-8 md:p-10">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <Globe className="mt-0.5 h-5 w-5 shrink-0 text-primary sm:h-6 sm:w-6" aria-hidden />
+                      <h1 className="text-balance font-serif text-2xl font-bold leading-tight tracking-tight sm:text-3xl md:text-4xl">{universe.title}</h1>
+                    </div>
+                    {universe.description ? (
+                      <p className="max-w-3xl text-pretty text-sm leading-relaxed text-muted-foreground line-clamp-4 sm:text-base">{universe.description}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                    {!isOwner && user ? (
+                      <Button type="button" variant="outline" size="sm" onClick={toggleFollow} className="touch-manipulation sm:shrink-0">
+                        {following ? t('universe.unfollow') : t('universe.follow')}
+                      </Button>
+                    ) : null}
+                    {isOwner && !embedExploration ? (
+                      <Button type="button" variant="secondary" size="sm" onClick={startEditing} className="touch-manipulation sm:shrink-0">
+                        <Pencil className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.edit')}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border bg-gradient-to-br from-card via-background to-muted/40 px-6 py-8 sm:px-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <Globe className="mt-0.5 h-5 w-5 shrink-0 text-primary sm:h-6 sm:w-6" aria-hidden />
+                      <h1 className="text-balance font-serif text-2xl font-bold leading-tight sm:text-3xl">{universe.title}</h1>
+                    </div>
+                    {universe.description ? (
+                      <p className="max-w-3xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">{universe.description}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {!isOwner && user ? (
+                      <Button type="button" variant="outline" size="sm" onClick={toggleFollow}>
+                        {following ? t('universe.unfollow') : t('universe.follow')}
+                      </Button>
+                    ) : null}
+                    {isOwner && !embedExploration ? (
+                      <Button type="button" variant="secondary" size="sm" onClick={startEditing}>
+                        <Pencil className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.edit')}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             )}
-            <div className="flex flex-col gap-4 max-sm:gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2 max-sm:items-start">
-                  <Globe className="h-5 w-5 shrink-0 text-primary max-sm:mt-0.5" aria-hidden />
-                  <h1 className="text-balance break-words text-2xl font-bold font-serif leading-tight sm:text-3xl">{universe.title}</h1>
-                </div>
-                {universe.description && (
-                  <p className="mt-1 whitespace-pre-wrap break-words text-pretty leading-relaxed text-muted-foreground max-sm:text-sm">
-                    {universe.description}
-                  </p>
-                )}
-              </div>
-              <div className="flex w-full shrink-0 flex-wrap items-center gap-2 max-sm:flex-nowrap max-sm:flex-col sm:w-auto sm:justify-end">
-                {!isOwner && user && (
-                  <Button type="button" variant="outline" size="sm" onClick={toggleFollow} className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:touch-manipulation sm:shrink-0">
-                    {following ? t('universe.unfollow') : t('universe.follow')}
-                  </Button>
-                )}
-                {isOwner && !embedExploration && (
-                  <Button type="button" variant="ghost" size="sm" onClick={startEditing} className="max-sm:h-11 max-sm:w-full max-sm:flex-initial max-sm:justify-center max-sm:border max-sm:border-border max-sm:bg-card max-sm:touch-manipulation sm:shrink-0">
-                    <Pencil className="mr-1 h-4 w-4 shrink-0 max-sm:inline" aria-hidden /> {t('common.edit')}
-                  </Button>
-                )}
-              </div>
-            </div>
           </div>
         )}
 
@@ -534,123 +612,59 @@ export default function UniversePage({
             )}
           </div>
 
-          {showArcForm && isOwner && !embedExploration && (
+          {showArcForm && !editingArcId && isOwner && !embedExploration && (
             <div className="mb-6 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm">
               <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
-                <h3 className="min-w-0 font-semibold leading-snug">{editingArcId ? t('universe.editArc') : t('universe.newArc')}</h3>
+                <h3 className="min-w-0 font-semibold leading-snug">{t('universe.newArc')}</h3>
                 <Button variant="ghost" size="sm" type="button" className="max-sm:h-10 max-sm:w-10 max-sm:shrink-0 max-sm:p-0 max-sm:touch-manipulation" onClick={resetArcForm} aria-label={t('common.cancel')}>
                   <X className="h-4 w-4" aria-hidden />
                 </Button>
               </div>
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">{t('universe.arcCover')}</label>
-                <input ref={arcCoverInputRef} type="file" accept="image/*" onChange={handleArcCoverSelect} className="hidden" />
-                {arcCoverPreview ? (
-                  <div className="relative w-full aspect-[16/9] max-w-sm rounded-lg overflow-hidden border border-border">
-                    <img src={arcCoverPreview} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => { setArcCoverFile(null); setArcCoverPreview(null); }} className="absolute top-2 right-2 p-1 rounded-full bg-background/80 hover:bg-background text-foreground">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => arcCoverInputRef.current?.click()} className="flex flex-col items-center justify-center w-full aspect-[16/9] max-w-sm rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors bg-muted/30">
-                    <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
-                    <span className="text-xs text-muted-foreground">{t('universe.addArcCover')}</span>
-                  </button>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('universe.arcName')}</label>
-                <Input value={arcName} onChange={(e) => setArcName(e.target.value)} />
-                <CharacterMeter length={arcName.length} max={CONTENT_LIMITS.arcName} className="mt-1 text-right" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('universe.arcDescription')}</label>
-                <Textarea value={arcDescription} onChange={(e) => setArcDescription(e.target.value)} rows={3} />
-                <CharacterMeter length={arcDescription.length} max={CONTENT_LIMITS.arcDescription} className="mt-1 text-right" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('universe.arcType')}</label>
-                <select
-                  value={arcType}
-                  onChange={(e) => setArcType(e.target.value as Arc['type'])}
-                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                >
-                  {ARC_TYPES.map((option) => (
-                    <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
-                <Button type="button" onClick={saveArc} disabled={savingArc || !arcName.trim() || arcOverLimit} size="sm" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
-                  {savingArc ? t('common.saving') : t('common.save')}
-                </Button>
-                <Button variant="outline" size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation" onClick={resetArcForm}>
-                  {t('common.cancel')}
-                </Button>
-              </div>
+              {arcEditorFields}
             </div>
           )}
 
           {arcs.length === 0 ? (
             <p className="text-muted-foreground">{t('universe.noArcs')}</p>
           ) : (
-            <div className="space-y-6">
-              {arcs.map((arc) => {
-                const arcStories = arcStoryMap.get(arc.id) || [];
-                return (
-                  <div key={arc.id} className="overflow-hidden rounded-xl border border-border bg-card max-sm:shadow-sm">
-                    {arc.cover_image_url && (
-                      <div className="aspect-[16/5] overflow-hidden border-b border-border [-webkit-touch-callout:none] max-sm:aspect-[16/6]">
-                        <img src={arc.cover_image_url} alt="" className="h-full w-full object-cover" />
-                      </div>
-                    )}
-                    <div className="space-y-4 p-4 max-sm:p-3">
-                      <div className="flex items-start justify-between gap-3 max-sm:flex-col max-sm:gap-4">
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <p className="mb-1 break-words text-xs uppercase tracking-wide text-primary">{t(`arcType.${arc.type}` as TranslationKey)}</p>
-                          <h3 className="text-balance text-xl font-semibold leading-snug">{arc.name}</h3>
-                          {arc.description && (
-                            <p className="whitespace-pre-wrap break-words text-pretty text-sm leading-relaxed text-muted-foreground">
-                              {arc.description}
-                            </p>
-                          )}
-                          {explorationPushArc && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="mt-3 touch-manipulation"
-                              onClick={() => explorationPushArc(arc.id)}
-                            >
-                              {t('feed.exploreArc')}
-                            </Button>
-                          )}
-                        </div>
-                        {isOwner && !embedExploration && (
-                          <div className="flex w-full shrink-0 gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:flex-none sm:w-auto">
-                            <Button type="button" variant="ghost" size="sm" className="max-sm:h-11 max-sm:border max-sm:border-border max-sm:bg-background max-sm:touch-manipulation" onClick={() => startEditingArc(arc)}>
-                              <Pencil className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.edit')}
-                            </Button>
-                            <Button type="button" variant="ghost" size="sm" className="max-sm:h-11 max-sm:border max-sm:border-border max-sm:bg-background max-sm:text-destructive max-sm:touch-manipulation hover:text-destructive" onClick={() => deleteArc(arc.id)}>
-                              <X className="mr-1 h-4 w-4 shrink-0" aria-hidden /> {t('common.delete')}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="border-t border-border pt-4">
-                        {arcStories.length === 0 ? (
-                          <p className="text-sm text-muted-foreground max-sm:leading-relaxed">{t('universe.arcStoriesEmpty')}</p>
-                        ) : (
-                          <UniverseStoriesShelf stories={arcStories} onOpenStoryExplore={explorationPushStory} />
-                        )}
-                      </div>
+            <>
+              {editingArcId && isOwner && !embedExploration && editingArc ? (
+                <div className="mb-6 min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-card max-sm:shadow-sm">
+                  {editingArc.cover_image_url ? (
+                    <div className="aspect-[16/5] overflow-hidden border-b border-border [-webkit-touch-callout:none] max-sm:aspect-[16/6]">
+                      <img src={editingArc.cover_image_url} alt="" className="h-full w-full object-cover" />
                     </div>
+                  ) : null}
+                  <div className="space-y-4 p-4 max-sm:p-3">
+                    <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
+                      <h3 className="min-w-0 font-semibold leading-snug">{t('universe.editArc')}</h3>
+                      <Button variant="ghost" size="sm" type="button" className="max-sm:h-10 max-sm:w-10 max-sm:shrink-0 max-sm:p-0 max-sm:touch-manipulation" onClick={resetArcForm} aria-label={t('common.cancel')}>
+                        <X className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </div>
+                    {arcEditorFields}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              ) : null}
+              <div className={cn('min-w-0 max-w-full', !embedExploration && '-mx-8')}>
+                <HorizontalScrollStrip stripClassName={cn(!embedExploration && 'px-8 scroll-pl-8 scroll-pr-8')}>
+                  {arcs
+                    .filter((arc) => !(editingArcId && isOwner && !embedExploration && arc.id === editingArcId))
+                    .map((arc) => (
+                      <UniverseArcShelfTile
+                        key={arc.id}
+                        arc={arc}
+                        storyCount={(arcStoryMap.get(arc.id) || []).length}
+                        isOwner={isOwner}
+                        embedExploration={embedExploration}
+                        explorationPushArc={explorationPushArc}
+                        onEdit={isOwner && !embedExploration ? () => startEditingArc(arc) : undefined}
+                        onDelete={isOwner && !embedExploration ? () => deleteArc(arc.id) : undefined}
+                      />
+                    ))}
+                </HorizontalScrollStrip>
+              </div>
+            </>
           )}
         </section>
 
@@ -666,7 +680,7 @@ export default function UniversePage({
             )}
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:snap-x max-sm:snap-mandatory max-sm:pb-2 [-ms-overflow-style:none] max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden">
+          <div className="mb-6 flex flex-wrap gap-2 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:snap-x max-sm:snap-mandatory max-sm:pb-2 max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch]">
             <button
               type="button"
               onClick={() => setActiveType(null)}
@@ -698,15 +712,14 @@ export default function UniversePage({
                 </Button>
               )}
             </div>
+          ) : unassignedStories.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border/70 bg-muted/10 px-4 py-6 text-center text-sm leading-relaxed text-muted-foreground">
+              {t('universe.noStoriesWithoutArc')}
+            </p>
           ) : (
-            <div className="rounded-xl border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm">
-              <h3 className="mb-4 break-words text-balance font-semibold">{t('universe.storiesWithoutArc')}</h3>
-              {unassignedStories.length === 0 ? (
-                <p className="text-sm text-muted-foreground max-sm:leading-relaxed">{t('universe.noStoriesWithoutArc')}</p>
-              ) : (
-                <UniverseStoriesShelf stories={unassignedStories} onOpenStoryExplore={explorationPushStory} />
-              )}
-            </div>
+            <BrowseContentRow title={t('universe.storiesWithoutArc')} bleed={!embedExploration} layout="panel">
+              <UniverseStoriesShelf stories={unassignedStories} onOpenStoryExplore={explorationPushStory} />
+            </BrowseContentRow>
           )}
         </section>
       </main>

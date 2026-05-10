@@ -13,6 +13,8 @@ export interface DeepExplorePreviewFrameProps {
   onOpenFull: () => void;
   /** Hide “open full” when not applicable */
   showOpenFull?: boolean;
+  /** When false, only the back arrow is shown (e.g. first level opened from the feed). */
+  showBackToFeedButton?: boolean;
 }
 
 export default function DeepExplorePreviewFrame({
@@ -22,6 +24,7 @@ export default function DeepExplorePreviewFrame({
   openFullLabel,
   onOpenFull,
   showOpenFull = true,
+  showBackToFeedButton = true,
 }: DeepExplorePreviewFrameProps) {
   const { t } = useLanguage();
 
@@ -43,17 +46,19 @@ export default function DeepExplorePreviewFrame({
               <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
               <span className="max-sm:sr-only">{t('feed.backOneLevel')}</span>
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="touch-manipulation gap-1.5 max-sm:px-2"
-              aria-label={t('feed.backToFeed')}
-              onClick={onBackToFeed}
-            >
-              <Compass className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="max-sm:sr-only">{t('feed.backToFeed')}</span>
-            </Button>
+            {showBackToFeedButton ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="touch-manipulation gap-1.5 max-sm:px-2"
+                aria-label={t('feed.backToFeed')}
+                onClick={onBackToFeed}
+              >
+                <Compass className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="max-sm:sr-only">{t('feed.backToFeed')}</span>
+              </Button>
+            ) : null}
           </div>
           {showOpenFull ? (
             <Button

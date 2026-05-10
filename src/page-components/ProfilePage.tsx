@@ -9,8 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
+import { BrowseContentRow, browseLandscapeTileClass, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
 import { useRouter } from "next/navigation";
 import { Camera } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 
 export default function ProfilePage() {
@@ -91,75 +93,94 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container py-8 max-w-2xl animate-fade-in">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative group">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.username} className="h-16 w-16 rounded-full object-cover border-2 border-border" />
-            ) : (
-              <div className="h-16 w-16 rounded-full gradient-warm flex items-center justify-center text-primary-foreground text-xl font-bold">
-                {profile?.username?.[0]?.toUpperCase() || '?'}
-              </div>
-            )}
-            <button
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-            >
-              <Camera className="h-5 w-5 text-foreground" />
-            </button>
-            <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-          </div>
-          <div className="flex-1">
-            {editing ? (
-              <div className="space-y-2">
-                <Input value={username} onChange={e => setUsername(e.target.value)} placeholder={t('profile.usernamePlaceholder')} />
-                <Textarea value={bio} onChange={e => setBio(e.target.value)} placeholder={t('profile.bioPlaceholder')} rows={2} />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSave}>{t('common.save')}</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
+      <main className="container max-w-6xl py-8 animate-fade-in">
+        <div className="relative mb-10 overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-background to-muted/40 shadow-card">
+          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent pointer-events-none" aria-hidden />
+          <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-start sm:gap-8 md:p-8">
+            <div className="relative shrink-0 group">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.username} className="h-24 w-24 rounded-full border-2 border-border object-cover shadow-sm sm:h-28 sm:w-28" />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-border text-2xl font-bold text-primary-foreground gradient-warm shadow-sm sm:h-28 sm:w-28">
+                  {profile?.username?.[0]?.toUpperCase() || '?'}
                 </div>
-              </div>
-            ) : (
-              <>
-                <h1 className="text-xl font-bold">{profile?.username}</h1>
-                <p className="text-sm text-muted-foreground">{profile?.bio || t('profile.noBio')}</p>
-                <Button size="sm" variant="ghost" className="mt-1" onClick={() => setEditing(true)}>{t('profile.editProfile')}</Button>
-              </>
-            )}
+              )}
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70 opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <Camera className="h-6 w-6 text-foreground" />
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+            </div>
+            <div className="min-w-0 flex-1">
+              {editing ? (
+                <div className="space-y-3">
+                  <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t('profile.usernamePlaceholder')} />
+                  <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder={t('profile.bioPlaceholder')} rows={3} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleSave}>
+                      {t('common.save')}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-balance font-serif text-2xl font-bold tracking-tight sm:text-3xl">{profile?.username}</h1>
+                  <p className="mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">{profile?.bio || t('profile.noBio')}</p>
+                  <Button size="sm" variant="outline" className="mt-4 touch-manipulation" onClick={() => setEditing(true)}>
+                    {t('profile.editProfile')}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        <h2 className="text-lg font-semibold mb-4">{t('profile.myStories')}</h2>
         {stories.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t('profile.noStories')}</p>
+          <p className="mb-10 text-sm text-muted-foreground">{t('profile.noStories')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {stories.map(s => <StoryCard key={s.id} story={s} />)}
-          </div>
+          <BrowseContentRow title={t('profile.myStories')}>
+            {stories.map((s) => (
+              <div key={s.id} className={browseStoryTileClass()}>
+                <StoryCard story={s} />
+              </div>
+            ))}
+          </BrowseContentRow>
         )}
 
-        <h2 className="text-lg font-semibold mb-4 mt-8">{t('profile.myUniverses')}</h2>
         {universes.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t('profile.noUniverses')}</p>
+          <p className="text-sm text-muted-foreground">{t('profile.noUniverses')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {universes.map(u => (
-              <Link key={u.id} href={`/universe/${u.id}`} className="group block rounded-lg border border-border overflow-hidden hover:shadow-md transition-shadow">
-                {u.cover_image_url ? (
-                  <img src={u.cover_image_url} alt={u.title} className="w-full h-28 object-cover" />
-                ) : (
-                  <div className="w-full h-28 bg-muted flex items-center justify-center text-muted-foreground text-3xl font-bold">
-                    {u.title[0]?.toUpperCase()}
-                  </div>
+          <BrowseContentRow title={t('profile.myUniverses')}>
+            {universes.map((u) => (
+              <Link
+                key={u.id}
+                href={`/universe/${u.id}`}
+                className={cn(
+                  browseLandscapeTileClass(),
+                  'group block overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-warm',
                 )}
-                <div className="p-2">
-                  <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{u.title}</h3>
-                  {u.description && <p className="text-xs text-muted-foreground truncate">{u.description}</p>}
+              >
+                <div className="aspect-[16/10] overflow-hidden bg-muted">
+                  {u.cover_image_url ? (
+                    <img src={u.cover_image_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-muted-foreground/40">{u.title[0]?.toUpperCase()}</div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary">{u.title}</h3>
+                  {u.description ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{u.description}</p> : null}
                 </div>
               </Link>
             ))}
-          </div>
+          </BrowseContentRow>
         )}
       </main>
     </div>

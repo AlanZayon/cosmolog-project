@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
-import ReturnToFeedButton from '@/components/feed/ReturnToFeedButton';
+import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
 import { Heart, MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, FileText, Image, Layers, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import TagInput from '@/components/TagInput';
@@ -357,8 +357,8 @@ export default function StoryPage({
       <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
         {!embedExploration && <Header />}
         {!embedExploration && (
-          <div className="container max-w-2xl py-8">
-            <ReturnToFeedButton />
+          <div className="container max-w-2xl py-4">
+            <PreviousScreenBackButton className="-mt-1" />
           </div>
         )}
         <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
@@ -383,11 +383,7 @@ export default function StoryPage({
     <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
       {!embedExploration && <Header />}
       <main className="container py-8 max-w-2xl animate-fade-in">
-        {!embedExploration && (
-          <div className="mb-6">
-            <ReturnToFeedButton />
-          </div>
-        )}
+        {!embedExploration && <PreviousScreenBackButton className="-mt-2 mb-4" />}
         {/* Story header */}
         <div className="mb-8">
           {editing ? (

@@ -153,6 +153,12 @@ const translations = {
   'profile.avatarUpdated': { pt: 'Avatar atualizado!', en: 'Avatar updated!', ja: 'アバターが更新されました！', es: '¡Avatar actualizado!' },
   'profile.imageTooLarge': { pt: 'Imagem muito grande', en: 'Image too large', ja: '画像が大きすぎます', es: 'Imagen demasiado grande' },
   'profile.max2mb': { pt: 'Máximo 2MB', en: 'Max 2MB', ja: '最大2MB', es: 'Máximo 2MB' },
+  'arc.storiesInArc': {
+    pt: 'Histórias neste arco',
+    en: 'Stories in this arc',
+    ja: 'このアークのストーリー',
+    es: 'Historias en este arco',
+  },
 
   // Search
   'search.resultsFor': { pt: 'Resultados para', en: 'Results for', ja: '検索結果:', es: 'Resultados para' },
@@ -271,6 +277,12 @@ const translations = {
   },
   'feed.expandArc': { pt: 'Expandir arco', en: 'Expand arc', ja: 'アークを展開', es: 'Expandir arco' },
   'feed.collapseArc': { pt: 'Recolher arco', en: 'Collapse arc', ja: 'アークを閉じる', es: 'Contraer arco' },
+  'feed.arcStoriesScrollHint': {
+    pt: 'Role a lista para ver todas as histórias.',
+    en: 'Scroll the list to see all stories.',
+    ja: 'リストをスクロールしてすべてのストーリーを表示します。',
+    es: 'Desplaza la lista para ver todas las historias.',
+  },
   'feed.likeStory': { pt: 'Curtir', en: 'Like', ja: 'いいね', es: 'Me gusta' },
   'feed.commentStory': { pt: 'Comentar', en: 'Comment', ja: 'コメント', es: 'Comentar' },
   'feed.backOneLevel': { pt: 'Voltar', en: 'Back', ja: '戻る', es: 'Volver' },

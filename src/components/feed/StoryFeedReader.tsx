@@ -35,6 +35,7 @@ export default function StoryFeedReader({ open, storyId, onOpenChange }: StoryFe
           onBackToFeed={dismiss}
           openFullLabel={t('feed.readFullExperience')}
           onOpenFull={() => router.push(`/story/${storyId}`)}
+          showBackToFeedButton={false}
         >
           <StoryFeedPreview storyId={storyId} enabled={open} mode="peek" fullPageMode="action" titleAs="h2" />
         </DeepExplorePreviewFrame>

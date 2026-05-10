@@ -65,6 +65,8 @@ function FeedExplorationStackShell() {
   const top = stack.length > 0 ? stack[stack.length - 1] : undefined;
   const open = pathname === '/' && top != null;
   const surface = top?.surface ?? 'preview';
+  /** First card from feed = one preview item; deeper exploration adds more stack entries. */
+  const showBackToFeedChrome = stack.length > 1;
 
   useEffect(() => {
     if (!open) return;
@@ -104,18 +106,24 @@ function FeedExplorationStackShell() {
         aria-modal="true"
         aria-label={t('feed.explorationLayer')}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-black/35 dark:bg-black/50 supports-[backdrop-filter]:backdrop-blur-md [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
+        <button
+          type="button"
+          className="absolute inset-0 z-0 cursor-default border-0 bg-black/35 p-0 dark:bg-black/50 supports-[backdrop-filter]:backdrop-blur-md [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
+          aria-label={t('feed.backOneLevel')}
+          onClick={() => pop()}
         />
 
-        <div className="pointer-events-none relative flex min-h-0 flex-1 flex-col items-center justify-center p-2 sm:p-6">
-          <div className="pointer-events-auto flex min-h-0 max-h-[min(96dvh,96vh)] w-full max-w-4xl flex-col sm:max-h-[min(92dvh,92vh)] sm:max-w-3xl lg:max-w-4xl">
+        <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center p-2 sm:p-6">
+          <div
+            className="pointer-events-auto flex min-h-0 max-h-[min(96dvh,96vh)] w-full max-w-4xl flex-col sm:max-h-[min(92dvh,92vh)] sm:max-w-3xl lg:max-w-4xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <DeepExplorePreviewFrame
               onBack={() => pop()}
               onBackToFeed={() => popToFeed()}
               openFullLabel={openFullLabel}
               onOpenFull={() => promoteToFullSurface(top.kind, top.id)}
+              showBackToFeedButton={showBackToFeedChrome}
             >
               {top.kind === 'story' && (
                 <StoryFeedPreview
@@ -174,16 +182,18 @@ function FeedExplorationStackShell() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="ml-auto touch-manipulation gap-1.5 sm:gap-2"
-          onClick={() => popToFeed()}
-        >
-          <Compass className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="max-sm:sr-only">{t('feed.backToFeed')}</span>
-        </Button>
+        {showBackToFeedChrome ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="ml-auto touch-manipulation gap-1.5 sm:gap-2"
+            onClick={() => popToFeed()}
+          >
+            <Compass className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="max-sm:sr-only">{t('feed.backToFeed')}</span>
+          </Button>
+        ) : null}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

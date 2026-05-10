@@ -124,34 +124,48 @@ export default function ArcFeedCard({ arc, expanded, onToggle }: ArcFeedCardProp
             id={`arc-feed-stories-${arc.id}`}
             role="region"
             aria-labelledby={`arc-expand-${arc.id}`}
-            className="mt-5 space-y-3 border-t border-border pt-4"
+            className="mt-5 border-t border-border pt-4"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            {arc.stories.map((story) => (
-              <StoryFeedCard
-                key={story.id}
-                compact
-                story={{
-                  id: story.id,
-                  title: story.title,
-                  description: null,
-                  storyType: story.storyType,
-                  coverImageUrl: story.coverImageUrl,
-                  author: {
-                    id: '',
-                    username: story.author.username,
-                    avatarUrl: story.author.avatarUrl,
-                  },
-                  universe: arc.universe,
-                  arc: { id: arc.id, name: arc.name, type: arc.arcType },
-                  preview: { kind: 'text', text: null, imageUrl: null },
-                  stats: { likes: 0, comments: 0 },
-                  createdAt: '',
-                } satisfies FeedStoryPayload}
-              />
-            ))}
+            <div
+              className={cn(
+                'max-h-[min(38vh,16.5rem)] overflow-y-auto overscroll-y-contain rounded-xl border border-border/80 bg-muted/15 p-2 [-webkit-overflow-scrolling:touch]',
+                'sm:max-h-[min(44vh,20rem)] md:max-h-[min(52vh,24rem)]',
+              )}
+              role="list"
+              aria-label={fillN('feed.storyCountBadge', arc.storyCount, t)}
+            >
+              <div className="space-y-2 sm:space-y-2.5">
+                {arc.stories.map((story) => (
+                  <StoryFeedCard
+                    key={story.id}
+                    compact
+                    story={{
+                      id: story.id,
+                      title: story.title,
+                      description: null,
+                      storyType: story.storyType,
+                      coverImageUrl: story.coverImageUrl,
+                      author: {
+                        id: '',
+                        username: story.author.username,
+                        avatarUrl: story.author.avatarUrl,
+                      },
+                      universe: arc.universe,
+                      arc: { id: arc.id, name: arc.name, type: arc.arcType },
+                      preview: { kind: 'text', text: null, imageUrl: null },
+                      stats: { likes: 0, comments: 0 },
+                      createdAt: '',
+                    } satisfies FeedStoryPayload}
+                  />
+                ))}
+              </div>
+            </div>
+            {arc.stories.length > 4 ? (
+              <p className="mt-2 text-center text-xs text-muted-foreground">{t('feed.arcStoriesScrollHint')}</p>
+            ) : null}
           </div>
         )}
       </div>
