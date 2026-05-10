@@ -13,6 +13,8 @@ type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avat
 export interface ArcFeedReaderProps {
   arcId: string;
   enabled?: boolean;
+  /** Softer typography; hide inline “open full” (use frame footer). */
+  peekLayer?: boolean;
   onOpenStory: (storyId: string) => void;
   onOpenUniverse: (universeId: string) => void;
   onOpenFullArc: () => void;
@@ -21,6 +23,7 @@ export interface ArcFeedReaderProps {
 export default function ArcFeedReader({
   arcId,
   enabled = true,
+  peekLayer = false,
   onOpenStory,
   onOpenUniverse,
   onOpenFullArc,
@@ -89,38 +92,48 @@ export default function ArcFeedReader({
   }
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
+    <div className={peekLayer ? 'relative' : 'min-h-full bg-background'}>
+      <div className={peekLayer ? 'mx-auto max-w-none px-0 py-0' : 'mx-auto max-w-6xl px-4 py-6 sm:px-8'}>
         {universe && (
           <Button type="button" variant="link" className="h-auto p-0 text-sm text-primary" onClick={() => onOpenUniverse(universe.id)}>
             {t('story.universe')}: {universe.title}
           </Button>
         )}
 
-        <section className="mt-4 mb-8 rounded-2xl border border-border bg-card overflow-hidden">
+        <section className={`mt-4 mb-6 rounded-2xl border border-border ${peekLayer ? 'bg-muted/20' : 'bg-card'} overflow-hidden`}>
           {arc.cover_image_url && (
             <div className="aspect-[16/6] overflow-hidden border-b border-border">
               <img src={arc.cover_image_url} alt={arc.name} className="w-full h-full object-cover" />
             </div>
           )}
-          <div className="p-6">
+          <div className={peekLayer ? 'p-4 sm:p-5' : 'p-6'}>
             <div className="flex flex-wrap gap-2 mb-3">
               <Badge variant="outline">{t(`arcType.${arc.type}` as TranslationKey)}</Badge>
               <Badge variant="secondary">{stories.length}</Badge>
               {universe && <Badge variant="secondary">{universe.title}</Badge>}
             </div>
-            <h1 className="text-3xl font-bold font-serif">{arc.name}</h1>
-            {arc.description && <p className="mt-3 text-foreground/80 max-w-2xl">{arc.description}</p>}
-            <Button type="button" variant="link" className="mt-3 h-auto p-0 text-sm" onClick={onOpenFullArc}>
-              {t('feed.openFullArc')}
-            </Button>
+            {peekLayer ? (
+              <h2 className="text-xl font-semibold font-serif leading-tight sm:text-2xl">{arc.name}</h2>
+            ) : (
+              <h1 className="text-3xl font-bold font-serif">{arc.name}</h1>
+            )}
+            {arc.description && (
+              <p className={`mt-2 text-foreground/80 max-w-2xl ${peekLayer ? 'line-clamp-4 text-sm leading-relaxed sm:text-[0.9375rem]' : 'mt-3'}`}>
+                {arc.description}
+              </p>
+            )}
+            {!peekLayer && (
+              <Button type="button" variant="link" className="mt-3 h-auto p-0 text-sm" onClick={onOpenFullArc}>
+                {t('feed.openFullArc')}
+              </Button>
+            )}
           </div>
         </section>
 
         {stories.length === 0 ? (
           <p className="text-muted-foreground">{t('universe.arcStoriesEmpty')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className={`grid gap-3 ${peekLayer ? 'grid-cols-2 sm:grid-cols-3 sm:gap-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'}`}>
             {stories.map((story) => (
               <StoryCard key={story.id} story={story} onOpenInFeedExplore={() => onOpenStory(story.id)} />
             ))}

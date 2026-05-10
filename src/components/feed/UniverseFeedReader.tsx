@@ -25,6 +25,7 @@ function fillN(template: string, stories: number, arcs: number) {
 export interface UniverseFeedReaderProps {
   universeId: string;
   enabled?: boolean;
+  peekLayer?: boolean;
   onOpenArc: (arcId: string) => void;
   onOpenStory: (storyId: string) => void;
   onOpenFullUniverse: () => void;
@@ -33,6 +34,7 @@ export interface UniverseFeedReaderProps {
 export default function UniverseFeedReader({
   universeId,
   enabled = true,
+  peekLayer = false,
   onOpenArc,
   onOpenStory,
   onOpenFullUniverse,
@@ -113,8 +115,8 @@ export default function UniverseFeedReader({
   const footer = fillN(t('feed.universeFooterCounts'), stories.length, arcs.length);
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
+    <div className={peekLayer ? 'relative' : 'min-h-full bg-background'}>
+      <div className={peekLayer ? 'mx-auto max-w-none px-0 py-0' : 'mx-auto max-w-6xl px-4 py-6 sm:px-8'}>
         {universe.cover_image_url && (
           <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-xl border border-border">
             <img src={universe.cover_image_url} alt={universe.title} className="h-full w-full object-cover" />
@@ -123,7 +125,11 @@ export default function UniverseFeedReader({
 
         <div className="mb-6 flex items-center gap-2">
           <Globe2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-          <h1 className="text-balance text-2xl font-bold font-serif leading-tight sm:text-3xl">{universe.title}</h1>
+          {peekLayer ? (
+            <h2 className="text-balance font-serif text-xl font-semibold leading-tight sm:text-2xl">{universe.title}</h2>
+          ) : (
+            <h1 className="text-balance text-2xl font-bold font-serif leading-tight sm:text-3xl">{universe.title}</h1>
+          )}
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -133,7 +139,15 @@ export default function UniverseFeedReader({
         </div>
 
         {universe.description && (
-          <p className="mb-6 whitespace-pre-wrap text-pretty leading-relaxed text-muted-foreground">{universe.description}</p>
+          <p
+            className={
+              peekLayer
+                ? 'mb-4 line-clamp-4 whitespace-pre-wrap text-pretty text-sm leading-relaxed text-muted-foreground sm:text-[0.9375rem]'
+                : 'mb-6 whitespace-pre-wrap text-pretty leading-relaxed text-muted-foreground'
+            }
+          >
+            {universe.description}
+          </p>
         )}
 
         <div className="mb-8 flex items-center gap-2 text-sm text-muted-foreground">
@@ -141,12 +155,18 @@ export default function UniverseFeedReader({
           {footer}
         </div>
 
-        <Button type="button" variant="link" className="mb-10 h-auto p-0 text-sm" onClick={onOpenFullUniverse}>
-          {t('feed.openFullUniverse')}
-        </Button>
+        {!peekLayer && (
+          <Button type="button" variant="link" className="mb-10 h-auto p-0 text-sm" onClick={onOpenFullUniverse}>
+            {t('feed.openFullUniverse')}
+          </Button>
+        )}
 
-        <section className="mb-10">
-          <h2 className="mb-4 text-lg font-semibold">{t('universe.arcs')}</h2>
+        <section className={peekLayer ? 'mb-8' : 'mb-10'}>
+          {peekLayer ? (
+            <h3 className="mb-3 text-base font-semibold sm:text-lg">{t('universe.arcs')}</h3>
+          ) : (
+            <h2 className="mb-4 text-lg font-semibold">{t('universe.arcs')}</h2>
+          )}
           {arcs.length === 0 ? (
             <p className="text-muted-foreground">{t('universe.noArcs')}</p>
           ) : (
@@ -179,7 +199,11 @@ export default function UniverseFeedReader({
         </section>
 
         <section>
-          <h2 className="mb-4 text-lg font-semibold">{t('universe.storiesWithoutArc')}</h2>
+          {peekLayer ? (
+            <h3 className="mb-3 text-base font-semibold sm:text-lg">{t('universe.storiesWithoutArc')}</h3>
+          ) : (
+            <h2 className="mb-4 text-lg font-semibold">{t('universe.storiesWithoutArc')}</h2>
+          )}
           {unassignedStories.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('universe.noStoriesWithoutArc')}</p>
           ) : (

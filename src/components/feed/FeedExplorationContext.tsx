@@ -17,6 +17,7 @@ import StoryFeedPreview from '@/components/feed/StoryFeedPreview';
 import ArcFeedReader from '@/components/feed/ArcFeedReader';
 import UniverseFeedReader from '@/components/feed/UniverseFeedReader';
 import ExplorationFullSurface from '@/components/feed/ExplorationFullSurface';
+import DeepExplorePreviewFrame from '@/components/feed/DeepExplorePreviewFrame';
 import {
   consumeFeedReturn,
   writeExploration,
@@ -36,7 +37,7 @@ type FeedExplorationValue = {
   pop: () => void;
   popToFeed: () => void;
   getFeedSnapshot: () => FeedSnapshot;
-  /** Replace preview layer with embedded canonical view, or push full layer. */
+  /** Push embedded canonical view on top of the stack (preview stays underneath so back returns to preview). */
   promoteToFullSurface: (kind: StackKind, id: string) => void;
 };
 
@@ -88,6 +89,73 @@ function FeedExplorationStackShell() {
 
   if (!open || top == null) return null;
 
+  if (surface === 'preview') {
+    const openFullLabel =
+      top.kind === 'story'
+        ? t('feed.readFullExperience')
+        : top.kind === 'arc'
+          ? t('feed.openFullArc')
+          : t('feed.openFullUniverse');
+
+    return (
+      <div
+        className="fixed inset-0 z-[100] flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('feed.explorationLayer')}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-black/35 dark:bg-black/50 supports-[backdrop-filter]:backdrop-blur-md [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
+        />
+
+        <div className="pointer-events-none relative flex min-h-0 flex-1 flex-col items-center justify-center p-2 sm:p-6">
+          <div className="pointer-events-auto flex min-h-0 max-h-[min(96dvh,96vh)] w-full max-w-4xl flex-col sm:max-h-[min(92dvh,92vh)] sm:max-w-3xl lg:max-w-4xl">
+            <DeepExplorePreviewFrame
+              onBack={() => pop()}
+              onBackToFeed={() => popToFeed()}
+              openFullLabel={openFullLabel}
+              onOpenFull={() => promoteToFullSurface(top.kind, top.id)}
+            >
+              {top.kind === 'story' && (
+                <StoryFeedPreview
+                  storyId={top.id}
+                  enabled
+                  mode="peek"
+                  fullPageMode="action"
+                  onOpenFullPage={() => promoteToFullSurface('story', top.id)}
+                  onNavigateArc={pushArc}
+                  onNavigateUniverse={pushUniverse}
+                  titleAs="h2"
+                />
+              )}
+              {top.kind === 'arc' && (
+                <ArcFeedReader
+                  arcId={top.id}
+                  enabled
+                  peekLayer
+                  onOpenStory={pushStory}
+                  onOpenUniverse={pushUniverse}
+                  onOpenFullArc={() => promoteToFullSurface('arc', top.id)}
+                />
+              )}
+              {top.kind === 'universe' && (
+                <UniverseFeedReader
+                  universeId={top.id}
+                  enabled
+                  peekLayer
+                  onOpenArc={pushArc}
+                  onOpenStory={pushStory}
+                  onOpenFullUniverse={() => promoteToFullSurface('universe', top.id)}
+                />
+              )}
+            </DeepExplorePreviewFrame>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col bg-background"
@@ -119,38 +187,7 @@ function FeedExplorationStackShell() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {surface === 'full' && (
-          <ExplorationFullSurface item={top} pushStory={pushStory} pushArc={pushArc} pushUniverse={pushUniverse} />
-        )}
-        {top.kind === 'story' && surface === 'preview' && (
-          <StoryFeedPreview
-            storyId={top.id}
-            enabled
-            fullPageMode="action"
-            onOpenFullPage={() => promoteToFullSurface('story', top.id)}
-            onNavigateArc={pushArc}
-            onNavigateUniverse={pushUniverse}
-            titleAs="h1"
-          />
-        )}
-        {top.kind === 'arc' && surface === 'preview' && (
-          <ArcFeedReader
-            arcId={top.id}
-            enabled
-            onOpenStory={pushStory}
-            onOpenUniverse={pushUniverse}
-            onOpenFullArc={() => promoteToFullSurface('arc', top.id)}
-          />
-        )}
-        {top.kind === 'universe' && surface === 'preview' && (
-          <UniverseFeedReader
-            universeId={top.id}
-            enabled
-            onOpenArc={pushArc}
-            onOpenStory={pushStory}
-            onOpenFullUniverse={() => promoteToFullSurface('universe', top.id)}
-          />
-        )}
+        <ExplorationFullSurface item={top} pushStory={pushStory} pushArc={pushArc} pushUniverse={pushUniverse} />
       </div>
     </div>
   );
@@ -281,11 +318,11 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       setStack((prev) => {
         const top = prev[prev.length - 1];
         const topSurface = top?.surface ?? 'preview';
-        const canReplace =
-          top && top.kind === kind && top.id === entityId && topSurface !== 'full';
-        const next = canReplace
-          ? [...prev.slice(0, -1), { kind, id: entityId, surface: 'full' as const }]
-          : [...prev, { kind, id: entityId, surface: 'full' as const }];
+        if (top && top.kind === kind && top.id === entityId && topSurface === 'full') {
+          return prev;
+        }
+        // Keep preview entry below so shell `pop()` returns to preview instead of closing the stack to the feed.
+        const next = [...prev, { kind, id: entityId, surface: 'full' as const }];
         syncStorage(next, feedSnapshotRef.current);
         return next;
       });

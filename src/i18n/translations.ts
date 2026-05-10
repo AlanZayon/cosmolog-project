@@ -278,6 +278,55 @@ const translations = {
   'feed.explorationLayer': { pt: 'Exploração do feed', en: 'Feed exploration', ja: 'フィード探索', es: 'Exploración del feed' },
   'feed.openFullArc': { pt: 'Abrir página completa do arco', en: 'Open full arc page', ja: 'アークの全ページ', es: 'Abrir página completa del arco' },
   'feed.openFullUniverse': { pt: 'Abrir página completa do universo', en: 'Open full universe page', ja: 'ユニバースの全ページ', es: 'Abrir página completa del universo' },
+  'feed.exploringFromFeed': { pt: 'Explorando desde o feed', en: 'Exploring from feed', ja: 'フィードから探索中', es: 'Explorando desde el feed' },
+  'feed.peekSubtitle': {
+    pt: 'Pré-visualização · Leitura completa e ferramentas na página da história',
+    en: 'Preview · Full read and tools on the story page',
+    ja: 'プレビュー · 続きと機能はストーリーページで',
+    es: 'Vista previa · Lectura completa en la página de la historia',
+  },
+  'feed.peekSubtitleArc': {
+    pt: 'Pré-visualização · Detalhes e lista completa na página do arco',
+    en: 'Preview · Full details on the arc page',
+    ja: 'プレビュー · アークページで一覧',
+    es: 'Vista previa · Página completa del arco',
+  },
+  'feed.peekSubtitleUniverse': {
+    pt: 'Pré-visualização · Exploração total na página do universo',
+    en: 'Preview · Full exploration on the universe page',
+    ja: 'プレビュー · ユニバースページで一覧',
+    es: 'Vista previa · Página completa del universo',
+  },
+  'feed.moreChaptersOnFull': {
+    pt: '+ {{n}} capítulos na página completa',
+    en: '+ {{n}} chapters on the full page',
+    ja: '残り {{n}} 章は全ページへ',
+    es: '+ {{n}} capítulos en la página completa',
+  },
+  'feed.morePagesOnFull': {
+    pt: '+ {{n}} páginas na página completa',
+    en: '+ {{n}} pages on the full page',
+    ja: '残り {{n}} ページは全ページへ',
+    es: '+ {{n}} páginas en la página completa',
+  },
+  'feed.moreSectionsOnFull': {
+    pt: '+ {{n}} secções na página completa',
+    en: '+ {{n}} sections on the full page',
+    ja: '残り {{n}} ブロックは全ページへ',
+    es: '+ {{n}} secciones en la página completa',
+  },
+  'feed.peekContinueExplore': {
+    pt: 'Relacionados',
+    en: 'Related',
+    ja: '関連',
+    es: 'Relacionados',
+  },
+  'feed.readFullExperience': {
+    pt: 'Ler página completa',
+    en: 'Open full page',
+    ja: '全ページで読む',
+    es: 'Abrir página completa',
+  },
 
   // Chapter page
   'chapter.backToStory': { pt: '← Voltar à história', en: '← Back to story', ja: '← ストーリーに戻る', es: '← Volver a la historia' },
