@@ -37,6 +37,7 @@ const translations = {
   'header.login': { pt: 'Entrar', en: 'Sign In', ja: 'ログイン', es: 'Iniciar sesión' },
   'header.signup': { pt: 'Cadastrar', en: 'Sign Up', ja: '新規登録', es: 'Registrarse' },
   'header.home': { pt: 'Início', en: 'Home', ja: 'ホーム', es: 'Inicio' },
+  'header.quickLinks': { pt: 'Acesso rápido', en: 'Quick links', ja: 'クイックリンク', es: 'Accesos rápidos' },
 
   // Index
   'index.title.discover': { pt: 'Descubra', en: 'Discover', ja: '発見しよう', es: 'Descubre' },

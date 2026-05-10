@@ -17,6 +17,7 @@ import ComicPageUploader from '@/components/ComicPageUploader';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
 import type { TranslationKey } from '@/i18n/translations';
 import { CONTENT_LIMITS, describeViolations, validateStoryMeta, validateStoryShortBody, validateChapterTitle } from '@/lib/contentLimits';
+import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
 
 type StoryType = 'short_story' | 'chapters' | 'comic' | 'illustrated';
 type Universe = Tables<'universes'>;
@@ -255,7 +256,7 @@ export default function CreateStoryPage() {
     }
   };
 
-  const backHref = universeId ? `/universe/${universeId}` : '/';
+  const backHref = universeId ? `/universe/${universeId}` : HOME_FEED_PATH;
 
   if (!storyType) {
     return (

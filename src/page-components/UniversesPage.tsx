@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { Plus, Globe } from 'lucide-react';
 import { useRouter } from "next/navigation";
+import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
 
 interface Universe {
   id: string;
@@ -48,7 +49,7 @@ export default function UniversesPage() {
       <main className="container py-8 max-w-3xl animate-fade-in">
         <div className="mb-4">
           <Button variant="ghost" size="sm" className="-ml-2 h-9 px-2" asChild>
-            <Link href="/">{t('common.back')}</Link>
+            <Link href={HOME_FEED_PATH}>{t('common.back')}</Link>
           </Button>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">

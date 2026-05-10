@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Compass, Sparkles, PenTool, Globe, ChevronDown, Library } from 'lucide-react';
+import { COMMUNITY_FEED_ELEMENT_ID } from '@/lib/homeFeedNav';
 
 export default function Index() {
   const { t } = useLanguage();
@@ -17,6 +18,21 @@ export default function Index() {
 
   useEffect(() => {
     fetchFeed();
+  }, []);
+
+  useEffect(() => {
+    const hash = `#${COMMUNITY_FEED_ELEMENT_ID}`;
+    const scrollToFeed = () => {
+      if (typeof window === 'undefined' || window.location.hash !== hash) return;
+      const el = document.getElementById(COMMUNITY_FEED_ELEMENT_ID);
+      if (!el) return;
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    };
+    scrollToFeed();
+    window.addEventListener('hashchange', scrollToFeed);
+    return () => window.removeEventListener('hashchange', scrollToFeed);
   }, []);
 
   const fetchFeed = async () => {
@@ -82,7 +98,7 @@ export default function Index() {
               </Link>
             </Button>
             <Button asChild variant="ghost" size="lg" className="h-12 w-full text-muted-foreground hover:bg-accent/80 hover:text-foreground sm:w-auto">
-              <a href="#community-feed" className="inline-flex items-center justify-center gap-2">
+              <a href={`#${COMMUNITY_FEED_ELEMENT_ID}`} className="inline-flex items-center justify-center gap-2">
                 <Library className="h-5 w-5 shrink-0" aria-hidden />
                 {t('index.ctaBrowseFeed')}
                 <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
@@ -115,7 +131,7 @@ export default function Index() {
           </div>
         </section>
 
-        <section id="community-feed" aria-labelledby="feed-section-title" className="scroll-mt-28">
+        <section id={COMMUNITY_FEED_ELEMENT_ID} aria-labelledby="feed-section-title" className="scroll-mt-28">
           <header className="mb-6 border-b border-border pb-5">
             <h2 id="feed-section-title" className="text-2xl font-bold font-serif text-foreground md:text-3xl">
               {t('index.feedSectionTitle')}

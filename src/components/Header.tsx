@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useTheme } from "@/hooks/useTheme";
@@ -14,10 +14,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { PenTool, Search, User, LogOut, Globe, Sun, Moon, LogIn, UserPlus } from "lucide-react";
+import { PenTool, Search, User, LogOut, Globe, Sun, Moon, LogIn, UserPlus, Home } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS, type Language } from "@/i18n/translations";
 import CosmologLogo from "@/components/CosmologLogo";
+import { COMMUNITY_FEED_ELEMENT_ID, HOME_FEED_PATH } from "@/lib/homeFeedNav";
 
 const LANGUAGES: Language[] = ["pt", "en", "ja", "es"];
 
@@ -28,6 +29,7 @@ export default function Header() {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +37,19 @@ export default function Header() {
   };
 
   const closeMenu = () => setMenuOpen(false);
+
+  const scrollToFeedOnHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (pathname !== "/") return;
+    e.preventDefault();
+    closeMenu();
+    const el = document.getElementById(COMMUNITY_FEED_ELEMENT_ID);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.replaceState(null, "", HOME_FEED_PATH);
+    } else {
+      router.push(HOME_FEED_PATH);
+    }
+  };
 
   const accountMenuLabel =
     profile?.username?.trim() || user?.email?.split("@")[0] || t("header.profile");
@@ -100,6 +115,44 @@ export default function Header() {
           <hr className="border-border" />
 
           <div>
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("header.quickLinks")}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              <SheetClose asChild>
+                <Link
+                  href={HOME_FEED_PATH}
+                  onClick={scrollToFeedOnHome}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                >
+                  <Home className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  {t("header.home")}
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  href="/create"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                >
+                  <PenTool className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  {t("header.write")}
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  href="/universes"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                >
+                  <Globe className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  {t("header.universes")}
+                </Link>
+              </SheetClose>
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          <div>
             <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t("header.appearance")}
             </p>
@@ -152,7 +205,12 @@ export default function Header() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex flex-col gap-2 py-2 md:h-16 md:flex-row md:flex-nowrap md:items-center md:gap-4 md:py-0">
           <div className="flex min-w-0 items-center justify-between gap-3 md:contents">
-            <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-xl md:order-1">
+            <Link
+              href={HOME_FEED_PATH}
+              onClick={scrollToFeedOnHome}
+              className="flex shrink-0 items-center gap-2 font-bold text-xl md:order-1"
+              title={t("header.home")}
+            >
               <CosmologLogo size={32} />
               <span className="text-gradient font-serif hidden sm:inline">Cosmolog</span>
             </Link>
