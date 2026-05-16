@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CONTENT_LIMITS, describeViolations, validateChapterTitle, validateStoryMeta, validateStoryShortBody } from '@/lib/contentLimits';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
+import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string } | null };
 type CommentWithProfile = Tables<'comments'> & { profiles: { username: string } | null };
@@ -28,11 +29,14 @@ export type StoryPageProps = {
   /** Render without site header; used inside feed exploration full surface. */
   embedExploration?: boolean;
   storyIdOverride?: string;
+  /** Open a chapter inside the feed exploration stack instead of leaving for a canonical route. */
+  explorationOpenChapter?: (chapterNum: number) => void;
 };
 
 export default function StoryPage({
   embedExploration = false,
   storyIdOverride,
+  explorationOpenChapter,
 }: StoryPageProps = {}) {
   const params = useParams<{ id: string }>();
   const id = (storyIdOverride ?? params?.id) as string | undefined;
@@ -74,6 +78,10 @@ export default function StoryPage({
   useEffect(() => {
     if (id) fetchAll();
   }, [id, user]);
+
+  useEffect(() => {
+    if (!embedExploration && id) clearChapterReturnStoryId();
+  }, [embedExploration, id]);
 
   const fetchAll = async () => {
     const storyRes = await supabase.from('stories').select('*').eq('id', id!).single();
@@ -544,12 +552,29 @@ export default function StoryPage({
               <p className="text-muted-foreground text-sm">{t('story.noChapters')}</p>
             ) : (
               <div className="space-y-2">
-                {chapters.map(ch => (
-                  <Link key={ch.id} href={`/story/${id}/chapter/${ch.chapter_number}`} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Cap. {ch.chapter_number}: {ch.title}</span>
-                  </Link>
-                ))}
+                {chapters.map(ch =>
+                  explorationOpenChapter ? (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => explorationOpenChapter(ch.chapter_number)}
+                      className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-accent"
+                    >
+                      <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="text-sm font-medium">Cap. {ch.chapter_number}: {ch.title}</span>
+                    </button>
+                  ) : (
+                    <Link
+                      key={ch.id}
+                      href={`/story/${id}/chapter/${ch.chapter_number}`}
+                      onClick={() => markChapterOpenedFromStory(id!)}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent"
+                    >
+                      <BookOpen className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Cap. {ch.chapter_number}: {ch.title}</span>
+                    </Link>
+                  ),
+                )}
               </div>
             )}
           </section>

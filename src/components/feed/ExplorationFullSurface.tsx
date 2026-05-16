@@ -3,6 +3,7 @@
 import StoryPage from '@/page-components/StoryPage';
 import ArcPage from '@/page-components/ArcPage';
 import UniversePage from '@/page-components/UniversePage';
+import ChapterPage from '@/page-components/ChapterPage';
 import type { StackItem } from '@/lib/feedExplorationStorage';
 
 export interface ExplorationFullSurfaceProps {
@@ -10,6 +11,8 @@ export interface ExplorationFullSurfaceProps {
   pushStory: (id: string) => void;
   pushArc: (id: string) => void;
   pushUniverse: (id: string) => void;
+  pushChapter: (storyId: string, chapterNum: number) => void;
+  navigateChapter: (storyId: string, chapterNum: number) => void;
 }
 
 export default function ExplorationFullSurface({
@@ -17,12 +20,30 @@ export default function ExplorationFullSurface({
   pushStory,
   pushArc,
   pushUniverse,
+  pushChapter,
+  navigateChapter,
 }: ExplorationFullSurfaceProps) {
   if ((item.surface ?? 'preview') !== 'full') return null;
 
   switch (item.kind) {
     case 'story':
-      return <StoryPage embedExploration storyIdOverride={item.id} />;
+      return (
+        <StoryPage
+          embedExploration
+          storyIdOverride={item.id}
+          explorationOpenChapter={(chapterNum) => pushChapter(item.id, chapterNum)}
+        />
+      );
+    case 'chapter':
+      if (item.chapterNum == null) return null;
+      return (
+        <ChapterPage
+          embedExploration
+          storyIdOverride={item.id}
+          chapterNumOverride={item.chapterNum}
+          explorationNavigateChapter={(chapterNum) => navigateChapter(item.id, chapterNum)}
+        />
+      );
     case 'arc':
       return (
         <ArcPage

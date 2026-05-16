@@ -349,6 +349,12 @@ const translations = {
   'feed.commentStory': { pt: 'Comentar', en: 'Comment', ja: 'コメント', es: 'Comentar' },
   'feed.backOneLevel': { pt: 'Voltar', en: 'Back', ja: '戻る', es: 'Volver' },
   'feed.backToFeed': { pt: 'Voltar ao feed', en: 'Back to feed', ja: 'フィードに戻る', es: 'Volver al feed' },
+  'feed.returnToExploration': {
+    pt: '← Voltar à exploração',
+    en: '← Back to exploration',
+    ja: '← 探索に戻る',
+    es: '← Volver a la exploración',
+  },
   'feed.explorationLayer': { pt: 'Exploração do feed', en: 'Feed exploration', ja: 'フィード探索', es: 'Exploración del feed' },
   'feed.openFullArc': { pt: 'Abrir página completa do arco', en: 'Open full arc page', ja: 'アークの全ページ', es: 'Abrir página completa del arco' },
   'feed.openFullUniverse': { pt: 'Abrir página completa do universo', en: 'Open full universe page', ja: 'ユニバースの全ページ', es: 'Abrir página completa del universo' },

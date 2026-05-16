@@ -6,8 +6,17 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/useLanguage';
 import { cn } from '@/lib/utils';
 
-/** Back arrow: browser history when possible; home as fallback (e.g. direct link). */
-export default function PreviousScreenBackButton({ className }: { className?: string }) {
+type PreviousScreenBackButtonProps = {
+  className?: string;
+  /** Used when there is no prior history entry (e.g. opened via direct link). */
+  fallbackHref?: string;
+};
+
+/** Back arrow: browser history when possible; fallback route otherwise. */
+export default function PreviousScreenBackButton({
+  className,
+  fallbackHref = '/',
+}: PreviousScreenBackButtonProps) {
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -16,7 +25,7 @@ export default function PreviousScreenBackButton({ className }: { className?: st
       router.back();
       return;
     }
-    router.push('/');
+    router.push(fallbackHref);
   };
 
   return (

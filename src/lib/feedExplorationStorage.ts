@@ -1,12 +1,25 @@
 export const FEED_EXPLORATION_KEY = 'cosmolog:feedExploration:v1';
 export const FEED_RETURN_KEY = 'cosmolog:feedReturn:v1';
 
-export type StackKind = 'story' | 'arc' | 'universe';
+export type StackKind = 'story' | 'arc' | 'universe' | 'chapter';
 
 /** `full` = embedded canonical page inside the exploration shell; default/omit = feed preview reader. */
 export type StackSurface = 'preview' | 'full';
 
-export type StackItem = { kind: StackKind; id: string; surface?: StackSurface };
+export type StackItem = {
+  kind: StackKind;
+  /** Story, arc, or universe id; for chapters, the story id. */
+  id: string;
+  surface?: StackSurface;
+  chapterNum?: number;
+};
+
+export function stackItemMatchesStory(item: StackItem, storyId: string): boolean {
+  return (
+    (item.kind === 'story' && item.id === storyId) ||
+    (item.kind === 'chapter' && item.id === storyId)
+  );
+}
 
 export type FeedSnapshot = {
   scrollY: number;

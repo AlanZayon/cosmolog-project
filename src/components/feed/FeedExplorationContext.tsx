@@ -20,6 +20,7 @@ import ExplorationFullSurface from '@/components/feed/ExplorationFullSurface';
 import DeepExplorePreviewFrame from '@/components/feed/DeepExplorePreviewFrame';
 import {
   consumeFeedReturn,
+  readExploration,
   writeExploration,
   type FeedSnapshot,
   type StackItem,
@@ -38,7 +39,9 @@ type FeedExplorationValue = {
   popToFeed: () => void;
   getFeedSnapshot: () => FeedSnapshot;
   /** Push embedded canonical view on top of the stack (preview stays underneath so back returns to preview). */
-  promoteToFullSurface: (kind: StackKind, id: string) => void;
+  promoteToFullSurface: (kind: Exclude<StackKind, 'chapter'>, id: string) => void;
+  pushChapter: (storyId: string, chapterNum: number) => void;
+  navigateChapter: (storyId: string, chapterNum: number) => void;
 };
 
 const FeedExplorationContext = createContext<FeedExplorationValue | null>(null);
@@ -60,6 +63,8 @@ function FeedExplorationStackShell() {
     pushArc,
     pushUniverse,
     promoteToFullSurface,
+    pushChapter,
+    navigateChapter,
   } = useFeedExploration();
 
   const top = stack.length > 0 ? stack[stack.length - 1] : undefined;
@@ -122,7 +127,10 @@ function FeedExplorationStackShell() {
               onBack={() => pop()}
               onBackToFeed={() => popToFeed()}
               openFullLabel={openFullLabel}
-              onOpenFull={() => promoteToFullSurface(top.kind, top.id)}
+              onOpenFull={() => {
+                if (top.kind === 'chapter') return;
+                promoteToFullSurface(top.kind, top.id);
+              }}
               showBackToFeedButton={showBackToFeedChrome}
             >
               {top.kind === 'story' && (
@@ -197,7 +205,14 @@ function FeedExplorationStackShell() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <ExplorationFullSurface item={top} pushStory={pushStory} pushArc={pushArc} pushUniverse={pushUniverse} />
+        <ExplorationFullSurface
+          item={top}
+          pushStory={pushStory}
+          pushArc={pushArc}
+          pushUniverse={pushUniverse}
+          pushChapter={pushChapter}
+          navigateChapter={navigateChapter}
+        />
       </div>
     </div>
   );
@@ -207,9 +222,11 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [stack, setStack] = useState<StackItem[]>([]);
   const [expandedArcId, setExpandedArcIdState] = useState<string | null>(null);
+  const explorationHydratedRef = useRef(false);
 
   const expandedArcIdRef = useRef<string | null>(null);
   const stackRef = useRef<StackItem[]>([]);
+  const feedSnapshotRef = useRef<FeedSnapshot>({ scrollY: 0, expandedArcId: null });
 
   useLayoutEffect(() => {
     expandedArcIdRef.current = expandedArcId;
@@ -219,7 +236,15 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
     stackRef.current = stack;
   }, [stack]);
 
-  const feedSnapshotRef = useRef<FeedSnapshot>({ scrollY: 0, expandedArcId: null });
+  useLayoutEffect(() => {
+    if (explorationHydratedRef.current) return;
+    explorationHydratedRef.current = true;
+    const persisted = readExploration();
+    if (!persisted?.stack.length) return;
+    feedSnapshotRef.current = persisted.feedSnapshot;
+    setExpandedArcIdState(persisted.feedSnapshot.expandedArcId);
+    setStack(persisted.stack);
+  }, []);
   /** Skips one feed snapshot sync from effects right after closing the stack (scroll restore is async). */
   const skipFeedSnapshotSyncRef = useRef(false);
 
@@ -274,6 +299,28 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
   const pushArc = useCallback((id: string) => pushItem({ kind: 'arc', id }), [pushItem]);
   const pushUniverse = useCallback((id: string) => pushItem({ kind: 'universe', id }), [pushItem]);
 
+  const pushChapter = useCallback(
+    (storyId: string, chapterNum: number) => {
+      pushItem({ kind: 'chapter', id: storyId, chapterNum, surface: 'full' });
+    },
+    [pushItem],
+  );
+
+  const navigateChapter = useCallback(
+    (storyId: string, chapterNum: number) => {
+      setStack((prev) => {
+        const top = prev[prev.length - 1];
+        const next =
+          top?.kind === 'chapter' && top.id === storyId
+            ? [...prev.slice(0, -1), { kind: 'chapter' as const, id: storyId, chapterNum, surface: 'full' as const }]
+            : [...prev, { kind: 'chapter' as const, id: storyId, chapterNum, surface: 'full' as const }];
+        queueMicrotask(() => syncStorage(next, feedSnapshotRef.current));
+        return next;
+      });
+    },
+    [syncStorage],
+  );
+
   const pop = useCallback(() => {
     setStack((prev) => {
       if (prev.length === 0) return prev;
@@ -324,7 +371,7 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
   }, [stack.length, getFeedSnapshot, syncStorage]);
 
   const promoteToFullSurface = useCallback(
-    (kind: StackKind, entityId: string) => {
+    (kind: Exclude<StackKind, 'chapter'>, entityId: string) => {
       setStack((prev) => {
         const top = prev[prev.length - 1];
         const topSurface = top?.surface ?? 'preview';
@@ -372,6 +419,8 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       popToFeed,
       getFeedSnapshot,
       promoteToFullSurface,
+      pushChapter,
+      navigateChapter,
     }),
     [
       stack,
@@ -384,6 +433,8 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       popToFeed,
       getFeedSnapshot,
       promoteToFullSurface,
+      pushChapter,
+      navigateChapter,
     ],
   );
 
