@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
-import {
-  truncateText,
-} from '@/lib/storyPreviewPeek';
+import { PEEK_ILLUSTRATED_BLOCKS } from '@/lib/storyPreviewPeek';
+import { loadBlocks, normalizeStoryType, type StoryBlockRow } from '@/lib/storyBlocks';
+import StoryBlocksView from '@/components/StoryBlocksView';
 
 export type StoryWithProfile = Tables<'stories'> & {
   profiles: { username: string } | null;
@@ -27,6 +27,41 @@ export interface StoryFeedPreviewProps {
   titleAs?: 'h1' | 'h2' | 'span';
 }
 
+function FeedBlocksList({
+  blocks,
+  peek,
+  prosePeek,
+}: {
+  blocks: StoryBlockRow[];
+  peek: boolean;
+  prosePeek: string;
+}) {
+  const { t } = useLanguage();
+  const visible = peek ? blocks.slice(0, PEEK_ILLUSTRATED_BLOCKS) : blocks;
+
+  if (visible.length === 0) return null;
+
+  if (!peek) {
+    return <StoryBlocksView blocks={visible} className="space-y-8" />;
+  }
+
+  return (
+    <div className="space-y-6">
+      {visible.map((block) => (
+        <div key={block.id}>
+          {block.block_type === 'image' ? (
+            <div className="overflow-hidden rounded-xl border border-border">
+              <img src={block.content} alt={t('story.illustration')} className="w-full object-contain" />
+            </div>
+          ) : (
+            <div className={`${prosePeek} whitespace-pre-wrap`}>{block.content}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function StoryFeedPreview({
   storyId,
   enabled = true,
@@ -43,7 +78,8 @@ export default function StoryFeedPreview({
   const [story, setStory] = useState<StoryWithProfile | null>(null);
   const [chapters, setChapters] = useState<Tables<'chapters'>[]>([]);
   const [comicPages, setComicPages] = useState<Tables<'comic_pages'>[]>([]);
-  const [illustratedBlocks, setIllustratedBlocks] = useState<Tables<'illustrated_blocks'>[]>([]);
+  const [shortStoryBlocks, setShortStoryBlocks] = useState<StoryBlockRow[]>([]);
+  const [chapterBlocksMap, setChapterBlocksMap] = useState<Record<string, StoryBlockRow[]>>({});
 
   useEffect(() => {
     if (!enabled || !storyId) return;
@@ -76,29 +112,43 @@ export default function StoryFeedPreview({
 
       setStory({ ...storyData, profiles: profile, universe, arc } as StoryWithProfile);
 
-      if (storyData.type === 'chapters' || !storyData.type) {
+      const normalizedType = normalizeStoryType(storyData.type);
+
+      if (normalizedType === 'chapters') {
         const { data: ch } = await supabase.from('chapters').select('*').eq('story_id', storyId).order('chapter_number');
         if (!cancelled) setChapters(ch || []);
+
+        const { data: allBlocks } = await supabase
+          .from('illustrated_blocks')
+          .select('*')
+          .eq('story_id', storyId)
+          .not('chapter_id', 'is', null)
+          .order('block_order');
+        if (!cancelled) {
+          const map: Record<string, StoryBlockRow[]> = {};
+          for (const block of allBlocks || []) {
+            if (!block.chapter_id) continue;
+            (map[block.chapter_id] ||= []).push(block);
+          }
+          setChapterBlocksMap(map);
+        }
       } else {
         setChapters([]);
+        setChapterBlocksMap({});
       }
 
-      if (storyData.type === 'comic') {
+      if (normalizedType === 'comic') {
         const { data: pages } = await supabase.from('comic_pages').select('*').eq('story_id', storyId).order('page_order');
         if (!cancelled) setComicPages(pages || []);
       } else {
         setComicPages([]);
       }
 
-      if (storyData.type === 'illustrated') {
-        const { data: blocks } = await supabase
-          .from('illustrated_blocks')
-          .select('*')
-          .eq('story_id', storyId)
-          .order('block_order');
-        if (!cancelled) setIllustratedBlocks(blocks || []);
+      if (normalizedType === 'short_story') {
+        const blocks = await loadBlocks(storyId, null);
+        if (!cancelled) setShortStoryBlocks(blocks);
       } else {
-        setIllustratedBlocks([]);
+        setShortStoryBlocks([]);
       }
 
       if (!cancelled) setLoading(false);
@@ -110,7 +160,7 @@ export default function StoryFeedPreview({
     };
   }, [enabled, storyId]);
 
-  const storyType = story?.type || 'chapters';
+  const storyType = normalizeStoryType(story?.type);
   const titlePeekClass = 'text-xl font-semibold font-serif leading-snug tracking-tight sm:text-2xl';
   const titleFullClass = 'text-3xl font-bold font-serif';
   const TitlePeek = 'h2' as const;
@@ -198,6 +248,19 @@ export default function StoryFeedPreview({
     <span className={titleFullClass}>{story.title}</span>
   );
 
+  const renderChapterBody = (chapter: Tables<'chapters'>) => {
+    const blocks = chapterBlocksMap[chapter.id] || [];
+    if (blocks.length > 0) {
+      return <FeedBlocksList blocks={blocks} peek={peek} prosePeek={prosePeek} />;
+    }
+    const proseClass = peek ? prosePeek : proseFull;
+    return (
+      <div className={`${proseClass} whitespace-pre-wrap`}>
+        {chapter.content || (peek ? null : t('common.noContent'))}
+      </div>
+    );
+  };
+
   return (
     <div className={peek ? 'relative' : 'min-h-full bg-background'}>
       <div className={peek ? 'pb-2' : 'mx-auto max-w-4xl px-4 py-6 sm:px-8'}>
@@ -218,36 +281,38 @@ export default function StoryFeedPreview({
           {fullPageControl}
         </header>
 
-        {storyType === 'short_story' && peek && (
-          <div className={`${prosePeek} whitespace-pre-wrap`}>{story.content || t('common.noContent')}</div>
+        {storyType === 'short_story' && (
+          shortStoryBlocks.length > 0 ? (
+            <FeedBlocksList blocks={shortStoryBlocks} peek={peek} prosePeek={prosePeek} />
+          ) : (
+            <div className={`${peek ? prosePeek : proseFull} whitespace-pre-wrap`}>
+              {story.content || t('common.noContent')}
+            </div>
+          )
         )}
 
-        {storyType === 'short_story' && !peek && (
-          <div className={`${proseFull} whitespace-pre-wrap`}>{story.content || t('common.noContent')}</div>
-        )}
-
-        {(storyType === 'chapters' || !storyType) && peek && (
+        {storyType === 'chapters' && peek && (
           <div className="space-y-6">
             {chapters.map((chapter) => (
               <section key={chapter.id}>
                 <h3 className="mb-2 font-serif text-lg font-semibold leading-tight">
-                  Cap. {chapter.chapter_number}: {chapter.title}
+                  {chapter.title}
                 </h3>
-                <div className={`${prosePeek} whitespace-pre-wrap`}>{chapter.content}</div>
+                {renderChapterBody(chapter)}
               </section>
             ))}
             {chapters.length === 0 ? <p className="text-sm text-muted-foreground">{t('story.noChapters')}</p> : null}
           </div>
         )}
 
-        {(storyType === 'chapters' || !storyType) &&
+        {storyType === 'chapters' &&
           !peek &&
           chapters.map((chapter) => (
-            <section key={chapter.id}>
+            <section key={chapter.id} className="mb-10">
               <h2 className="mb-3 font-serif text-2xl font-semibold">
-                Cap. {chapter.chapter_number}: {chapter.title}
+                {chapter.title}
               </h2>
-              <div className={`${proseFull} whitespace-pre-wrap`}>{chapter.content}</div>
+              {renderChapterBody(chapter)}
             </section>
           ))}
 
@@ -266,38 +331,6 @@ export default function StoryFeedPreview({
             {comicPages.map((page) => (
               <div key={page.id} className="overflow-hidden rounded-xl border border-border">
                 <img src={page.image_url} alt={`${t('story.page')} ${page.page_order}`} className="w-full object-contain" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {storyType === 'illustrated' && peek && (
-          <div className="space-y-6">
-            {illustratedBlocks.map((block) => (
-              <div key={block.id}>
-                {block.block_type === 'image' ? (
-                  <div className="overflow-hidden rounded-xl border border-border">
-                    <img src={block.content} alt={t('story.illustration')} className="w-full object-contain" />
-                  </div>
-                ) : (
-                  <div className={`${prosePeek} whitespace-pre-wrap`}>{block.content}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {storyType === 'illustrated' && !peek && (
-          <div className="space-y-8">
-            {illustratedBlocks.map((block) => (
-              <div key={block.id}>
-                {block.block_type === 'image' ? (
-                  <div className="overflow-hidden rounded-xl border border-border">
-                    <img src={block.content} alt={t('story.illustration')} className="w-full object-contain" />
-                  </div>
-                ) : (
-                  <div className={`${proseFull} whitespace-pre-wrap`}>{block.content}</div>
-                )}
               </div>
             ))}
           </div>

@@ -7,17 +7,25 @@ import { useLanguage } from '@/hooks/useLanguage';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, ChevronRight, Pencil, Save, X } from 'lucide-react';
 import CharacterMeter from '@/components/CharacterMeter';
+import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
+import StoryBlocksView from '@/components/StoryBlocksView';
 import { useToast } from '@/hooks/use-toast';
 import { CONTENT_LIMITS, describeViolations, validateChapterTitle } from '@/lib/contentLimits';
+import {
+  blocksFromLegacyPlainText,
+  blocksToEditorItems,
+  loadBlocks,
+  saveBlocks,
+} from '@/lib/storyBlocks';
 import { readExploration, stackItemMatchesStory } from '@/lib/feedExplorationStorage';
 import {
   clearChapterReturnStoryId,
   peekChapterReturnStoryId,
 } from '@/lib/storyChapterNav';
 import type { Tables } from '@/integrations/supabase/types';
+import type { StoryBlockRow } from '@/lib/storyBlocks';
 
 export type ChapterPageProps = {
   embedExploration?: boolean;
@@ -41,13 +49,14 @@ export default function ChapterPage({
   const { t } = useLanguage();
   const { toast } = useToast();
   const [chapter, setChapter] = useState<Tables<'chapters'> | null>(null);
+  const [chapterBlocks, setChapterBlocks] = useState<StoryBlockRow[]>([]);
   const [totalChapters, setTotalChapters] = useState(0);
   const [authorId, setAuthorId] = useState<string | null>(null);
   const [resumeExploration, setResumeExploration] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
+  const [editBlocks, setEditBlocks] = useState<IllustratedBlockItem[]>([]);
   const [saving, setSaving] = useState(false);
 
   useLayoutEffect(() => {
@@ -67,11 +76,12 @@ export default function ChapterPage({
       .eq('story_id', id)
       .eq('chapter_number', Number(chapterNum))
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setChapter(data);
           setEditTitle(data.title);
-          setEditContent(data.content);
+          const blocks = await loadBlocks(id, data.id);
+          setChapterBlocks(blocks);
         }
       });
     supabase
@@ -93,7 +103,6 @@ export default function ChapterPage({
   const isAuthor = !!user && !!authorId && user.id === authorId;
   const shellClass = embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background';
 
-  /** Pop the chapter entry when opened from this story (avoids duplicate story URLs in history). */
   const goBackToStory = () => {
     const openedFromThisStory = id != null && peekChapterReturnStoryId() === id;
     if (openedFromThisStory && typeof window !== 'undefined' && window.history.length > 1) {
@@ -108,7 +117,11 @@ export default function ChapterPage({
   const startEditing = () => {
     if (!chapter) return;
     setEditTitle(chapter.title);
-    setEditContent(chapter.content);
+    const items =
+      chapterBlocks.length > 0
+        ? blocksToEditorItems(chapterBlocks)
+        : blocksFromLegacyPlainText(chapter.content);
+    setEditBlocks(items);
     setEditing(true);
   };
 
@@ -116,7 +129,7 @@ export default function ChapterPage({
   const chapterEditOverLimit = chapterEditViolations.length > 0;
 
   const saveChanges = async () => {
-    if (!chapter) return;
+    if (!chapter || !user || !id) return;
     const tT = editTitle.trim();
     if (!tT) return;
     const v = validateChapterTitle(tT);
@@ -129,20 +142,25 @@ export default function ChapterPage({
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from('chapters')
-      .update({
-        title: tT,
-        content: editContent,
-      })
-      .eq('id', chapter.id);
-    setSaving(false);
-    if (error) {
-      toast({ title: t('chapter.saveError'), description: error.message, variant: 'destructive' });
-    } else {
-      setChapter({ ...chapter, title: tT, content: editContent });
+    try {
+      const { error } = await supabase
+        .from('chapters')
+        .update({
+          title: tT,
+          content: '',
+        })
+        .eq('id', chapter.id);
+      if (error) throw error;
+      await saveBlocks(id, chapter.id, editBlocks, user.id);
+      const blocks = await loadBlocks(id, chapter.id);
+      setChapter({ ...chapter, title: tT, content: '' });
+      setChapterBlocks(blocks);
       setEditing(false);
       toast({ title: t('chapter.updated') });
+    } catch (err: any) {
+      toast({ title: t('chapter.saveError'), description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -227,7 +245,7 @@ export default function ChapterPage({
             </div>
           ) : (
             <h1 className="font-serif text-2xl font-bold">
-              Cap. {num}: {chapter.title}
+              {chapter.title}
             </h1>
           )}
           {isAuthor && !editing && (
@@ -239,12 +257,7 @@ export default function ChapterPage({
 
         {editing ? (
           <div className="mt-4 space-y-4">
-            <Textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={18}
-              className="font-serif leading-relaxed"
-            />
+            <IllustratedBlockEditor blocks={editBlocks} onChange={setEditBlocks} />
             <div className="flex gap-2">
               <Button onClick={saveChanges} disabled={saving || chapterEditOverLimit || !editTitle.trim()}>
                 <Save className="mr-1 h-4 w-4" />
@@ -256,9 +269,11 @@ export default function ChapterPage({
               </Button>
             </div>
           </div>
+        ) : chapterBlocks.length > 0 ? (
+          <StoryBlocksView blocks={chapterBlocks} className="mt-6" />
         ) : (
           <div className="prose prose-sm mt-6 max-w-none whitespace-pre-wrap font-serif leading-relaxed text-foreground/90">
-            {chapter.content}
+            {chapter.content || <span className="text-muted-foreground italic">{t('common.noContent')}</span>}
           </div>
         )}
 

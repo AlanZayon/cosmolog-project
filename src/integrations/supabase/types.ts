@@ -158,6 +158,7 @@ export type Database = {
         Row: {
           block_order: number
           block_type: string
+          chapter_id: string | null
           content: string
           created_at: string
           id: string
@@ -166,6 +167,7 @@ export type Database = {
         Insert: {
           block_order: number
           block_type?: string
+          chapter_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -174,12 +176,20 @@ export type Database = {
         Update: {
           block_order?: number
           block_type?: string
+          chapter_id?: string | null
           content?: string
           created_at?: string
           id?: string
           story_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "illustrated_blocks_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "illustrated_blocks_story_id_fkey"
             columns: ["story_id"]

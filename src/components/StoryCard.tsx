@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, MessageCircle, FileText, BookOpen, Image, Layers } from 'lucide-react';
+import { Heart, MessageCircle, FileText, BookOpen, Image } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Tables } from '@/integrations/supabase/types';
@@ -11,7 +11,7 @@ const TYPE_CONFIG: Record<string, { labelKey: TranslationKey; icon: React.ReactN
   short_story: { labelKey: 'typeLabel.short_story', icon: <FileText className="h-3 w-3" /> },
   chapters: { labelKey: 'typeLabel.chapters', icon: <BookOpen className="h-3 w-3" /> },
   comic: { labelKey: 'typeLabel.comic', icon: <Image className="h-3 w-3" /> },
-  illustrated: { labelKey: 'typeLabel.illustrated', icon: <Layers className="h-3 w-3" /> },
+  illustrated: { labelKey: 'typeLabel.chapters', icon: <BookOpen className="h-3 w-3" /> },
 };
 
 interface StoryCardProps {

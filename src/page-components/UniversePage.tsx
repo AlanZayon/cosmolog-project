@@ -13,7 +13,7 @@ import CharacterMeter from '@/components/CharacterMeter';
 import StoryCard from '@/components/StoryCard';
 import { useToast } from '@/hooks/use-toast';
 import { CONTENT_LIMITS, describeViolations, validateArcFields, validateUniverseFields } from '@/lib/contentLimits';
-import { Plus, Pencil, X, ImagePlus, FileText, BookOpen, Image, Layers, Globe, Save } from 'lucide-react';
+import { Plus, Pencil, X, ImagePlus, FileText, BookOpen, Image, Globe, Save } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,6 @@ const TYPE_FILTERS: { value: string; labelKey: TranslationKey; icon: React.React
   { value: 'short_story', labelKey: 'type.short_story', icon: <FileText className="h-3 w-3" /> },
   { value: 'chapters', labelKey: 'type.chapters', icon: <BookOpen className="h-3 w-3" /> },
   { value: 'comic', labelKey: 'type.comic', icon: <Image className="h-3 w-3" /> },
-  { value: 'illustrated', labelKey: 'type.illustrated', icon: <Layers className="h-3 w-3" /> },
 ];
 
 const ARC_TYPES: { value: Tables<'arcs'>['type']; labelKey: TranslationKey }[] = [

@@ -10,25 +10,32 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
-import { ImagePlus, X, BookOpen, FileText, Image, Layers, Plus, ChevronUp, ChevronDown } from 'lucide-react';
+import { ImagePlus, X, BookOpen, FileText, Image, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import CharacterMeter from '@/components/CharacterMeter';
 import TagInput from '@/components/TagInput';
 import ComicPageUploader from '@/components/ComicPageUploader';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
 import type { TranslationKey } from '@/i18n/translations';
-import { CONTENT_LIMITS, describeViolations, validateStoryMeta, validateStoryShortBody, validateChapterTitle } from '@/lib/contentLimits';
+import {
+  CONTENT_LIMITS,
+  describeViolations,
+  shortStoryBlocksEmpty,
+  validateChapterTitle,
+  validateShortStoryBlocks,
+  validateStoryMeta,
+} from '@/lib/contentLimits';
+import { blockHasContent, saveBlocks } from '@/lib/storyBlocks';
 import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
 
-type StoryType = 'short_story' | 'chapters' | 'comic' | 'illustrated';
+type StoryType = 'short_story' | 'chapters' | 'comic';
 type Universe = Tables<'universes'>;
 type Arc = Tables<'arcs'>;
-type DraftChapter = { title: string; content: string };
+type DraftChapter = { title: string; blocks: IllustratedBlockItem[] };
 
 const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: TranslationKey; icon: React.ReactNode }[] = [
   { value: 'short_story', labelKey: 'typeLabel.short_story', descKey: 'typeDesc.short_story', icon: <FileText className="h-5 w-5" /> },
   { value: 'chapters', labelKey: 'typeLabel.chapters', descKey: 'typeDesc.chapters', icon: <BookOpen className="h-5 w-5" /> },
   { value: 'comic', labelKey: 'typeLabel.comic', descKey: 'typeDesc.comic', icon: <Image className="h-5 w-5" /> },
-  { value: 'illustrated', labelKey: 'typeLabel.illustrated', descKey: 'typeDesc.illustrated', icon: <Layers className="h-5 w-5" /> },
 ];
 
 export default function CreateStoryPage() {
@@ -52,9 +59,8 @@ export default function CreateStoryPage() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [content, setContent] = useState('');
+  const [shortStoryBlocks, setShortStoryBlocks] = useState<IllustratedBlockItem[]>([]);
   const [comicPages, setComicPages] = useState<{ file?: File; preview: string }[]>([]);
-  const [illustratedBlocks, setIllustratedBlocks] = useState<IllustratedBlockItem[]>([]);
   const [draftChapters, setDraftChapters] = useState<DraftChapter[]>([]);
 
   useEffect(() => {
@@ -150,25 +156,33 @@ export default function CreateStoryPage() {
   };
 
   const metaViolationsCreate = validateStoryMeta(title.trim(), description.trim());
-  const shortBodyViolationsCreate = storyType === 'short_story' ? validateStoryShortBody(content) : [];
+  const shortBodyViolationsCreate =
+    storyType === 'short_story' ? validateShortStoryBlocks(shortStoryBlocks) : [];
   const chapterTitleViolationsCreate =
     storyType === 'chapters'
       ? draftChapters.flatMap((ch) => {
           const tCh = ch.title.trim();
-          const cCh = ch.content.trim();
-          if (!tCh && !cCh) return [];
+          const hasContent = ch.blocks.some(blockHasContent);
+          if (!tCh && !hasContent) return [];
           return validateChapterTitle(tCh);
         })
       : [];
   const createStoryViolations = [...metaViolationsCreate, ...shortBodyViolationsCreate, ...chapterTitleViolationsCreate];
   const chapterMissingTitle =
-    storyType === 'chapters' && draftChapters.some((ch) => ch.content.trim() !== '' && ch.title.trim() === '');
+    storyType === 'chapters' &&
+    draftChapters.some((ch) => ch.blocks.some(blockHasContent) && ch.title.trim() === '');
+  const shortStoryMissingContent =
+    storyType === 'short_story' && shortStoryBlocksEmpty(shortStoryBlocks);
   const createStoryOverLimit = createStoryViolations.length > 0;
-  const createStoryBlocked = createStoryOverLimit || chapterMissingTitle;
+  const createStoryBlocked = createStoryOverLimit || chapterMissingTitle || shortStoryMissingContent;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !storyType) return;
+    if (shortStoryMissingContent) {
+      toast({ title: t('common.error'), description: t('createStory.shortStoryNeedsContent'), variant: 'destructive' });
+      return;
+    }
     if (chapterMissingTitle) {
       toast({ title: t('common.error'), description: t('createStory.chapterNeedsTitle'), variant: 'destructive' });
       return;
@@ -193,7 +207,7 @@ export default function CreateStoryPage() {
         author_id: user.id,
         tags,
         type: storyType,
-        content: storyType === 'short_story' ? content : null,
+        content: null,
         universe_id: selectedUniverseId || null,
         arc_id: selectedArcId || null,
         ...(cover_image_url && { cover_image_url }),
@@ -216,20 +230,8 @@ export default function CreateStoryPage() {
         }
       }
 
-      if (storyType === 'illustrated' && illustratedBlocks.length > 0) {
-        for (let i = 0; i < illustratedBlocks.length; i++) {
-          const block = illustratedBlocks[i];
-          let blockContent = block.content;
-          if (block.block_type === 'image' && block.file) {
-            blockContent = await uploadFile('comics', block.file);
-          }
-          await supabase.from('illustrated_blocks').insert({
-            story_id: storyId,
-            block_type: block.block_type,
-            content: blockContent,
-            block_order: i + 1,
-          } as any);
-        }
+      if (storyType === 'short_story' && shortStoryBlocks.some(blockHasContent)) {
+        await saveBlocks(storyId, null, shortStoryBlocks, user.id);
       }
 
       if (storyType === 'chapters' && draftChapters.length > 0) {
@@ -237,13 +239,20 @@ export default function CreateStoryPage() {
         for (const ch of draftChapters) {
           const chTitle = ch.title.trim();
           if (!chTitle) continue;
-          const { error: chError } = await supabase.from('chapters').insert({
-            story_id: storyId,
-            title: chTitle,
-            content: ch.content.trim(),
-            chapter_number: chapterNum++,
-          } as any);
+          const { data: chapterRow, error: chError } = await supabase
+            .from('chapters')
+            .insert({
+              story_id: storyId,
+              title: chTitle,
+              content: '',
+              chapter_number: chapterNum++,
+            } as any)
+            .select('id')
+            .single();
           if (chError) throw chError;
+          if (chapterRow && ch.blocks.some(blockHasContent)) {
+            await saveBlocks(storyId, chapterRow.id, ch.blocks, user.id);
+          }
         }
       }
 
@@ -394,9 +403,13 @@ export default function CreateStoryPage() {
 
           {storyType === 'short_story' && (
             <div>
-              <label className="text-sm font-medium text-foreground">{t('createStory.contentLabel')}</label>
-              <Textarea value={content} onChange={e => setContent(e.target.value)} placeholder={t('createStory.contentPlaceholder')} rows={12} required />
-              <CharacterMeter length={content.length} max={CONTENT_LIMITS.storyShortBody} className="mt-1 text-right" />
+              <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.blocksLabel')}</label>
+              <IllustratedBlockEditor blocks={shortStoryBlocks} onChange={setShortStoryBlocks} />
+              <CharacterMeter
+                length={shortStoryBlocks.filter((b) => b.block_type === 'text').reduce((n, b) => n + b.content.length, 0)}
+                max={CONTENT_LIMITS.storyShortBody}
+                className="mt-1 text-right"
+              />
             </div>
           )}
 
@@ -408,7 +421,11 @@ export default function CreateStoryPage() {
                 {draftChapters.map((ch, i) => (
                   <div key={i} className="p-3 rounded-lg border border-border bg-card space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground font-medium">{t('story.chapters')} {i + 1}</span>
+                      {ch.title.trim() ? (
+                        <span className="text-sm font-medium text-foreground truncate min-w-0">{ch.title.trim()}</span>
+                      ) : (
+                        <span className="flex-1" aria-hidden />
+                      )}
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
@@ -460,15 +477,13 @@ export default function CreateStoryPage() {
                       />
                       <CharacterMeter length={ch.title.length} max={CONTENT_LIMITS.chapterTitle} className="mt-1 text-right" />
                     </div>
-                    <Textarea
-                      value={ch.content}
-                      onChange={(e) => {
+                    <IllustratedBlockEditor
+                      blocks={ch.blocks}
+                      onChange={(blocks) => {
                         const next = [...draftChapters];
-                        next[i] = { ...next[i], content: e.target.value };
+                        next[i] = { ...next[i], blocks };
                         setDraftChapters(next);
                       }}
-                      placeholder={t('story.chapterContentPlaceholder')}
-                      rows={6}
                     />
                   </div>
                 ))}
@@ -478,7 +493,7 @@ export default function CreateStoryPage() {
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => setDraftChapters([...draftChapters, { title: '', content: '' }])}
+                onClick={() => setDraftChapters([...draftChapters, { title: '', blocks: [] }])}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 {t('createStory.addChapter')}
@@ -490,13 +505,6 @@ export default function CreateStoryPage() {
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.pagesLabel')}</label>
               <ComicPageUploader pages={comicPages} onChange={setComicPages} />
-            </div>
-          )}
-
-          {storyType === 'illustrated' && (
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.blocksLabel')}</label>
-              <IllustratedBlockEditor blocks={illustratedBlocks} onChange={setIllustratedBlocks} />
             </div>
           )}
 

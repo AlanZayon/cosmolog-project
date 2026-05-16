@@ -127,8 +127,18 @@ const translations = {
   'typeLabel.illustrated': { pt: 'História Ilustrada', en: 'Illustrated Story', ja: 'イラストストーリー', es: 'Historia ilustrada' },
 
   // Story type descriptions
-  'typeDesc.short_story': { pt: 'Texto único, curto ou médio', en: 'Single text, short or medium', ja: '短い、または中程度のテキスト', es: 'Texto único, corto o medio' },
-  'typeDesc.chapters': { pt: 'Vários capítulos publicados aos poucos', en: 'Multiple chapters published over time', ja: '少しずつ公開される複数の章', es: 'Varios capítulos publicados poco a poco' },
+  'typeDesc.short_story': {
+    pt: 'História curta com texto, imagens ou ambos',
+    en: 'Short story with text, images, or both',
+    ja: 'テキスト・画像・または両方の短編',
+    es: 'Historia corta con texto, imágenes o ambos',
+  },
+  'typeDesc.chapters': {
+    pt: 'Capítulos com texto e imagens intercaladas',
+    en: 'Chapters with interspersed text and images',
+    ja: 'テキストと画像を交互に含む章',
+    es: 'Capítulos con texto e imágenes intercaladas',
+  },
   'typeDesc.comic': { pt: 'Páginas com imagens em sequência', en: 'Sequential image pages', ja: '連続した画像ページ', es: 'Páginas con imágenes en secuencia' },
   'typeDesc.illustrated': { pt: 'Texto e imagens intercaladas', en: 'Interspersed text and images', ja: 'テキストと画像の交互構成', es: 'Texto e imágenes intercaladas' },
 
@@ -308,10 +318,28 @@ const translations = {
   'createStory.contentLabel': { pt: 'Conteúdo', en: 'Content', ja: 'コンテンツ', es: 'Contenido' },
   'createStory.contentPlaceholder': { pt: 'Escreva seu conto aqui...', en: 'Write your story here...', ja: 'ここにストーリーを書いてください...', es: 'Escribe tu cuento aquí...' },
   'createStory.chaptersHint': {
-    pt: '📖 Adicione capítulos abaixo (opcional) ou depois na página da história.',
-    en: '📖 Add chapters below (optional) or later on the story page.',
-    ja: '📖 下で章を追加するか（任意）、あとでストーリーページから追加できます。',
-    es: '📖 Añade capítulos abajo (opcional) o más tarde en la página de la historia.',
+    pt: '📖 Adicione capítulos com texto e fotos (opcional) ou depois na página da história.',
+    en: '📖 Add chapters with text and photos (optional) or later on the story page.',
+    ja: '📖 テキストと写真付きの章を追加（任意）、または後からストーリーページで追加。',
+    es: '📖 Añade capítulos con texto y fotos (opcional) o más tarde en la página de la historia.',
+  },
+  'createStory.shortStoryNeedsContent': {
+    pt: 'Adicione pelo menos um bloco de texto ou imagem.',
+    en: 'Add at least one text or image block.',
+    ja: 'テキストまたは画像ブロックを1つ以上追加してください。',
+    es: 'Añade al menos un bloque de texto o imagen.',
+  },
+  'validation.shortStoryMaxBlocks': {
+    pt: 'Blocos do conto',
+    en: 'Short story blocks',
+    ja: '短編のブロック',
+    es: 'Bloques del cuento',
+  },
+  'validation.shortStoryMaxImages': {
+    pt: 'Imagens do conto',
+    en: 'Short story images',
+    ja: '短編の画像',
+    es: 'Imágenes del cuento',
   },
   'createStory.addChapter': { pt: 'Adicionar capítulo', en: 'Add chapter', ja: '章を追加', es: 'Añadir capítulo' },
   'createStory.chapterNeedsTitle': {

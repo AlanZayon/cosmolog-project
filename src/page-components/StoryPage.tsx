@@ -9,14 +9,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
 import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
-import { Heart, MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, FileText, Image, Layers, Save } from 'lucide-react';
+import { Heart, MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import TagInput from '@/components/TagInput';
 import ComicPageUploader from '@/components/ComicPageUploader';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
 import CharacterMeter from '@/components/CharacterMeter';
 import { useToast } from '@/hooks/use-toast';
-import { CONTENT_LIMITS, describeViolations, validateChapterTitle, validateStoryMeta, validateStoryShortBody } from '@/lib/contentLimits';
+import {
+  CONTENT_LIMITS,
+  describeViolations,
+  shortStoryBlocksEmpty,
+  validateChapterTitle,
+  validateShortStoryBlocks,
+  validateStoryMeta,
+} from '@/lib/contentLimits';
+import {
+  blockHasContent,
+  blocksFromLegacyPlainText,
+  blocksToEditorItems,
+  loadBlocks,
+  normalizeStoryType,
+  saveBlocks,
+} from '@/lib/storyBlocks';
+import StoryBlocksView from '@/components/StoryBlocksView';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
@@ -48,18 +64,17 @@ export default function StoryPage({
   const [availableArcs, setAvailableArcs] = useState<Arc[]>([]);
   const [chapters, setChapters] = useState<Tables<'chapters'>[]>([]);
   const [comicPages, setComicPages] = useState<any[]>([]);
-  const [illustratedBlocks, setIllustratedBlocks] = useState<any[]>([]);
+  const [shortStoryBlocks, setShortStoryBlocks] = useState<any[]>([]);
   const [comments, setComments] = useState<CommentWithProfile[]>([]);
   const [liked, setLiked] = useState(false);
   const [comment, setComment] = useState('');
   const [showAddChapter, setShowAddChapter] = useState(false);
   const [chapterTitle, setChapterTitle] = useState('');
-  const [chapterContent, setChapterContent] = useState('');
+  const [chapterBlocks, setChapterBlocks] = useState<IllustratedBlockItem[]>([]);
   const [addingChapter, setAddingChapter] = useState(false);
 
   // Content editing state
   const [editingContent, setEditingContent] = useState(false);
-  const [editContent, setEditContent] = useState('');
   const [editComicPages, setEditComicPages] = useState<any[]>([]);
   const [editIllustratedBlocks, setEditIllustratedBlocks] = useState<IllustratedBlockItem[]>([]);
   const [savingContent, setSavingContent] = useState(false);
@@ -100,9 +115,11 @@ export default function StoryPage({
       }
 
       // Fetch type-specific content
-      if (storyData.type === 'chapters' || !storyData.type) {
+      if (normalizeStoryType(storyData.type) === 'chapters') {
         const { data } = await supabase.from('chapters').select('*').eq('story_id', id!).order('chapter_number');
         setChapters(data || []);
+      } else {
+        setChapters([]);
       }
 
       if (storyData.type === 'comic') {
@@ -110,9 +127,11 @@ export default function StoryPage({
         setComicPages(data || []);
       }
 
-      if (storyData.type === 'illustrated') {
-        const { data } = await (supabase.from('illustrated_blocks') as any).select('*').eq('story_id', id!).order('block_order');
-        setIllustratedBlocks(data || []);
+      if (storyData.type === 'short_story') {
+        const blocks = await loadBlocks(id!, null);
+        setShortStoryBlocks(blocks);
+      } else {
+        setShortStoryBlocks([]);
       }
     }
 
@@ -161,15 +180,29 @@ export default function StoryPage({
       return;
     }
     setAddingChapter(true);
-    const nextNum = chapters.length + 1;
-    const { error } = await supabase.from('chapters').insert({
-      story_id: id!,
-      title: chTitle,
-      content: chapterContent,
-      chapter_number: nextNum,
-    });
-    if (error) { toast({ title: t('common.error'), description: error.message, variant: 'destructive' }); }
-    else { setChapterTitle(''); setChapterContent(''); setShowAddChapter(false); fetchAll(); }
+    try {
+      const nextNum = chapters.length + 1;
+      const { data: chapterRow, error } = await supabase
+        .from('chapters')
+        .insert({
+          story_id: id!,
+          title: chTitle,
+          content: '',
+          chapter_number: nextNum,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      if (chapterRow && chapterBlocks.some(blockHasContent) && user) {
+        await saveBlocks(id!, chapterRow.id, chapterBlocks, user.id);
+      }
+      setChapterTitle('');
+      setChapterBlocks([]);
+      setShowAddChapter(false);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    }
     setAddingChapter(false);
   };
 
@@ -259,18 +292,15 @@ export default function StoryPage({
   // Content editing helpers
   const startEditingContent = () => {
     if (!story) return;
-    const type = (story as any).type || 'chapters';
+    const type = normalizeStoryType((story as any).type);
     if (type === 'short_story') {
-      setEditContent((story as any).content || '');
+      const items =
+        shortStoryBlocks.length > 0
+          ? blocksToEditorItems(shortStoryBlocks)
+          : blocksFromLegacyPlainText((story as any).content || '');
+      setEditIllustratedBlocks(items);
     } else if (type === 'comic') {
       setEditComicPages(comicPages.map(p => ({ id: p.id, preview: p.image_url, image_url: p.image_url })));
-    } else if (type === 'illustrated') {
-      setEditIllustratedBlocks(illustratedBlocks.map(b => ({
-        id: b.id,
-        block_type: b.block_type as 'text' | 'image',
-        content: b.content,
-        preview: b.block_type === 'image' ? b.content : undefined,
-      })));
     }
     setEditingContent(true);
   };
@@ -283,9 +313,13 @@ export default function StoryPage({
 
   const saveContent = async () => {
     if (!story || !user) return;
-    const type = (story as any).type || 'chapters';
+    const type = normalizeStoryType((story as any).type);
     if (type === 'short_story') {
-      const sv = validateStoryShortBody(editContent);
+      if (shortStoryBlocksEmpty(editIllustratedBlocks)) {
+        toast({ title: t('common.error'), description: t('createStory.shortStoryNeedsContent'), variant: 'destructive' });
+        return;
+      }
+      const sv = validateShortStoryBlocks(editIllustratedBlocks);
       if (sv.length) {
         toast({
           title: t('validation.charLimitsTitle'),
@@ -299,8 +333,8 @@ export default function StoryPage({
     try {
 
       if (type === 'short_story') {
-        const { error } = await supabase.from('stories').update({ content: editContent } as any).eq('id', story.id);
-        if (error) throw error;
+        await saveBlocks(story.id, null, editIllustratedBlocks, user!.id);
+        await supabase.from('stories').update({ content: null } as any).eq('id', story.id);
       }
 
       if (type === 'comic') {
@@ -318,26 +352,6 @@ export default function StoryPage({
             image_url = supabase.storage.from('comics').getPublicUrl(path).data.publicUrl;
           }
           await (supabase.from('comic_pages') as any).insert({ story_id: story.id, image_url, page_order: i + 1 });
-        }
-      }
-
-      if (type === 'illustrated') {
-        // Delete old blocks
-        await (supabase.from('illustrated_blocks') as any).delete().eq('story_id', story.id);
-        // Insert new blocks
-        for (let i = 0; i < editIllustratedBlocks.length; i++) {
-          const block = editIllustratedBlocks[i];
-          let content = block.content;
-          if (block.block_type === 'image' && block.file) {
-            const ext = block.file.name.split('.').pop();
-            const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-            const { error: upErr } = await supabase.storage.from('comics').upload(path, block.file);
-            if (upErr) throw upErr;
-            content = supabase.storage.from('comics').getPublicUrl(path).data.publicUrl;
-          }
-          await (supabase.from('illustrated_blocks') as any).insert({
-            story_id: story.id, block_type: block.block_type, content, block_order: i + 1,
-          });
         }
       }
 
@@ -375,7 +389,7 @@ export default function StoryPage({
   }
 
   const isAuthor = user?.id === story.author_id;
-  const storyType = (story as any).type || 'chapters';
+  const storyType = normalizeStoryType((story as any).type);
 
   const editMetaViolations = validateStoryMeta(editTitle.trim(), editDescription.trim());
   const editMetaOverLimit = editMetaViolations.length > 0;
@@ -384,7 +398,7 @@ export default function StoryPage({
   const chapterFormOverLimit = chapterFormViolations.length > 0;
 
   const editShortViolations =
-    editingContent && storyType === 'short_story' ? validateStoryShortBody(editContent) : [];
+    editingContent && storyType === 'short_story' ? validateShortStoryBlocks(editIllustratedBlocks) : [];
   const editShortOverLimit = editShortViolations.length > 0;
 
   return (
@@ -502,8 +516,12 @@ export default function StoryPage({
                   <h2 className="text-lg font-semibold">{t('story.editContent')}</h2>
                   <Button variant="ghost" size="sm" onClick={cancelEditingContent}><X className="h-4 w-4" /></Button>
                 </div>
-                <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={12} className="font-serif" />
-                <CharacterMeter length={editContent.length} max={CONTENT_LIMITS.storyShortBody} className="text-right" />
+                <IllustratedBlockEditor blocks={editIllustratedBlocks} onChange={setEditIllustratedBlocks} />
+                <CharacterMeter
+                  length={editIllustratedBlocks.filter((b) => b.block_type === 'text').reduce((n, b) => n + b.content.length, 0)}
+                  max={CONTENT_LIMITS.storyShortBody}
+                  className="text-right"
+                />
                 <div className="flex gap-2">
                   <Button onClick={saveContent} disabled={savingContent || editShortOverLimit} size="sm" className="gradient-warm text-primary-foreground">
                     <Save className="h-4 w-4 mr-1" /> {savingContent ? t('common.saving') : t('common.save')}
@@ -520,15 +538,21 @@ export default function StoryPage({
                     </Button>
                   </div>
                 )}
-                <div className="prose prose-sm max-w-none font-serif leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                  {(story as any).content || <p className="text-muted-foreground italic">{t('common.noContent')}</p>}
-                </div>
+                {shortStoryBlocks.length > 0 ? (
+                  <StoryBlocksView blocks={shortStoryBlocks} />
+                ) : (story as any).content ? (
+                  <div className="prose prose-sm max-w-none font-serif leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {(story as any).content}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground italic">{t('common.noContent')}</p>
+                )}
               </>
             )}
           </section>
         )}
 
-        {(storyType === 'chapters' || !storyType) && (
+        {storyType === 'chapters' && (
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">{t('story.chapters')}</h2>
@@ -542,7 +566,7 @@ export default function StoryPage({
               <div className="space-y-3 mb-4 p-4 rounded-lg border border-border bg-card">
                 <Input placeholder={t('story.chapterTitlePlaceholder')} value={chapterTitle} onChange={e => setChapterTitle(e.target.value)} />
                 <CharacterMeter length={chapterTitle.length} max={CONTENT_LIMITS.chapterTitle} className="mt-1 text-right" />
-                <Textarea placeholder={t('story.chapterContentPlaceholder')} value={chapterContent} onChange={e => setChapterContent(e.target.value)} rows={8} />
+                <IllustratedBlockEditor blocks={chapterBlocks} onChange={setChapterBlocks} />
                 <Button onClick={addChapter} disabled={addingChapter || chapterFormOverLimit || !chapterTitle.trim()} size="sm" className="gradient-warm text-primary-foreground">
                   {addingChapter ? t('common.saving') : t('story.saveChapter')}
                 </Button>
@@ -561,7 +585,7 @@ export default function StoryPage({
                       className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-accent"
                     >
                       <BookOpen className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="text-sm font-medium">Cap. {ch.chapter_number}: {ch.title}</span>
+                      <span className="text-sm font-medium">{ch.title}</span>
                     </button>
                   ) : (
                     <Link
@@ -571,7 +595,7 @@ export default function StoryPage({
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent"
                     >
                       <BookOpen className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Cap. {ch.chapter_number}: {ch.title}</span>
+                      <span className="text-sm font-medium">{ch.title}</span>
                     </Link>
                   ),
                 )}
@@ -613,55 +637,6 @@ export default function StoryPage({
                   </div>
                 ))}
               </div>
-            )}
-          </section>
-        )}
-
-        {storyType === 'illustrated' && (
-          <section className="mb-8">
-            {editingContent ? (
-              <div className="space-y-3 p-4 rounded-lg border border-border bg-card">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">{t('story.editBlocks')}</h2>
-                  <Button variant="ghost" size="sm" onClick={cancelEditingContent}><X className="h-4 w-4" /></Button>
-                </div>
-                <IllustratedBlockEditor blocks={editIllustratedBlocks} onChange={setEditIllustratedBlocks} />
-                <div className="flex gap-2 pt-2">
-                  <Button onClick={saveContent} disabled={savingContent} size="sm" className="gradient-warm text-primary-foreground">
-                    <Save className="h-4 w-4 mr-1" /> {savingContent ? t('common.saving') : t('common.save')}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={cancelEditingContent}>Cancelar</Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {isAuthor && (
-                  <div className="flex justify-end mb-2">
-                    <Button variant="ghost" size="sm" onClick={startEditingContent}>
-                      <Pencil className="h-4 w-4 mr-1" /> Editar blocos
-                    </Button>
-                  </div>
-                )}
-                {illustratedBlocks.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">{t('common.noContent')}</p>
-                ) : (
-                  <div className="space-y-6">
-                    {illustratedBlocks.map((block: any, i: number) => (
-                      <div key={block.id || i}>
-                        {block.block_type === 'text' ? (
-                          <div className="prose prose-sm max-w-none font-serif leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                            {block.content}
-                          </div>
-                        ) : (
-                          <div className="rounded-lg overflow-hidden border border-border">
-                            <img src={block.content} alt={`${t('story.illustration')} ${i + 1}`} className="w-full object-contain" loading="lazy" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
             )}
           </section>
         )}
