@@ -1,6 +1,5 @@
 use axum::extract::{Multipart, State};
 use axum::Json;
-use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
@@ -15,12 +14,6 @@ const ALLOWED_BUCKETS: &[&str] = &[
     "universe-covers",
     "arc-covers",
 ];
-
-#[derive(Debug, Deserialize)]
-pub struct UploadForm {
-    pub bucket: String,
-    pub path: Option<String>,
-}
 
 /// Upload a file to Supabase Storage (proxied with the user's JWT).
 pub async fn upload(

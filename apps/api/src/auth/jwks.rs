@@ -22,6 +22,7 @@ pub struct Jwk {
     #[serde(default)]
     pub y: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub crv: Option<String>,
 }
 

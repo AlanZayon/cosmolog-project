@@ -1,6 +1,6 @@
 use axum::{
     http::{header, Method},
-    routing::{delete, get, patch, post, put},
+    routing::{get, patch, post},
     Router,
 };
 use tower_http::cors::{AllowOrigin, CorsLayer};

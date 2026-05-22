@@ -9,6 +9,7 @@ use crate::state::AppState;
 
 /// Optional JWT: no header → anonymous; valid header → user + raw token for upstream proxy.
 pub struct OptionalAuth {
+    #[allow(dead_code)]
     pub user: Option<AuthUser>,
     pub token: Option<String>,
 }

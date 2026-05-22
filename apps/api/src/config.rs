@@ -25,10 +25,13 @@ impl Config {
             .context("API_PORT must be a valid port number")?;
         let database_url_raw =
             std::env::var("DATABASE_URL").context("DATABASE_URL is required")?;
+        let default_database_url = normalize_supabase_database_url(&database_url_raw);
         let database_url = std::env::var("RUNTIME_DATABASE_URL")
-            .unwrap_or_else(|_| supabase_session_pooler_url(&database_url_raw));
+            .map(|url| strip_connect_param(&url, "pgbouncer"))
+            .unwrap_or_else(|_| default_database_url.clone());
         let migrate_database_url = std::env::var("MIGRATE_DATABASE_URL")
-            .unwrap_or_else(|_| supabase_session_pooler_url(&database_url_raw));
+            .map(|url| strip_connect_param(&url, "pgbouncer"))
+            .unwrap_or(default_database_url);
         let cors_allowed_origin = std::env::var("CORS_ALLOWED_ORIGIN")
             .unwrap_or_else(|_| "http://localhost:3000".to_string());
         let run_migrations = env_bool("RUN_MIGRATIONS", true);
@@ -66,14 +69,35 @@ impl Config {
 }
 
 /// Supabase transaction pooler (:6543) breaks sqlx prepared statements; use session pooler (:5432).
-fn supabase_session_pooler_url(database_url: &str) -> String {
-    if database_url.contains("pooler.supabase.com:6543") {
+fn normalize_supabase_database_url(database_url: &str) -> String {
+    let url = if database_url.contains("pooler.supabase.com:6543") {
         tracing::info!(
             "rewriting DATABASE_URL from transaction pooler :6543 to session pooler :5432 for sqlx"
         );
-        return database_url.replace("pooler.supabase.com:6543", "pooler.supabase.com:5432");
+        database_url.replace("pooler.supabase.com:6543", "pooler.supabase.com:5432")
+    } else {
+        database_url.to_string()
+    };
+
+    strip_connect_param(&url, "pgbouncer")
+}
+
+/// sqlx does not understand Supabase-only connect flags such as `pgbouncer=true`.
+fn strip_connect_param(database_url: &str, key: &str) -> String {
+    let Some((base, query)) = database_url.split_once('?') else {
+        return database_url.to_string();
+    };
+
+    let filtered: Vec<&str> = query
+        .split('&')
+        .filter(|pair| pair.split('=').next().is_some_and(|name| name != key))
+        .collect();
+
+    if filtered.is_empty() {
+        base.to_string()
+    } else {
+        format!("{base}?{}", filtered.join("&"))
     }
-    database_url.to_string()
 }
 
 fn env_bool(key: &str, default: bool) -> bool {
