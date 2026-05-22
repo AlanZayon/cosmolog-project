@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { uploadFile } from '@/lib/api/storage';
+import {
+  ApiError,
+  getMyProfile,
+  getMyStories,
+  getMyUniverses,
+  isApiConfigured,
+  patchMyProfile,
+} from '@/lib/api';
 import Link from "next/link";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +24,7 @@ import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 
 export default function ProfilePage() {
-  const { user, refreshProfile } = useAuth();
+  const { user, session, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -29,34 +37,74 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const accessToken = session?.access_token;
+
   useEffect(() => {
     if (!user) {
       router.push("/login");
       return;
     }
-    fetchProfile();
-    fetchStories();
-    fetchUniverses();
-  }, [user, router]);
+    if (!isApiConfigured()) {
+      toast({
+        title: t('common.error'),
+        description: 'NEXT_PUBLIC_API_URL is not configured',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!accessToken) return;
+    void fetchProfile();
+    void fetchStories();
+    void fetchUniverses();
+  }, [user, accessToken, router, toast, t]);
 
   const fetchProfile = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('user_id', user!.id).single();
-    if (data) { setProfile(data); setUsername(data.username); setBio(data.bio || ''); }
+    if (!accessToken) return;
+    try {
+      const data = await getMyProfile(accessToken);
+      setProfile(data as Tables<'profiles'>);
+      setUsername(data.username);
+      setBio(data.bio || '');
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof ApiError ? err.message : String(err),
+        variant: 'destructive',
+      });
+    }
   };
 
   const fetchStories = async () => {
-    const { data } = await supabase.from('stories').select('*').eq('author_id', user!.id).order('created_at', { ascending: false });
-    if (data) setStories(data);
+    if (!accessToken) return;
+    try {
+      const data = await getMyStories(accessToken);
+      setStories(data as Tables<'stories'>[]);
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof ApiError ? err.message : String(err),
+        variant: 'destructive',
+      });
+    }
   };
 
   const fetchUniverses = async () => {
-    const { data } = await supabase.from('universes').select('*').eq('owner_id', user!.id).order('created_at', { ascending: false });
-    if (data) setUniverses(data);
+    if (!accessToken) return;
+    try {
+      const data = await getMyUniverses(accessToken);
+      setUniverses(data as Tables<'universes'>[]);
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof ApiError ? err.message : String(err),
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !accessToken) return;
     if (file.size > 2 * 1024 * 1024) {
       toast({ title: t('profile.imageTooLarge'), description: t('profile.max2mb'), variant: 'destructive' });
       return;
@@ -65,16 +113,14 @@ export default function ProfilePage() {
     try {
       const ext = file.name.split('.').pop();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file);
-      if (uploadErr) throw uploadErr;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const { error } = await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
-      if (error) throw error;
+      const publicUrl = await uploadFile(accessToken, 'avatars', file, path);
+      await patchMyProfile(accessToken, { avatar_url: publicUrl });
       toast({ title: t('profile.avatarUpdated') });
       await refreshProfile();
-      fetchProfile();
-    } catch (err: any) {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+      await fetchProfile();
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
     } finally {
       setUploadingAvatar(false);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -82,12 +128,20 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    const { error } = await supabase.from('profiles').update({ username, bio }).eq('user_id', user!.id);
-    if (error) { toast({ title: t('common.error'), description: error.message, variant: 'destructive' }); return; }
-    toast({ title: t('profile.updated') });
-    setEditing(false);
-    await refreshProfile();
-    fetchProfile();
+    if (!accessToken) return;
+    try {
+      await patchMyProfile(accessToken, { username, bio });
+      toast({ title: t('profile.updated') });
+      setEditing(false);
+      await refreshProfile();
+      await fetchProfile();
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof ApiError ? err.message : String(err),
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

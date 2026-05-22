@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from "next/navigation";
-import { supabase } from '@/integrations/supabase/client';
+import { isApiConfigured, searchStories } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
@@ -17,19 +17,18 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!q) return;
+    if (!isApiConfigured()) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    supabase.from('stories').select('*')
-      .ilike('title', `%${q}%`)
-      .order('likes_count', { ascending: false })
-      .limit(50)
-      .then(async ({ data }) => {
-        if (!data) { setResults([]); setLoading(false); return; }
-        const authorIds = [...new Set(data.map(s => s.author_id))];
-        const { data: profiles } = await supabase.from('profiles').select('user_id, username, avatar_url').in('user_id', authorIds);
-        const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-        setResults(data.map(s => ({ ...s, profiles: profileMap.get(s.author_id) || null })) as StoryWithProfile[]);
-        setLoading(false);
-      });
+    searchStories(q)
+      .then((data) => {
+        setResults(data as StoryWithProfile[]);
+      })
+      .catch(() => setResults([]))
+      .finally(() => setLoading(false));
   }, [q]);
 
   return (

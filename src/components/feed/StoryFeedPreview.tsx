@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  getArc,
+  getProfileByUserId,
+  getStoryById,
+  getStoryChapters,
+  getComicPages,
+  getUniverseById,
+} from '@/lib/api';
+import { getBlocks } from '@/lib/api/content';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
@@ -87,59 +95,47 @@ export default function StoryFeedPreview({
 
     const run = async () => {
       setLoading(true);
-      const { data } = await supabase.from('stories').select('*').eq('id', storyId).single();
-      const storyData = data as Tables<'stories'> | null;
+      const storyData = await getStoryById(storyId);
 
       if (cancelled) return;
 
-      if (!storyData) {
-        setStory(null);
-        setLoading(false);
-        return;
-      }
-
-      const [{ data: profile }, { data: universe }, { data: arc }] = await Promise.all([
-        supabase.from('profiles').select('username').eq('user_id', storyData.author_id).single(),
+      const [profile, universe, arc] = await Promise.all([
+        getProfileByUserId(storyData.author_id).catch(() => null),
         storyData.universe_id
-          ? supabase.from('universes').select('id, title').eq('id', storyData.universe_id).single()
-          : Promise.resolve({ data: null }),
-        storyData.arc_id
-          ? supabase.from('arcs').select('id, name').eq('id', storyData.arc_id).single()
-          : Promise.resolve({ data: null }),
+          ? getUniverseById(storyData.universe_id).catch(() => null)
+          : Promise.resolve(null),
+        storyData.arc_id ? getArc(storyData.arc_id).catch(() => null) : Promise.resolve(null),
       ]);
 
       if (cancelled) return;
 
-      setStory({ ...storyData, profiles: profile, universe, arc } as StoryWithProfile);
+      setStory({
+        ...storyData,
+        profiles: profile ? { username: profile.username } : null,
+        universe: universe ? { id: universe.id, title: universe.title } : null,
+        arc: arc ? { id: arc.id, name: arc.name } : null,
+      } as StoryWithProfile);
 
       const normalizedType = normalizeStoryType(storyData.type);
 
       if (normalizedType === 'chapters') {
-        const { data: ch } = await supabase.from('chapters').select('*').eq('story_id', storyId).order('chapter_number');
-        if (!cancelled) setChapters(ch || []);
+        const ch = await getStoryChapters(storyId);
+        if (!cancelled) setChapters(ch as Tables<'chapters'>[]);
 
-        const { data: allBlocks } = await supabase
-          .from('illustrated_blocks')
-          .select('*')
-          .eq('story_id', storyId)
-          .not('chapter_id', 'is', null)
-          .order('block_order');
-        if (!cancelled) {
-          const map: Record<string, StoryBlockRow[]> = {};
-          for (const block of allBlocks || []) {
-            if (!block.chapter_id) continue;
-            (map[block.chapter_id] ||= []).push(block);
-          }
-          setChapterBlocksMap(map);
+        const map: Record<string, StoryBlockRow[]> = {};
+        for (const chapter of ch) {
+          const blocks = await getBlocks(storyId, chapter.id);
+          map[chapter.id] = blocks as StoryBlockRow[];
         }
+        if (!cancelled) setChapterBlocksMap(map);
       } else {
         setChapters([]);
         setChapterBlocksMap({});
       }
 
       if (normalizedType === 'comic') {
-        const { data: pages } = await supabase.from('comic_pages').select('*').eq('story_id', storyId).order('page_order');
-        if (!cancelled) setComicPages(pages || []);
+        const pages = await getComicPages(storyId);
+        if (!cancelled) setComicPages(pages as Tables<'comic_pages'>[]);
       } else {
         setComicPages([]);
       }

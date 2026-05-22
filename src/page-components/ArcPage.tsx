@@ -7,7 +7,7 @@ import StoryCard from '@/components/StoryCard';
 import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { getArc, getArcStories, getUniverseById } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
@@ -43,30 +43,20 @@ export default function ArcPage({
   const fetchArc = async () => {
     if (!id) return;
     setLoading(true);
-    const { data: arcData } = await supabase.from('arcs').select('*').eq('id', id).single();
-    if (!arcData) {
+    try {
+      const arcData = await getArc(id);
+      setArc(arcData as Arc);
+      const [universeData, storiesData] = await Promise.all([
+        getUniverseById(arcData.universe_id),
+        getArcStories(id),
+      ]);
+      setUniverse(universeData as Tables<'universes'>);
+      setStories(storiesData as StoryWithProfile[]);
+    } catch {
       setArc(null);
+    } finally {
       setLoading(false);
-      return;
     }
-    setArc(arcData);
-
-    const [{ data: universeData }, { data: storiesData }] = await Promise.all([
-      supabase.from('universes').select('*').eq('id', arcData.universe_id).single(),
-      supabase.from('stories').select('*').eq('arc_id', arcData.id).order('created_at', { ascending: false }),
-    ]);
-
-    setUniverse(universeData);
-
-    const authorIds = [...new Set((storiesData || []).map((story) => story.author_id))];
-    let profileMap = new Map<string, { username: string; avatar_url: string | null }>();
-    if (authorIds.length > 0) {
-      const { data: profiles } = await supabase.from('profiles').select('user_id, username, avatar_url').in('user_id', authorIds);
-      profileMap = new Map(profiles?.map((profile) => [profile.user_id, { username: profile.username, avatar_url: profile.avatar_url }]) || []);
-    }
-
-    setStories((storiesData || []).map((story) => ({ ...story, profiles: profileMap.get(story.author_id) || null })));
-    setLoading(false);
   };
 
   const shell = embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background';

@@ -3,7 +3,16 @@ import Link from 'next/link';
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  ApiError,
+  appendComicPage,
+  createChapter,
+  createStory,
+  getMyUniverses,
+  getUniverseArcs,
+  isApiConfigured,
+} from '@/lib/api';
+import { uploadFile } from '@/lib/api/storage';
 import type { Tables } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +48,7 @@ const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: Transl
 ];
 
 export default function CreateStoryPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
   const params = useParams<{ id?: string }>();
   const universeId = params.id;
@@ -87,45 +96,41 @@ export default function CreateStoryPage() {
 
   const fetchUniverses = async () => {
     setLoadingRelations(true);
-    const { data, error } = await supabase
-      .from('universes')
-      .select('*')
-      .eq('owner_id', user!.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    try {
+      if (!isApiConfigured() || !session?.access_token) {
+        throw new Error('NEXT_PUBLIC_API_URL is not configured');
+      }
+      const universeList = await getMyUniverses(session.access_token);
+      setUniverses(universeList as Universe[]);
+      if (universeId) setSelectedUniverseId(universeId);
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof ApiError ? err.message : String(err),
+        variant: 'destructive',
+      });
+    } finally {
       setLoadingRelations(false);
-      return;
     }
-
-    const universeList = data || [];
-    setUniverses(universeList);
-
-    if (universeId) {
-      setSelectedUniverseId(universeId);
-    }
-
-    setLoadingRelations(false);
   };
 
   const fetchArcs = async (currentUniverseId: string) => {
-    const { data, error } = await supabase
-      .from('arcs')
-      .select('*')
-      .eq('universe_id', currentUniverseId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
-      return;
+    try {
+      const data = await getUniverseArcs(currentUniverseId);
+      const arcList = [...data].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+      setArcs(arcList as Arc[]);
+      setSelectedArcId((currentArcId) =>
+        arcList.some((arc) => arc.id === currentArcId) ? currentArcId : '',
+      );
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof ApiError ? err.message : String(err),
+        variant: 'destructive',
+      });
     }
-
-    const arcList = data || [];
-    setArcs(arcList);
-    setSelectedArcId((currentArcId) => (
-      arcList.some((arc) => arc.id === currentArcId) ? currentArcId : ''
-    ));
   };
 
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,13 +151,11 @@ export default function CreateStoryPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const uploadFile = async (bucket: string, file: File): Promise<string> => {
+  const uploadCoverOrAsset = async (bucket: string, file: File): Promise<string> => {
+    if (!session?.access_token) throw new Error('Not authenticated');
     const ext = file.name.split('.').pop();
     const path = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from(bucket).upload(path, file);
-    if (error) throw error;
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
+    return uploadFile(session.access_token, bucket, file, path);
   };
 
   const metaViolationsCreate = validateStoryMeta(title.trim(), description.trim());
@@ -197,69 +200,62 @@ export default function CreateStoryPage() {
     }
     setLoading(true);
     try {
-      const cover_image_url = coverFile ? await uploadFile('covers', coverFile) : null;
+      const cover_image_url = coverFile ? await uploadCoverOrAsset('covers', coverFile) : null;
       const titleT = title.trim();
       const descT = description.trim();
 
-      const { data, error } = await supabase.from('stories').insert({
+      if (!isApiConfigured() || !session?.access_token) {
+        throw new Error('NEXT_PUBLIC_API_URL is not configured');
+      }
+
+      const data = await createStory(session.access_token, {
         title: titleT,
         description: descT || null,
-        author_id: user.id,
         tags,
         type: storyType,
         content: null,
         universe_id: selectedUniverseId || null,
         arc_id: selectedArcId || null,
-        ...(cover_image_url && { cover_image_url }),
-      } as any).select().single();
+        cover_image_url,
+      });
 
-      if (error) throw error;
-      const storyId = (data as any).id;
+      const storyId = data.id;
+
+      const token = session.access_token;
 
       if (storyType === 'comic' && comicPages.length > 0) {
         for (let i = 0; i < comicPages.length; i++) {
           const page = comicPages[i];
           if (page.file) {
-            const imageUrl = await uploadFile('comics', page.file);
-            await supabase.from('comic_pages').insert({
-              story_id: storyId,
+            const imageUrl = await uploadCoverOrAsset('comics', page.file);
+            await appendComicPage(token, storyId, {
               image_url: imageUrl,
               page_order: i + 1,
-            } as any);
+            });
           }
         }
       }
 
       if (storyType === 'short_story' && shortStoryBlocks.some(blockHasContent)) {
-        await saveBlocks(storyId, null, shortStoryBlocks, user.id);
+        await saveBlocks(storyId, null, shortStoryBlocks, token, user.id);
       }
 
       if (storyType === 'chapters' && draftChapters.length > 0) {
-        let chapterNum = 1;
         for (const ch of draftChapters) {
           const chTitle = ch.title.trim();
           if (!chTitle) continue;
-          const { data: chapterRow, error: chError } = await supabase
-            .from('chapters')
-            .insert({
-              story_id: storyId,
-              title: chTitle,
-              content: '',
-              chapter_number: chapterNum++,
-            } as any)
-            .select('id')
-            .single();
-          if (chError) throw chError;
-          if (chapterRow && ch.blocks.some(blockHasContent)) {
-            await saveBlocks(storyId, chapterRow.id, ch.blocks, user.id);
+          const chapterRow = await createChapter(token, storyId, chTitle);
+          if (ch.blocks.some(blockHasContent)) {
+            await saveBlocks(storyId, chapterRow.id, ch.blocks, token, user.id);
           }
         }
       }
 
       toast({ title: t('createStory.success') });
       router.push(`/story/${storyId}`);
-    } catch (err: any) {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { supabase } from '@/integrations/supabase/client';
+import {
+  createChapter,
+  getComicPages,
+  getProfileByUserId,
+  getStoryById,
+  getStoryChapters,
+  getUniverseArcs,
+  replaceComicPages,
+  updateStory,
+} from '@/lib/api';
+import {
+  createComment,
+  getLikeStatus,
+  getStoryComments,
+  toggleLike,
+} from '@/lib/api/social';
+import { uploadFile } from '@/lib/api/storage';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
@@ -56,7 +72,7 @@ export default function StoryPage({
 }: StoryPageProps = {}) {
   const params = useParams<{ id: string }>();
   const id = (storyIdOverride ?? params?.id) as string | undefined;
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [story, setStory] = useState<StoryWithProfile | null>(null);
@@ -99,70 +115,77 @@ export default function StoryPage({
   }, [embedExploration, id]);
 
   const fetchAll = async () => {
-    const storyRes = await supabase.from('stories').select('*').eq('id', id!).single();
+    if (!id) return;
+    try {
+      const storyData = await getStoryById(id);
+      const authorProfile = await getProfileByUserId(storyData.author_id);
+      setStory({
+        ...storyData,
+        profiles: authorProfile ? { username: authorProfile.username } : null,
+      } as StoryWithProfile);
 
-    if (storyRes.data) {
-      const storyData = storyRes.data as any;
-      const { data: authorProfile } = await supabase.from('profiles').select('username').eq('user_id', storyData.author_id).single();
-      setStory({ ...storyData, profiles: authorProfile } as StoryWithProfile);
       if (storyData.universe_id) {
-        const { data: arcsData } = await supabase.from('arcs').select('*').eq('universe_id', storyData.universe_id).order('created_at', { ascending: false });
-        setAvailableArcs(arcsData || []);
-        setStoryArc((arcsData || []).find((arc) => arc.id === storyData.arc_id) || null);
+        const arcsData = await getUniverseArcs(storyData.universe_id);
+        const sorted = [...arcsData].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+        setAvailableArcs(sorted as Arc[]);
+        setStoryArc((sorted as Arc[]).find((arc) => arc.id === storyData.arc_id) || null);
       } else {
         setAvailableArcs([]);
         setStoryArc(null);
       }
 
-      // Fetch type-specific content
       if (normalizeStoryType(storyData.type) === 'chapters') {
-        const { data } = await supabase.from('chapters').select('*').eq('story_id', id!).order('chapter_number');
-        setChapters(data || []);
+        setChapters((await getStoryChapters(id)) as Tables<'chapters'>[]);
       } else {
         setChapters([]);
       }
 
       if (storyData.type === 'comic') {
-        const { data } = await (supabase.from('comic_pages') as any).select('*').eq('story_id', id!).order('page_order');
-        setComicPages(data || []);
+        setComicPages((await getComicPages(id)) as Tables<'comic_pages'>[]);
+      } else {
+        setComicPages([]);
       }
 
       if (storyData.type === 'short_story') {
-        const blocks = await loadBlocks(id!, null);
-        setShortStoryBlocks(blocks);
+        setShortStoryBlocks(await loadBlocks(id, null));
       } else {
         setShortStoryBlocks([]);
       }
-    }
 
-    const commentsRes = await supabase.from('comments').select('*').eq('story_id', id!).order('created_at', { ascending: false });
-    if (commentsRes.data) {
-      const userIds = [...new Set(commentsRes.data.map(c => c.user_id))];
-      const { data: profiles } = await supabase.from('profiles').select('user_id, username').in('user_id', userIds);
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-      setComments(commentsRes.data.map(c => ({ ...c, profiles: profileMap.get(c.user_id) || null })) as CommentWithProfile[]);
-    }
+      const commentRows = await getStoryComments(id);
+      setComments(
+        commentRows.map((c) => ({
+          ...c,
+          profiles: c.username ? { username: c.username } : null,
+        })) as CommentWithProfile[],
+      );
 
-    if (user) {
-      const { data } = await supabase.from('likes').select('*').eq('story_id', id!).eq('user_id', user.id).maybeSingle();
-      setLiked(!!data);
+      if (user && session?.access_token) {
+        const { liked: isLiked } = await getLikeStatus(session.access_token, id);
+        setLiked(isLiked);
+      } else {
+        setLiked(false);
+      }
+    } catch {
+      setStory(null);
     }
   };
 
-  const toggleLike = async () => {
-    if (!user) { toast({ title: t('story.loginToLike'), variant: 'destructive' }); return; }
-    if (liked) {
-      await supabase.from('likes').delete().eq('story_id', id!).eq('user_id', user.id);
-    } else {
-      await supabase.from('likes').insert({ story_id: id!, user_id: user.id });
+  const toggleLikeHandler = async () => {
+    if (!user || !session?.access_token) {
+      toast({ title: t('story.loginToLike'), variant: 'destructive' });
+      return;
     }
-    setLiked(!liked);
+    const { liked: isLiked } = await toggleLike(session.access_token, id!);
+    setLiked(isLiked);
     fetchAll();
   };
 
   const addComment = async () => {
-    if (!user || !comment.trim()) return;
-    await supabase.from('comments').insert({ story_id: id!, user_id: user.id, content: comment.trim() });
+    if (!user || !session?.access_token || !comment.trim()) return;
+    await createComment(session.access_token, id!, comment.trim());
     setComment('');
     fetchAll();
   };
@@ -181,20 +204,10 @@ export default function StoryPage({
     }
     setAddingChapter(true);
     try {
-      const nextNum = chapters.length + 1;
-      const { data: chapterRow, error } = await supabase
-        .from('chapters')
-        .insert({
-          story_id: id!,
-          title: chTitle,
-          content: '',
-          chapter_number: nextNum,
-        })
-        .select('id')
-        .single();
-      if (error) throw error;
-      if (chapterRow && chapterBlocks.some(blockHasContent) && user) {
-        await saveBlocks(id!, chapterRow.id, chapterBlocks, user.id);
+      if (!session?.access_token) throw new Error('Not authenticated');
+      const chapterRow = await createChapter(session.access_token, id!, chTitle);
+      if (chapterBlocks.some(blockHasContent)) {
+        await saveBlocks(id!, chapterRow.id, chapterBlocks, session.access_token, user!.id);
       }
       setChapterTitle('');
       setChapterBlocks([]);
@@ -259,26 +272,22 @@ export default function StoryPage({
     setSaving(true);
     try {
       let cover_image_url = story.cover_image_url;
+      if (!session?.access_token) throw new Error('Not authenticated');
       if (editCoverFile) {
         const ext = editCoverFile.name.split('.').pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from('covers').upload(path, editCoverFile);
-        if (uploadErr) throw uploadErr;
-        const { data } = supabase.storage.from('covers').getPublicUrl(path);
-        cover_image_url = data.publicUrl;
+        cover_image_url = await uploadFile(session.access_token, 'covers', editCoverFile, path);
       } else if (!editCoverPreview) {
         cover_image_url = null;
       }
 
-      const { error } = await supabase.from('stories').update({
+      await updateStory(session.access_token, story.id, {
         title: titleT,
         description: descT || null,
         cover_image_url,
         tags: editTags,
         arc_id: editArcId || null,
-      } as any).eq('id', story.id);
-
-      if (error) throw error;
+      });
       toast({ title: t('story.updated') });
       setEditing(false);
       fetchAll();
@@ -332,27 +341,26 @@ export default function StoryPage({
     setSavingContent(true);
     try {
 
+      if (!session?.access_token) throw new Error('Not authenticated');
+
       if (type === 'short_story') {
-        await saveBlocks(story.id, null, editIllustratedBlocks, user!.id);
-        await supabase.from('stories').update({ content: null } as any).eq('id', story.id);
+        await saveBlocks(story.id, null, editIllustratedBlocks, session.access_token, user.id);
+        await updateStory(session.access_token, story.id, { content: null });
       }
 
       if (type === 'comic') {
-        // Delete old pages
-        await (supabase.from('comic_pages') as any).delete().eq('story_id', story.id);
-        // Upload new / re-insert existing
+        const pages: { image_url: string; page_order: number }[] = [];
         for (let i = 0; i < editComicPages.length; i++) {
           const page = editComicPages[i];
           let image_url = page.image_url;
           if (page.file) {
             const ext = page.file.name.split('.').pop();
             const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-            const { error: upErr } = await supabase.storage.from('comics').upload(path, page.file);
-            if (upErr) throw upErr;
-            image_url = supabase.storage.from('comics').getPublicUrl(path).data.publicUrl;
+            image_url = await uploadFile(session.access_token, 'comics', page.file, path);
           }
-          await (supabase.from('comic_pages') as any).insert({ story_id: story.id, image_url, page_order: i + 1 });
+          if (image_url) pages.push({ image_url, page_order: i + 1 });
         }
+        await replaceComicPages(session.access_token, story.id, pages);
       }
 
       toast({ title: t('story.contentUpdated') });
@@ -496,7 +504,7 @@ export default function StoryPage({
                 </div>
               )}
               <div className="flex items-center gap-4 mt-4">
-                <Button variant={liked ? 'default' : 'outline'} size="sm" onClick={toggleLike} className={liked ? 'gradient-warm text-primary-foreground' : ''}>
+                <Button variant={liked ? 'default' : 'outline'} size="sm" onClick={toggleLikeHandler} className={liked ? 'gradient-warm text-primary-foreground' : ''}>
                   <Heart className={`h-4 w-4 mr-1 ${liked ? 'fill-current' : ''}`} /> {story.likes_count}
                 </Button>
                 <span className="flex items-center gap-1 text-sm text-muted-foreground">

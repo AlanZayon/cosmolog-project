@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { ApiError, createUniverse, isApiConfigured } from '@/lib/api';
+import { uploadFile } from '@/lib/api/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +15,7 @@ import { CONTENT_LIMITS, describeViolations, validateUniverseFields } from '@/li
 import { ImagePlus, X } from 'lucide-react';
 
 export default function CreateUniversePage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -69,24 +70,29 @@ export default function CreateUniversePage() {
       if (coverFile) {
         const ext = coverFile.name.split('.').pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from('universe-covers').upload(path, coverFile);
-        if (uploadErr) throw uploadErr;
-        const { data } = supabase.storage.from('universe-covers').getPublicUrl(path);
-        cover_image_url = data.publicUrl;
+        cover_image_url = await uploadFile(
+          session!.access_token,
+          'universe-covers',
+          coverFile,
+          path,
+        );
       }
 
-      const { data, error } = await (supabase.from('universes') as any).insert({
+      if (!isApiConfigured() || !session?.access_token) {
+        throw new Error('NEXT_PUBLIC_API_URL is not configured');
+      }
+
+      const data = await createUniverse(session.access_token, {
         title: titleTrim,
         description: descTrim || null,
         cover_image_url,
-        owner_id: user.id,
-      }).select().single();
+      });
 
-      if (error) throw error;
       toast({ title: t('createUniverse.success') });
       router.replace(`/universe/${data.id}`);
-    } catch (err: any) {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

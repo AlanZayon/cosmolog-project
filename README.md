@@ -2,7 +2,16 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Copy environment variables and start the Rust API (see [apps/api/README.md](apps/api/README.md)):
+
+```bash
+cp .env.example .env.local
+# Add NEXT_PUBLIC_API_URL=http://127.0.0.1:8080 to .env.local
+
+cd apps/api && cargo run   # terminal 1
+```
+
+Then run the Next.js app:
 
 ```bash
 npm run dev

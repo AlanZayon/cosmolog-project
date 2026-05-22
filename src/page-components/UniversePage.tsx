@@ -1,7 +1,22 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { supabase } from '@/integrations/supabase/client';
+import {
+  ApiError,
+  createArc,
+  deleteArc as deleteArcApi,
+  getUniverseArcs,
+  getUniverseById,
+  getUniverseStories,
+  updateArc,
+  updateUniverse,
+} from '@/lib/api';
+import {
+  followUniverse,
+  getFollowStatus,
+  unfollowUniverse,
+} from '@/lib/api/social';
+import { uploadFile } from '@/lib/api/storage';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
@@ -84,7 +99,7 @@ export default function UniversePage({
 }: UniversePageProps = {}) {
   const params = useParams<{ id: string }>();
   const id = (universeIdOverride ?? params?.id) as string | undefined;
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [universe, setUniverse] = useState<Universe | null>(null);
@@ -123,55 +138,36 @@ export default function UniversePage({
     }
     setLoading(true);
 
-    const { data: universeData } = await (supabase.from('universes') as any).select('*').eq('id', id).single();
-    if (!universeData) {
+    try {
+      const universeData = await getUniverseById(id);
+      setUniverse(universeData as Universe);
+
+      const arcData = await getUniverseArcs(id);
+      setArcs(arcData as Arc[]);
+
+      if (user && session?.access_token) {
+        const { following: isFollowing } = await getFollowStatus(session.access_token, id);
+        setFollowing(isFollowing);
+      } else {
+        setFollowing(false);
+      }
+
+      const storiesData = await getUniverseStories(id, activeType);
+      setStories(storiesData as StoryWithProfile[]);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
       setUniverse(null);
+    } finally {
       setLoading(false);
-      return;
     }
-    setUniverse(universeData);
-
-    const { data: arcData } = await supabase
-      .from('arcs')
-      .select('*')
-      .eq('universe_id', id)
-      .order('created_at', { ascending: true });
-    setArcs(arcData || []);
-
-    if (user) {
-      const { data: followData } = await supabase
-        .from('universe_follows')
-        .select('*')
-        .eq('universe_id', id)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      setFollowing(!!followData);
-    } else {
-      setFollowing(false);
-    }
-
-    let query = supabase.from('stories').select('*').eq('universe_id', id).order('created_at', { ascending: true });
-    if (activeType) query = query.eq('type', activeType);
-    const { data: storiesData } = await query;
-
-    const storyList = (storiesData || []) as Tables<'stories'>[];
-    const authorIds = [...new Set(storyList.map(s => s.author_id))];
-    let profileMap = new Map<string, { username: string; avatar_url: string | null }>();
-    if (authorIds.length > 0) {
-      const { data: profiles } = await supabase.from('profiles').select('user_id, username, avatar_url').in('user_id', authorIds);
-      profileMap = new Map(profiles?.map(p => [p.user_id, { username: p.username, avatar_url: p.avatar_url }]) || []);
-    }
-
-    setStories(storyList.map(s => ({ ...s, profiles: profileMap.get(s.author_id) || null })));
-    setLoading(false);
   };
 
   const uploadArcCover = async (file: File) => {
+    if (!session?.access_token) throw new Error('Not authenticated');
     const ext = file.name.split('.').pop();
     const path = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from('arc-covers').upload(path, file);
-    if (error) throw error;
-    return supabase.storage.from('arc-covers').getPublicUrl(path).data.publicUrl;
+    return uploadFile(session.access_token, 'arc-covers', file, path);
   };
 
   const resetArcForm = () => {
@@ -220,24 +216,18 @@ export default function UniversePage({
         cover_image_url = null;
       }
 
+      if (!session?.access_token) throw new Error('Not authenticated');
+      const payload = {
+        name: nT,
+        description: descT || null,
+        type: arcType,
+        cover_image_url,
+      };
       if (editingArcId) {
-        const { error } = await supabase.from('arcs').update({
-          name: nT,
-          description: descT || null,
-          type: arcType,
-          cover_image_url,
-        }).eq('id', editingArcId);
-        if (error) throw error;
+        await updateArc(session.access_token, editingArcId, payload);
         toast({ title: t('universe.arcUpdated') });
       } else {
-        const { error } = await supabase.from('arcs').insert({
-          universe_id: universe.id,
-          name: nT,
-          description: descT || null,
-          type: arcType,
-          cover_image_url,
-        });
-        if (error) throw error;
+        await createArc(session.access_token, universe.id, payload);
         toast({ title: t('universe.arcCreated') });
       }
 
@@ -252,9 +242,12 @@ export default function UniversePage({
 
   const deleteArc = async (arcId: string) => {
     if (!window.confirm(t('universe.deleteArcConfirm'))) return;
-    const { error } = await supabase.from('arcs').delete().eq('id', arcId);
-    if (error) {
-      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+    if (!session?.access_token) return;
+    try {
+      await deleteArcApi(session.access_token, arcId);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
       return;
     }
     toast({ title: t('universe.arcDeleted') });
@@ -266,22 +259,19 @@ export default function UniversePage({
 
   const toggleFollow = async () => {
     if (!user || !universe || isOwner) return;
-    if (following) {
-      const { error } = await supabase.from('universe_follows').delete().eq('universe_id', universe.id).eq('user_id', user.id);
-      if (error) {
-        toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
-        return;
+    if (!session?.access_token) return;
+    try {
+      if (following) {
+        await unfollowUniverse(session.access_token, universe.id);
+        setFollowing(false);
+      } else {
+        await followUniverse(session.access_token, universe.id);
+        setFollowing(true);
       }
-      setFollowing(false);
-      return;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
     }
-
-    const { error } = await supabase.from('universe_follows').insert({ universe_id: universe.id, user_id: user.id });
-    if (error) {
-      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
-      return;
-    }
-    setFollowing(true);
   };
 
   const startEditing = () => {
@@ -325,22 +315,20 @@ export default function UniversePage({
     setSaving(true);
     try {
       let cover_image_url = universe.cover_image_url;
+      if (!session?.access_token) throw new Error('Not authenticated');
       if (editCoverFile) {
         const ext = editCoverFile.name.split('.').pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from('universe-covers').upload(path, editCoverFile);
-        if (uploadErr) throw uploadErr;
-        cover_image_url = supabase.storage.from('universe-covers').getPublicUrl(path).data.publicUrl;
+        cover_image_url = await uploadFile(session.access_token, 'universe-covers', editCoverFile, path);
       } else if (!editCoverPreview) {
         cover_image_url = null;
       }
 
-      const { error } = await (supabase.from('universes') as any).update({
+      await updateUniverse(session.access_token, universe.id, {
         title: tT,
         description: dT || null,
         cover_image_url,
-      }).eq('id', universe.id);
-      if (error) throw error;
+      });
       toast({ title: t('universe.updated') });
       setEditing(false);
       fetchUniverse();

@@ -3,7 +3,7 @@ import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/Brow
 import StoryCard from '@/components/StoryCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { getArc, getArcStories, getUniverseById } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
@@ -41,36 +41,20 @@ export default function ArcFeedReader({
 
     const fetchArc = async () => {
       setLoading(true);
-      const { data: arcData } = await supabase.from('arcs').select('*').eq('id', arcId).single();
+      const arcData = await getArc(arcId);
       if (cancelled) return;
 
-      if (!arcData) {
-        setArc(null);
-        setLoading(false);
-        return;
-      }
-      setArc(arcData);
+      setArc(arcData as Arc);
 
-      const [{ data: universeData }, { data: storiesData }] = await Promise.all([
-        supabase.from('universes').select('*').eq('id', arcData.universe_id).single(),
-        supabase.from('stories').select('*').eq('arc_id', arcData.id).order('created_at', { ascending: false }),
+      const [universeData, storiesData] = await Promise.all([
+        getUniverseById(arcData.universe_id),
+        getArcStories(arcId),
       ]);
 
       if (cancelled) return;
 
-      setUniverse(universeData);
-
-      const authorIds = [...new Set((storiesData || []).map((s) => s.author_id))];
-      let profileMap = new Map<string, { username: string; avatar_url: string | null }>();
-      if (authorIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, username, avatar_url')
-          .in('user_id', authorIds);
-        profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
-      }
-
-      setStories((storiesData || []).map((s) => ({ ...s, profiles: profileMap.get(s.author_id) || null })));
+      setUniverse(universeData as Tables<'universes'>);
+      setStories(storiesData as StoryWithProfile[]);
       setLoading(false);
     };
 

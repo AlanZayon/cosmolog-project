@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { ApiError, getMyUniverses, isApiConfigured } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { Plus, Globe } from 'lucide-react';
@@ -19,7 +19,7 @@ interface Universe {
 }
 
 export default function UniversesPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const [universes, setUniverses] = useState<Universe[]>([]);
@@ -35,12 +35,20 @@ export default function UniversesPage() {
 
   const fetchUniverses = async () => {
     setLoading(true);
-    const { data } = await (supabase.from('universes') as any)
-      .select('*')
-      .eq('owner_id', user!.id)
-      .order('created_at', { ascending: false });
-    setUniverses(data || []);
-    setLoading(false);
+    try {
+      if (isApiConfigured() && session?.access_token) {
+        const data = await getMyUniverses(session.access_token);
+        setUniverses(data as Universe[]);
+      } else {
+        setUniverses([]);
+      }
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : String(err);
+      console.error(message);
+      setUniverses([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

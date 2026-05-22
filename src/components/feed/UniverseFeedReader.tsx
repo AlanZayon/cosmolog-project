@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { getUniverseArcs, getUniverseById, getUniverseStories } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import StoryCard from '@/components/StoryCard';
 import { Globe2, Library } from 'lucide-react';
@@ -53,34 +53,20 @@ export default function UniverseFeedReader({
 
     const run = async () => {
       setLoading(true);
-      const { data: universeData } = await (supabase.from('universes') as any).select('*').eq('id', universeId).single();
+      const universeData = await getUniverseById(universeId);
       if (cancelled) return;
 
-      if (!universeData) {
-        setUniverse(null);
-        setLoading(false);
-        return;
-      }
-      setUniverse(universeData);
+      setUniverse(universeData as Tables<'universes'>);
 
-      const [{ data: arcData }, { data: storiesData }] = await Promise.all([
-        supabase.from('arcs').select('*').eq('universe_id', universeId).order('created_at', { ascending: true }),
-        supabase.from('stories').select('*').eq('universe_id', universeId).order('created_at', { ascending: true }),
+      const [arcData, storiesData] = await Promise.all([
+        getUniverseArcs(universeId),
+        getUniverseStories(universeId),
       ]);
 
       if (cancelled) return;
 
-      setArcs(arcData || []);
-
-      const storyList = (storiesData || []) as Tables<'stories'>[];
-      const authorIds = [...new Set(storyList.map((s) => s.author_id))];
-      let profileMap = new Map<string, { username: string; avatar_url: string | null }>();
-      if (authorIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('user_id, username, avatar_url').in('user_id', authorIds);
-        profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
-      }
-
-      setStories(storyList.map((s) => ({ ...s, profiles: profileMap.get(s.author_id) || null })));
+      setArcs(arcData as Arc[]);
+      setStories(storiesData as StoryWithProfile[]);
       setLoading(false);
     };
 

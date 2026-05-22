@@ -1,7 +1,12 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  getChapterByNumber,
+  getChapterCount,
+  getStoryById,
+  updateChapter,
+} from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import Header from '@/components/Header';
@@ -45,7 +50,7 @@ export default function ChapterPage({
   const chapterNum =
     chapterNumOverride != null ? String(chapterNumOverride) : (params?.chapterNum as string | undefined);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [chapter, setChapter] = useState<Tables<'chapters'> | null>(null);
@@ -70,33 +75,20 @@ export default function ChapterPage({
 
   useEffect(() => {
     if (!id || !chapterNum) return;
-    supabase
-      .from('chapters')
-      .select('*')
-      .eq('story_id', id)
-      .eq('chapter_number', Number(chapterNum))
-      .single()
-      .then(async ({ data }) => {
-        if (data) {
-          setChapter(data);
-          setEditTitle(data.title);
-          const blocks = await loadBlocks(id, data.id);
-          setChapterBlocks(blocks);
-        }
-      });
-    supabase
-      .from('chapters')
-      .select('id', { count: 'exact' })
-      .eq('story_id', id)
-      .then(({ count }) => setTotalChapters(count || 0));
-    supabase
-      .from('stories')
-      .select('author_id')
-      .eq('id', id)
-      .single()
-      .then(({ data }) => {
-        if (data) setAuthorId(data.author_id);
-      });
+    void (async () => {
+      const num = Number(chapterNum);
+      const data = await getChapterByNumber(id, num);
+      if (data) {
+        setChapter(data as Tables<'chapters'>);
+        setEditTitle(data.title);
+        const blocks = await loadBlocks(id, data.id);
+        setChapterBlocks(blocks);
+      }
+      const { count } = await getChapterCount(id);
+      setTotalChapters(count);
+      const story = await getStoryById(id);
+      setAuthorId(story.author_id);
+    })();
   }, [id, chapterNum]);
 
   const num = Number(chapterNum);
@@ -143,15 +135,9 @@ export default function ChapterPage({
     }
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('chapters')
-        .update({
-          title: tT,
-          content: '',
-        })
-        .eq('id', chapter.id);
-      if (error) throw error;
-      await saveBlocks(id, chapter.id, editBlocks, user.id);
+      if (!session?.access_token) throw new Error('Not authenticated');
+      await updateChapter(session.access_token, id, chapter.id, tT);
+      await saveBlocks(id, chapter.id, editBlocks, session.access_token, user.id);
       const blocks = await loadBlocks(id, chapter.id);
       setChapter({ ...chapter, title: tT, content: '' });
       setChapterBlocks(blocks);

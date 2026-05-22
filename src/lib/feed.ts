@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+import { fetchFeed } from '@/lib/api/feed';
+import { loadSession } from '@/lib/auth/session';
 
 export type FeedItemType = 'story' | 'arc' | 'universe';
 
@@ -148,8 +149,8 @@ function enforceStoryPriority(items: FeedItem[]) {
   return result;
 }
 
-export async function getFeed(limit = 24): Promise<FeedItem[]> {
-  const { data, error } = await supabase.rpc("get_feed", { limit_count: limit });
-  if (error) throw error;
-  return enforceStoryPriority(normalizeFeed((data || []) as RawFeedRow[]));
+export async function getFeed(limit = 24, token?: string): Promise<FeedItem[]> {
+  const accessToken = token ?? loadSession()?.access_token;
+  const data = await fetchFeed(accessToken, limit);
+  return enforceStoryPriority(normalizeFeed(data as RawFeedRow[]));
 }
