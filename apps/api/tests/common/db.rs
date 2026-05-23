@@ -3,13 +3,17 @@ use std::time::Duration;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
+/// Session-scoped lock so parallel test binaries share one DB safely.
+const TEST_DB_LOCK_ID: i64 = 0x636f_736d_6f6c_0001;
+
 pub async fn test_db() -> Option<PgPool> {
     let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
         "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into()
     });
     let pool = match PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(3))
+        // One connection per test: advisory locks are session-scoped and released when the pool drops.
+        .max_connections(1)
+        .acquire_timeout(Duration::from_secs(30))
         .connect(&url)
         .await
     {
@@ -20,9 +24,28 @@ pub async fn test_db() -> Option<PgPool> {
             return None;
         }
     };
+
+    if !acquire_test_lock(&pool).await {
+        return None;
+    }
+
     ensure_schema(&pool).await;
     truncate_all(&pool).await;
     Some(pool)
+}
+
+async fn acquire_test_lock(pool: &PgPool) -> bool {
+    match sqlx::query("SELECT pg_advisory_lock($1)")
+        .bind(TEST_DB_LOCK_ID)
+        .execute(pool)
+        .await
+    {
+        Ok(_) => true,
+        Err(e) => {
+            eprintln!("SKIP DB tests: could not acquire test DB lock ({e})");
+            false
+        }
+    }
 }
 
 pub async fn ensure_schema(pool: &PgPool) {

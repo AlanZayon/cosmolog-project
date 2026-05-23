@@ -3,7 +3,7 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE,
   username TEXT NOT NULL UNIQUE,
@@ -13,7 +13,7 @@ CREATE TABLE public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.universes (
+CREATE TABLE IF NOT EXISTS public.universes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT,
@@ -23,7 +23,7 @@ CREATE TABLE public.universes (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.arcs (
+CREATE TABLE IF NOT EXISTS public.arcs (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   universe_id UUID NOT NULL REFERENCES public.universes(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE public.arcs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.stories (
+CREATE TABLE IF NOT EXISTS public.stories (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   author_id UUID NOT NULL,
   title TEXT NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE public.stories (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.chapters (
+CREATE TABLE IF NOT EXISTS public.chapters (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE public.chapters (
   UNIQUE(story_id, chapter_number)
 );
 
-CREATE TABLE public.comic_pages (
+CREATE TABLE IF NOT EXISTS public.comic_pages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE public.comic_pages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.illustrated_blocks (
+CREATE TABLE IF NOT EXISTS public.illustrated_blocks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
   chapter_id UUID REFERENCES public.chapters(id) ON DELETE CASCADE,
@@ -79,14 +79,14 @@ CREATE TABLE public.illustrated_blocks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.likes (
+CREATE TABLE IF NOT EXISTS public.likes (
   story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (story_id, user_id)
 );
 
-CREATE TABLE public.comments (
+CREATE TABLE IF NOT EXISTS public.comments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
@@ -94,16 +94,16 @@ CREATE TABLE public.comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.universe_follows (
+CREATE TABLE IF NOT EXISTS public.universe_follows (
   user_id UUID NOT NULL,
   universe_id UUID NOT NULL REFERENCES public.universes(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, universe_id)
 );
 
-CREATE INDEX idx_stories_author_id ON public.stories(author_id);
-CREATE INDEX idx_stories_universe_id ON public.stories(universe_id);
-CREATE INDEX idx_stories_arc_id ON public.stories(arc_id);
-CREATE INDEX idx_chapters_story_id ON public.chapters(story_id, chapter_number);
-CREATE INDEX idx_comic_pages_story ON public.comic_pages(story_id, page_order);
-CREATE INDEX idx_illustrated_blocks_story ON public.illustrated_blocks(story_id, block_order);
+CREATE INDEX IF NOT EXISTS idx_stories_author_id ON public.stories(author_id);
+CREATE INDEX IF NOT EXISTS idx_stories_universe_id ON public.stories(universe_id);
+CREATE INDEX IF NOT EXISTS idx_stories_arc_id ON public.stories(arc_id);
+CREATE INDEX IF NOT EXISTS idx_chapters_story_id ON public.chapters(story_id, chapter_number);
+CREATE INDEX IF NOT EXISTS idx_comic_pages_story ON public.comic_pages(story_id, page_order);
+CREATE INDEX IF NOT EXISTS idx_illustrated_blocks_story ON public.illustrated_blocks(story_id, block_order);
