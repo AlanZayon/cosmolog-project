@@ -75,3 +75,71 @@ pub struct ValidatedUpdate {
     pub bio: Option<String>,
     pub avatar_url: Option<Option<String>>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::UpdateProfileInput;
+    use crate::error::AppError;
+
+    #[test]
+    fn rejects_empty_username() {
+        let input = UpdateProfileInput {
+            username: Some("  ".into()),
+            bio: None,
+            avatar_url: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn rejects_username_with_control_chars() {
+        let input = UpdateProfileInput {
+            username: Some("bad\nname".into()),
+            bio: None,
+            avatar_url: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn rejects_bio_over_500_chars() {
+        let input = UpdateProfileInput {
+            username: None,
+            bio: Some("b".repeat(501)),
+            avatar_url: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn rejects_update_with_no_fields() {
+        let input = UpdateProfileInput {
+            username: None,
+            bio: None,
+            avatar_url: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn accepts_valid_username_update() {
+        let input = UpdateProfileInput {
+            username: Some("Alan".into()),
+            bio: None,
+            avatar_url: None,
+        };
+        let validated = input.validate().unwrap();
+        assert_eq!(validated.username.as_deref(), Some("Alan"));
+    }
+
+    #[test]
+    fn empty_avatar_url_becomes_none() {
+        let input = UpdateProfileInput {
+            username: None,
+            bio: None,
+            avatar_url: Some("  ".into()),
+        };
+        let validated = input.validate().unwrap();
+        assert_eq!(validated.avatar_url, Some(None));
+    }
+}

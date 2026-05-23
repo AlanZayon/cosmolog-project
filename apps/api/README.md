@@ -42,6 +42,58 @@ curl -s http://127.0.0.1:8080/db/ping
 curl -s http://127.0.0.1:8080/profiles/me -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
+## Tests
+
+```bash
+cd apps/api
+cargo test                    # unit + integration (no Supabase/network)
+```
+
+Auth tests use a local RSA key pair (`tests/fixtures/auth/`) and [wiremock](https://docs.rs/wiremock) for JWKS — no credentials required.
+
+### Postgres (repository + HTTP API tests)
+
+```bash
+docker compose -f docker-compose.test.yml up -d
+export TEST_DATABASE_URL=postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test
+cargo test
+```
+
+Without Postgres, unit/auth tests still run; repository and API tests skip with a message.
+
+### CI parity (local)
+
+```bash
+cd apps/api
+./scripts/ci-test.sh          # cargo test + coverage gate (needs Postgres + llvm-tools)
+```
+
+Requires [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) and the `llvm-tools-preview` Rust component:
+
+```bash
+rustup component add llvm-tools-preview
+cargo install cargo-llvm-cov
+```
+
+Coverage HTML report:
+
+```bash
+cd apps/api
+cargo llvm-cov report --html
+# open target/llvm-cov/html/index.html
+```
+
+### Continuous integration
+
+GitHub Actions workflow [`.github/workflows/api-test.yml`](../../.github/workflows/api-test.yml) runs on changes under `apps/api/`:
+
+- PostgreSQL 16 service container
+- Full test suite (~94 tests)
+- Line coverage via `cargo llvm-cov` (minimum **45%**, excluding `main.rs`; raise over time)
+- Uploads `lcov.info` as a workflow artifact
+
+See [docs/TESTING_PLAN.md](docs/TESTING_PLAN.md) for the full testing roadmap.
+
 `/db/ping` requires a valid `DATABASE_URL` and network access to Supabase.
 
 ## Authentication (Supabase JWT)
@@ -194,4 +246,34 @@ Use this in production if you prefer a deploy step (`sqlx migrate run`) instead 
 | `RUN_MIGRATIONS` | No | `true` | Apply sqlx migrations on startup |
 | `SUPABASE_URL` | Yes | — | Project URL (same as `NEXT_PUBLIC_SUPABASE_URL`) |
 | `SUPABASE_JWT_AUDIENCE` | No | `authenticated` | Expected JWT `aud` claim |
-| `RUST_LOG` | No | `cosmolog_api=info,...` | Log filter (see tracing) |
+| `RUST_LOG` | No | `cosmolog_api=info,sqlx=warn` | Log filter (see [Structured logging](#structured-logging)) |
+| `LOG_FORMAT` | No | `pretty` (dev) / `json` (prod) | Log output format: `json` or `pretty` |
+| `APP_ENV` | No | `development` | Environment label included in logs (`development`, `production`, …) |
+
+## Structured logging
+
+The API emits structured logs via [`tracing`](https://docs.rs/tracing). Each HTTP request gets a correlation id (`x-request-id` header, generated if missing) and a span with `request_id`, `method`, `path`, and `user_id` (when authenticated).
+
+Common fields:
+
+| Field | Description |
+|-------|-------------|
+| `event` | Event name (e.g. `story.created`, `http.request.completed`) |
+| `request_id` | Correlation id for the request |
+| `user_id` | Authenticated user (when available) |
+| `service` | Always `cosmolog-api` |
+| `env` | Value of `APP_ENV` |
+| `status`, `latency_ms` | HTTP response metadata |
+
+Examples:
+
+```bash
+# Human-readable logs (default in development)
+LOG_FORMAT=pretty cargo run
+
+# JSON logs for production / log aggregators
+APP_ENV=production LOG_FORMAT=json cargo run
+
+# Verbose debug (includes JWT validation failures)
+RUST_LOG=cosmolog_api=debug,sqlx=warn cargo run
+```

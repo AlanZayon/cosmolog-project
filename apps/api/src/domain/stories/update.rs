@@ -44,3 +44,69 @@ impl UpdateStoryInput {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::UpdateStoryInput;
+    use crate::error::AppError;
+
+    #[test]
+    fn accepts_partial_update() {
+        let input = UpdateStoryInput {
+            title: Some("New title".into()),
+            description: None,
+            tags: None,
+            r#type: None,
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            content: None,
+        };
+        assert!(input.validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_empty_title_when_provided() {
+        let input = UpdateStoryInput {
+            title: Some("  ".into()),
+            description: None,
+            tags: None,
+            r#type: None,
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            content: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn rejects_invalid_type_when_provided() {
+        let input = UpdateStoryInput {
+            title: None,
+            description: None,
+            tags: None,
+            r#type: Some("podcast".into()),
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            content: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn rejects_description_over_5000_chars() {
+        let input = UpdateStoryInput {
+            title: None,
+            description: Some("d".repeat(5001)),
+            tags: None,
+            r#type: None,
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            content: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+}

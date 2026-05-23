@@ -49,3 +49,65 @@ impl CreateStoryInput {
             .filter(|s| !s.is_empty())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CreateStoryInput;
+    use crate::error::AppError;
+
+    fn sample_input(title: &str, story_type: &str) -> CreateStoryInput {
+        CreateStoryInput {
+            title: title.into(),
+            description: None,
+            tags: None,
+            r#type: story_type.into(),
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            content: None,
+        }
+    }
+
+    #[test]
+    fn accepts_valid_input() {
+        assert!(sample_input("My Story", "short_story").validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_empty_title() {
+        let err = sample_input("   ", "short_story").validate().unwrap_err();
+        assert!(matches!(err, AppError::BadRequest(_)));
+    }
+
+    #[test]
+    fn rejects_title_over_200_chars() {
+        let err = sample_input(&"a".repeat(201), "chapters").validate().unwrap_err();
+        assert!(matches!(err, AppError::BadRequest(_)));
+    }
+
+    #[test]
+    fn rejects_invalid_story_type() {
+        let err = sample_input("Title", "novel").validate().unwrap_err();
+        assert!(matches!(err, AppError::BadRequest(_)));
+    }
+
+    #[test]
+    fn accepts_all_allowed_types() {
+        for kind in ["short_story", "chapters", "comic"] {
+            assert!(sample_input("T", kind).validate().is_ok());
+        }
+    }
+
+    #[test]
+    fn rejects_description_over_5000_chars() {
+        let mut input = sample_input("Title", "short_story");
+        input.description = Some("x".repeat(5001));
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn title_trims_whitespace() {
+        let input = sample_input("  Hello  ", "short_story");
+        assert_eq!(input.title(), "Hello");
+    }
+}

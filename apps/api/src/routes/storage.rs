@@ -84,5 +84,14 @@ pub async fn upload(
         .await
         .map_err(AppError::Upstream)?;
 
+    tracing::info!(
+        event = "storage.uploaded",
+        user_id = %user.user_id,
+        bucket = %bucket,
+        path = %path,
+        content_type = %content_type,
+        "file uploaded to storage"
+    );
+
     Ok(Json(response))
 }

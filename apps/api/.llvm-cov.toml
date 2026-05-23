@@ -1,0 +1,3 @@
+# https://github.com/taiki-e/cargo-llvm-cov
+[report]
+ignore-filename-regex = ["main\\.rs"]

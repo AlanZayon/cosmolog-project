@@ -5,6 +5,7 @@ use axum::{
 
 use crate::auth::AuthUser;
 use crate::error::AppError;
+use crate::infra::logging::record_user_id;
 use crate::state::AppState;
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -31,9 +32,14 @@ impl FromRequestParts<AppState> for AuthUser {
             .validate(token)
             .await
             .map_err(|err| {
-                tracing::debug!(error = %err, "JWT validation failed");
+                tracing::debug!(
+                    event = "auth.jwt_validation_failed",
+                    error = %err,
+                    "JWT validation failed"
+                );
                 AppError::Unauthorized
             })?;
+        record_user_id(user.user_id);
         user.raw_token = Some(token.to_string());
         Ok(user)
     }

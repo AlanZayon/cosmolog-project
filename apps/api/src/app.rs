@@ -1,12 +1,13 @@
 use axum::{
-    http::{header, Method},
+    http::{header, HeaderName, Method},
+    middleware,
     routing::{get, patch, post},
     Router,
 };
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::trace::TraceLayer;
 
 use crate::config::Config;
+use crate::middleware::request_context;
 use crate::routes::{arcs, auth, db, feed, health, profiles, storage, stories, story_content, universes};
 use crate::state::AppState;
 
@@ -26,7 +27,15 @@ pub fn router(state: AppState, config: &Config) -> Router {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT]);
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            HeaderName::from_static(request_context::REQUEST_ID_HEADER),
+        ])
+        .expose_headers([HeaderName::from_static(
+            request_context::REQUEST_ID_HEADER,
+        )]);
 
     Router::new()
         .route("/health", get(health::health))
@@ -83,7 +92,7 @@ pub fn router(state: AppState, config: &Config) -> Router {
             get(arcs::by_id).patch(arcs::update).delete(arcs::delete),
         )
         .route("/arcs/{id}/stories", get(arcs::stories))
-        .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(request_context::middleware))
         .layer(cors)
         .with_state(state)
 }

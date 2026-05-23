@@ -1,0 +1,90 @@
+name: API tests
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api-test.yml"
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api-test.yml"
+
+defaults:
+  run:
+    working-directory: apps/api
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  TEST_DATABASE_URL: postgres://cosmolog:cosmolog@localhost:5432/cosmolog_test
+
+jobs:
+  test:
+    name: Rust tests + coverage
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cosmolog
+          POSTGRES_PASSWORD: cosmolog
+          POSTGRES_DB: cosmolog_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cosmolog -d cosmolog_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/api/target
+          key: ${{ runner.os }}-cargo-api-${{ hashFiles('apps/api/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-api-
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        run: pg_isready -h localhost -p 5432 -U cosmolog -d cosmolog_test
+        env:
+          PGPASSWORD: cosmolog
+
+      - name: Run tests with coverage
+        run: |
+          cargo llvm-cov \
+            --lcov --output-path lcov.info \
+            --summary-only \
+            --ignore-filename-regex 'main\.rs' \
+            --fail-under-lines 45
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-coverage-lcov
+          path: apps/api/lcov.info
+          retention-days: 14

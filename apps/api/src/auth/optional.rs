@@ -5,6 +5,7 @@ use axum::{
 
 use crate::auth::AuthUser;
 use crate::error::AppError;
+use crate::infra::logging::record_user_id;
 use crate::state::AppState;
 
 /// Optional JWT: no header → anonymous; valid header → user + raw token for upstream proxy.
@@ -43,9 +44,14 @@ impl FromRequestParts<AppState> for OptionalAuth {
             .validate(&token)
             .await
             .map_err(|err| {
-                tracing::debug!(error = %err, "JWT validation failed");
+                tracing::debug!(
+                    event = "auth.jwt_validation_failed",
+                    error = %err,
+                    "JWT validation failed"
+                );
                 AppError::Unauthorized
             })?;
+        record_user_id(user.user_id);
         Ok(OptionalAuth {
             user: Some(user),
             token: Some(token),

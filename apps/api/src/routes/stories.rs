@@ -28,6 +28,13 @@ pub async fn create(
     let story = stories::insert(&state.pool, user.user_id, &body)
         .await
         .map_err(AppError::from_db)?;
+    tracing::info!(
+        event = "story.created",
+        story_id = %story.id,
+        author_id = %user.user_id,
+        story_type = %story.r#type,
+        "story created"
+    );
     Ok(Json(story))
 }
 

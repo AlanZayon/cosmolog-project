@@ -32,6 +32,11 @@ pub async fn sign_in(
         .sign_in(body)
         .await
         .map_err(auth_error)?;
+    tracing::info!(
+        event = "auth.sign_in",
+        user_id = %session.user.id,
+        "user signed in"
+    );
     Ok(Json(session))
 }
 
@@ -44,6 +49,11 @@ pub async fn sign_up(
         .sign_up(body)
         .await
         .map_err(auth_error)?;
+    tracing::info!(
+        event = "auth.sign_up",
+        user_id = %session.user.id,
+        "user signed up"
+    );
     Ok(Json(session))
 }
 
@@ -56,6 +66,11 @@ pub async fn refresh(
         .refresh(body)
         .await
         .map_err(auth_error)?;
+    tracing::info!(
+        event = "auth.refresh",
+        user_id = %session.user.id,
+        "session refreshed"
+    );
     Ok(Json(session))
 }
 

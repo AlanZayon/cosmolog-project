@@ -25,3 +25,29 @@ impl UpdateUniverseInput {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::UpdateUniverseInput;
+    use crate::error::AppError;
+
+    #[test]
+    fn accepts_title_update() {
+        let input = UpdateUniverseInput {
+            title: Some("Renamed".into()),
+            description: None,
+            cover_image_url: None,
+        };
+        assert!(input.validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_empty_title_update() {
+        let input = UpdateUniverseInput {
+            title: Some(" ".into()),
+            description: None,
+            cover_image_url: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+}

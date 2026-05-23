@@ -2,12 +2,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
+use async_trait::async_trait;
 use jsonwebtoken::{decode, decode_header, Validation};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::auth::claims::SupabaseClaims;
 use crate::auth::jwks::{fetch_jwks, CachedKey};
+use crate::auth::TokenValidator;
 use crate::config::Config;
 
 /// Authenticated Supabase user extracted from a valid JWT.
@@ -39,12 +41,51 @@ impl JwtValidator {
         });
 
         validator.refresh_keys().await?;
-        tracing::info!(jwks_url = %validator.jwks_url, "loaded Supabase JWKS");
+        tracing::info!(
+            event = "auth.jwks_loaded",
+            jwks_url = %validator.jwks_url,
+            "loaded Supabase JWKS"
+        );
 
         Ok(validator)
     }
 
-    pub async fn validate(&self, token: &str) -> Result<AuthUser> {
+    /// Pre-load JWKS keys without network (tests and local fixtures).
+    pub fn with_preloaded_keys(
+        issuer: impl Into<String>,
+        audience: impl Into<String>,
+        keys: HashMap<String, CachedKey>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            jwks_url: String::new(),
+            issuer: issuer.into(),
+            audience: audience.into(),
+            client: reqwest::Client::new(),
+            keys: RwLock::new(keys),
+        })
+    }
+
+    /// Pre-load keys without fetching JWKS (unit tests in this crate).
+    #[cfg(test)]
+    pub fn with_keys(
+        issuer: impl Into<String>,
+        audience: impl Into<String>,
+        keys: HashMap<String, CachedKey>,
+    ) -> Arc<Self> {
+        Self::with_preloaded_keys(issuer, audience, keys)
+    }
+}
+
+#[async_trait]
+impl TokenValidator for JwtValidator {
+    async fn validate(&self, token: &str) -> Result<AuthUser> {
+        self.validate_token(token).await
+    }
+}
+
+impl JwtValidator {
+    /// Core JWT validation (also used by the `TokenValidator` trait).
+    pub async fn validate_token(&self, token: &str) -> Result<AuthUser> {
         let header = decode_header(token).context("invalid JWT header")?;
         let kid = header
             .kid

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # rust (api)
 /apps/api/target/
+/apps/api/lcov.info
+/apps/api/coverage/
+/apps/api/*.profraw

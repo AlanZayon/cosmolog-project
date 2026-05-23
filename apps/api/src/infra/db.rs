@@ -14,6 +14,6 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
         .connect_with(options)
         .await?;
 
-    tracing::info!("connected to PostgreSQL");
+    tracing::info!(event = "db.connected", "connected to PostgreSQL");
     Ok(pool)
 }

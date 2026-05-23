@@ -2,19 +2,19 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::auth::JwtValidator;
+use crate::auth::TokenValidator;
 use crate::config::Config;
 use crate::infra::supabase::SupabaseClient;
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
-    pub jwt: Arc<JwtValidator>,
+    pub jwt: Arc<dyn TokenValidator>,
     pub supabase: SupabaseClient,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool, jwt: Arc<JwtValidator>, config: &Config) -> Self {
+    pub fn new(pool: PgPool, jwt: Arc<dyn TokenValidator>, config: &Config) -> Self {
         Self {
             pool,
             jwt,

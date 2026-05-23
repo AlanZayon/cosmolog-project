@@ -3,8 +3,17 @@ name = "cosmolog_api"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "cosmolog_api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cosmolog_api"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0"
+async-trait = "0.1"
 axum = { version = "0.8", features = ["multipart"] }
 dotenvy = "0.15"
 jsonwebtoken = "9"
@@ -15,7 +24,12 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "time
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde", "serde-human-readable"] }
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.6", features = ["cors"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["serde", "v4"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
+wiremock = "0.6"

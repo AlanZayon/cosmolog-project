@@ -22,6 +22,12 @@ pub async fn create(
     let universe = universes::insert(&state.pool, user.user_id, &body)
         .await
         .map_err(AppError::from_db)?;
+    tracing::info!(
+        event = "universe.created",
+        universe_id = %universe.id,
+        owner_id = %user.user_id,
+        "universe created"
+    );
     Ok(Json(universe))
 }
 
