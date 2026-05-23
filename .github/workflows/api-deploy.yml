@@ -1,0 +1,33 @@
+name: Deploy API
+
+on:
+  workflow_run:
+    workflows: ["API tests"]
+    types: [completed]
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    concurrency:
+      group: api-deploy-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+    steps:
+      - name: Trigger Render deploy
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Skip deploy (missing secret)
+        if: env.RENDER_DEPLOY_HOOK_URL == ''
+        run: |
+          echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set — skipping deploy."
+          echo "Use Render auto-deploy from Git, or add a Deploy Hook secret."
+          echo "See apps/api/README.md and render.yaml."

@@ -1,0 +1,80 @@
+name: cosmolog-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cosmolog
+      POSTGRES_PASSWORD: cosmolog
+      POSTGRES_DB: cosmolog_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cosmolog -d cosmolog_dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: ./apps/api/.env.docker
+        required: false
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
+      MIGRATE_DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
+      RUN_MIGRATIONS: "true"
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+      RUST_LOG: cosmolog_api=debug,tower_http=debug,sqlx=warn
+    volumes:
+      - ./apps/api:/app
+      - api_cargo_target:/app/target
+      - api_cargo_registry:/usr/local/cargo/registry
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: node:22-bookworm
+    working_dir: /workspace
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/workspace:cached
+      - web_node_modules:/workspace/node_modules
+    command: bash -c "npm ci && npm run dev -- -H 0.0.0.0"
+    depends_on:
+      - api
+
+  dev:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - .:/workspace:cached
+      - api_cargo_target:/workspace/apps/api/target
+      - api_cargo_registry:/usr/local/cargo/registry
+      - web_node_modules:/workspace/node_modules
+    command: sleep infinity
+    environment:
+      TEST_DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_dev_data:
+  api_cargo_target:
+  api_cargo_registry:
+  web_node_modules:

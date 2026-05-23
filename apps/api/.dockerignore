@@ -1,0 +1,10 @@
+target/
+coverage/
+*.profraw
+lcov.info
+.env
+.env.*
+!.env.example
+!.env.docker.example
+.git/
+docs/

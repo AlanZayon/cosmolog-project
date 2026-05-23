@@ -25,6 +25,37 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Docker (full dev stack)
+
+Local Postgres + API + Next.js:
+
+```bash
+cp apps/api/.env.docker.example apps/api/.env.docker
+# Edit apps/api/.env.docker — Supabase URL + anon key (auth still uses Supabase)
+
+docker compose -f docker-compose.dev.yml up --build
+```
+
+| Service  | URL |
+|----------|-----|
+| Frontend | http://localhost:3000 |
+| API      | http://localhost:8080 |
+| Postgres | `localhost:5434` (user/pass/db: `cosmolog` / `cosmolog` / `cosmolog_dev`) |
+
+## Dev Container
+
+Open the repo in VS Code / Cursor → **Reopen in Container**. The dev container includes Rust, Node, and Postgres (via compose). Inside the container:
+
+```bash
+# terminal 1
+cd apps/api && cargo run
+
+# terminal 2
+npm run dev
+```
+
+Set `DATABASE_URL=postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev` in `apps/api/.env` (or use `.env.docker` values).
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

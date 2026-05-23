@@ -94,6 +94,56 @@ GitHub Actions workflow [`.github/workflows/api-test.yml`](../../.github/workflo
 
 See [docs/TESTING_PLAN.md](docs/TESTING_PLAN.md) for the full testing roadmap.
 
+## Docker
+
+### Production image
+
+```bash
+cd apps/api
+docker build -t cosmolog-api .
+docker run --rm -p 8080:8080 --env-file .env cosmolog-api
+```
+
+Requires `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` (see `.env.example`).
+
+### Dev stack (with frontend)
+
+From the repo root:
+
+```bash
+cp apps/api/.env.docker.example apps/api/.env.docker
+docker compose -f docker-compose.dev.yml up --build
+```
+
+The API uses local Postgres from compose; auth/storage still call your Supabase project.
+
+## Deploy (Render)
+
+The API is configured for [Render](https://render.com) via [`render.yaml`](../../render.yaml) (Docker web service in `apps/api/`).
+
+**If you already have a Render service:** sync env vars from `render.yaml` in the dashboard, or connect the Blueprint to this repo.
+
+**Required env vars** (Render Dashboard → Service → Environment):
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Supabase Postgres (session pooler `:5432` or direct) |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `SUPABASE_ANON_KEY` | Supabase anon / publishable key |
+| `CORS_ALLOWED_ORIGIN` | Frontend URL (e.g. `https://your-app.vercel.app`) |
+
+Render sets `PORT` automatically; the API reads `PORT` or `API_PORT`.
+
+### Automated deploy (after CI)
+
+Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) triggers a Render deploy **after** the API test workflow succeeds on `main`/`master`.
+
+1. Render Dashboard → your API service → **Settings** → **Deploy Hook** → copy URL
+2. GitHub → **Settings** → **Secrets** → add `RENDER_DEPLOY_HOOK_URL`
+3. Disable Render **Auto-Deploy** if you only want deploys post-CI (optional)
+
+Manual deploy: Render Dashboard → **Manual Deploy**, or `workflow_dispatch` on the deploy workflow.
+
 `/db/ping` requires a valid `DATABASE_URL` and network access to Supabase.
 
 ## Authentication (Supabase JWT)

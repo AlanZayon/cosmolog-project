@@ -20,6 +20,7 @@ impl Config {
     pub fn from_env() -> Result<Self> {
         let host = std::env::var("API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
         let port = std::env::var("API_PORT")
+            .or_else(|_| std::env::var("PORT"))
             .unwrap_or_else(|_| "8080".to_string())
             .parse::<u16>()
             .context("API_PORT must be a valid port number")?;
@@ -181,6 +182,17 @@ mod tests {
     fn env_bool_uses_default_when_unset() {
         assert!(env_bool("TEST_BOOL_FLAG_DEFINITELY_UNSET_XYZ", true));
         assert!(!env_bool("TEST_BOOL_FLAG_DEFINITELY_UNSET_XYZ", false));
+    }
+
+    #[test]
+    fn env_port_fallback_for_render() {
+        std::env::set_var("PORT", "10000");
+        std::env::remove_var("API_PORT");
+        let port = std::env::var("API_PORT")
+            .or_else(|_| std::env::var("PORT"))
+            .unwrap_or_else(|_| "8080".to_string());
+        assert_eq!(port, "10000");
+        std::env::remove_var("PORT");
     }
 
     #[test]

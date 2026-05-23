@@ -1,0 +1,39 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# First-time setup:
+#   1. Render Dashboard → New → Blueprint → connect this repo
+#   2. Set secret env vars when prompted (DATABASE_URL, SUPABASE_*, CORS_ALLOWED_ORIGIN)
+#   3. Optional: disable "Auto-Deploy" and use the GitHub deploy hook after CI passes
+#
+# Deploy hook (Settings → Deploy Hook): add RENDER_DEPLOY_HOOK_URL to GitHub Actions secrets.
+
+services:
+  - type: web
+    name: cosmolog-api
+    runtime: docker
+    region: oregon
+    plan: starter
+    rootDir: apps/api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - apps/api/**
+    envVars:
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: RUN_MIGRATIONS
+        value: "true"
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: RUST_LOG
+        value: cosmolog_api=info,tower_http=info,sqlx=warn
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CORS_ALLOWED_ORIGIN
+        sync: false
