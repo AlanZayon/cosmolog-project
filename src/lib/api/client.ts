@@ -2,11 +2,13 @@ import type { ApiErrorBody } from '@/lib/api/types';
 
 export class ApiError extends Error {
   status: number;
+  requestId?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, requestId?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.requestId = requestId;
   }
 }
 
@@ -47,7 +49,8 @@ export async function apiFetch<T>(
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiErrorBody;
-    throw new ApiError(res.status, body.error ?? res.statusText);
+    const requestId = res.headers.get('x-request-id') ?? undefined;
+    throw new ApiError(res.status, body.error ?? res.statusText, requestId);
   }
 
   if (res.status === 204) {
@@ -72,7 +75,8 @@ export async function authFetch<T>(path: string, options: RequestInit = {}): Pro
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiErrorBody;
-    throw new ApiError(res.status, body.error ?? res.statusText);
+    const requestId = res.headers.get('x-request-id') ?? undefined;
+    throw new ApiError(res.status, body.error ?? res.statusText, requestId);
   }
 
   if (res.status === 204) {

@@ -293,7 +293,7 @@ Use this in production if you prefer a deploy step (`sqlx migrate run`) instead 
 | `RUNTIME_DATABASE_URL` | No | session pooler derived from `DATABASE_URL` | Override runtime pool |
 | `MIGRATE_DATABASE_URL` | No | session pooler derived from `DATABASE_URL` | Override migrations connection |
 | `CORS_ALLOWED_ORIGIN` | No | `http://localhost:3000` | Allowed browser origin |
-| `RUN_MIGRATIONS` | No | `true` | Apply sqlx migrations on startup |
+| `RUN_MIGRATIONS` | No | `true` (local dev) | Apply sqlx migrations on startup. **Production (Render): `false`** — run migrations in CI/deploy via `MIGRATE_DATABASE_URL` secret. |
 | `SUPABASE_URL` | Yes | — | Project URL (same as `NEXT_PUBLIC_SUPABASE_URL`) |
 | `SUPABASE_JWT_AUDIENCE` | No | `authenticated` | Expected JWT `aud` claim |
 | `RUST_LOG` | No | `cosmolog_api=info,sqlx=warn` | Log filter (see [Structured logging](#structured-logging)) |

@@ -1,0 +1,37 @@
+name: Security scan
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  gitleaks:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  supabase-temp:
+    name: Block tracked supabase temp
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fail if supabase/.temp is tracked
+        run: |
+          if git ls-files 'supabase/.temp' | grep -q .; then
+            echo "::error::supabase/.temp must not be committed"
+            git ls-files 'supabase/.temp'
+            exit 1
+          fi
+          echo "OK: supabase/.temp is not tracked"

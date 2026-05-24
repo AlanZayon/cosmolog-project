@@ -108,6 +108,18 @@ pub async fn replace_blocks(
                 "block content must be at most {MAX_BLOCK_CONTENT_LEN} characters"
             )));
         }
+        match block.block_type.as_str() {
+            "text" => {}
+            "image" => {
+                url_validation::validate_stored_image_url(
+                    block.content.trim(),
+                    &state.supabase.url,
+                )?;
+            }
+            _ => {
+                return Err(AppError::BadRequest("invalid block type".into()));
+            }
+        }
     }
     let rows = blocks::replace_for_story(&state.pool, id, q.chapter_id, &body.blocks)
         .await

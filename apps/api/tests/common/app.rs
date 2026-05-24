@@ -94,6 +94,16 @@ impl TestApp {
         .await
     }
 
+    pub async fn put_json(&self, path: &str, token: Option<&str>, body: Value) -> Response<Body> {
+        self.send(
+            Method::PUT,
+            path,
+            token,
+            Some(body.to_string().into_bytes()),
+        )
+        .await
+    }
+
     pub async fn delete(&self, path: &str, token: Option<&str>) -> Response<Body> {
         self.send(Method::DELETE, path, token, None).await
     }
