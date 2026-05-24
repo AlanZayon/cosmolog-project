@@ -55,7 +55,10 @@ impl IntoResponse for AppError {
                     error = %err,
                     "database request failed"
                 );
-                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
             }
             AppError::Unauthorized => {
                 tracing::warn!(
@@ -98,7 +101,10 @@ impl IntoResponse for AppError {
                     error = %msg,
                     "upstream request failed"
                 );
-                (StatusCode::BAD_GATEWAY, msg.clone())
+                (
+                    StatusCode::BAD_GATEWAY,
+                    "upstream service unavailable".to_string(),
+                )
             }
         };
 
@@ -152,15 +158,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn upstream_returns_502() {
-        let (status, _) = response_for(AppError::Upstream("supabase down".into())).await;
-        assert_eq!(status, StatusCode::BAD_GATEWAY);
+    async fn database_returns_500() {
+        let err = AppError::from_db(sqlx::Error::RowNotFound);
+        let (status, msg) = response_for(err).await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(msg, "internal server error");
     }
 
     #[tokio::test]
-    async fn database_returns_500() {
-        let err = AppError::from_db(sqlx::Error::RowNotFound);
-        let (status, _) = response_for(err).await;
-        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+    async fn upstream_returns_sanitized_502() {
+        let (status, msg) = response_for(AppError::Upstream("supabase internal detail".into())).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        assert_eq!(msg, "upstream service unavailable");
     }
 }

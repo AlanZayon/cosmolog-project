@@ -8,6 +8,7 @@ use crate::domain::arcs::{self, Arc};
 use crate::domain::stories::{attach_profiles, list_by_arc_id};
 use crate::domain::stories::StoryWithProfile;
 use crate::domain::universes;
+use crate::domain::url_validation;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -59,6 +60,10 @@ pub async fn update(
     Json(body): Json<UpsertArcInput>,
 ) -> Result<Json<Arc>, AppError> {
     body.validate()?;
+    url_validation::validate_optional_stored_image_url(
+        body.cover_image_url.as_deref(),
+        &state.supabase.url,
+    )?;
     let arc = arcs::find_by_id(&state.pool, id)
         .await
         .map_err(AppError::from_db)?
@@ -112,6 +117,10 @@ pub async fn create_for_universe(
     Json(body): Json<UpsertArcInput>,
 ) -> Result<Json<Arc>, AppError> {
     body.validate()?;
+    url_validation::validate_optional_stored_image_url(
+        body.cover_image_url.as_deref(),
+        &state.supabase.url,
+    )?;
     let universe = universes::find_by_id(&state.pool, universe_id)
         .await
         .map_err(AppError::from_db)?

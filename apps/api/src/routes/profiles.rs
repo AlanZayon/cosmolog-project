@@ -4,7 +4,9 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
+use crate::domain::limits::MAX_PROFILE_BATCH_IDS;
 use crate::domain::profiles::{self, Profile, UpdateProfileInput};
+use crate::domain::url_validation;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -33,6 +35,10 @@ pub async fn update_me(
     Json(body): Json<UpdateProfileInput>,
 ) -> Result<Json<Profile>, AppError> {
     let validated = body.validate()?;
+    url_validation::validate_nullable_image_url_update(
+        validated.avatar_url.as_ref(),
+        &state.supabase.url,
+    )?;
     let profile = profiles::update_by_user_id(&state.pool, user.user_id, &validated)
         .await
         .map_err(AppError::from_db)?
@@ -68,6 +74,11 @@ pub async fn batch(
         .collect();
 
     let ids = ids.map_err(|_| AppError::BadRequest("invalid user id in ids".into()))?;
+    if ids.len() > MAX_PROFILE_BATCH_IDS {
+        return Err(AppError::BadRequest(format!(
+            "at most {MAX_PROFILE_BATCH_IDS} ids allowed"
+        )));
+    }
     let profiles = profiles::find_by_user_ids(&state.pool, &ids)
         .await
         .map_err(AppError::from_db)?;

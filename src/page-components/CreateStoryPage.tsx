@@ -10,7 +10,6 @@ import {
   createStory,
   getMyUniverses,
   getUniverseArcs,
-  isApiConfigured,
 } from '@/lib/api';
 import { uploadFile } from '@/lib/api/storage';
 import type { Tables } from '@/integrations/supabase/types';
@@ -48,7 +47,7 @@ const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: Transl
 ];
 
 export default function CreateStoryPage() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const params = useParams<{ id?: string }>();
   const universeId = params.id;
@@ -97,10 +96,10 @@ export default function CreateStoryPage() {
   const fetchUniverses = async () => {
     setLoadingRelations(true);
     try {
-      if (!isApiConfigured() || !session?.access_token) {
-        throw new Error('NEXT_PUBLIC_API_URL is not configured');
+      if (!user) {
+        throw new Error('Not authenticated');
       }
-      const universeList = await getMyUniverses(session.access_token);
+      const universeList = await getMyUniverses();
       setUniverses(universeList as Universe[]);
       if (universeId) setSelectedUniverseId(universeId);
     } catch (err) {
@@ -152,10 +151,10 @@ export default function CreateStoryPage() {
   };
 
   const uploadCoverOrAsset = async (bucket: string, file: File): Promise<string> => {
-    if (!session?.access_token) throw new Error('Not authenticated');
+    if (!user) throw new Error('Not authenticated');
     const ext = file.name.split('.').pop();
     const path = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    return uploadFile(session.access_token, bucket, file, path);
+    return uploadFile(bucket, file, path);
   };
 
   const metaViolationsCreate = validateStoryMeta(title.trim(), description.trim());
@@ -204,11 +203,11 @@ export default function CreateStoryPage() {
       const titleT = title.trim();
       const descT = description.trim();
 
-      if (!isApiConfigured() || !session?.access_token) {
-        throw new Error('NEXT_PUBLIC_API_URL is not configured');
+      if (!user) {
+        throw new Error('Not authenticated');
       }
 
-      const data = await createStory(session.access_token, {
+      const data = await createStory({
         title: titleT,
         description: descT || null,
         tags,
@@ -221,14 +220,12 @@ export default function CreateStoryPage() {
 
       const storyId = data.id;
 
-      const token = session.access_token;
-
       if (storyType === 'comic' && comicPages.length > 0) {
         for (let i = 0; i < comicPages.length; i++) {
           const page = comicPages[i];
           if (page.file) {
             const imageUrl = await uploadCoverOrAsset('comics', page.file);
-            await appendComicPage(token, storyId, {
+            await appendComicPage(storyId, {
               image_url: imageUrl,
               page_order: i + 1,
             });
@@ -237,16 +234,16 @@ export default function CreateStoryPage() {
       }
 
       if (storyType === 'short_story' && shortStoryBlocks.some(blockHasContent)) {
-        await saveBlocks(storyId, null, shortStoryBlocks, token, user.id);
+        await saveBlocks(storyId, null, shortStoryBlocks, user.id);
       }
 
       if (storyType === 'chapters' && draftChapters.length > 0) {
         for (const ch of draftChapters) {
           const chTitle = ch.title.trim();
           if (!chTitle) continue;
-          const chapterRow = await createChapter(token, storyId, chTitle);
+          const chapterRow = await createChapter(storyId, chTitle);
           if (ch.blocks.some(blockHasContent)) {
-            await saveBlocks(storyId, chapterRow.id, ch.blocks, token, user.id);
+            await saveBlocks(storyId, chapterRow.id, ch.blocks, user.id);
           }
         }
       }

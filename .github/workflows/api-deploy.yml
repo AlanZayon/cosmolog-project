@@ -8,12 +8,37 @@ on:
   workflow_dispatch:
 
 jobs:
+  migrate:
+    name: Run database migrations
+    runs-on: ubuntu-latest
+    env:
+      MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
+    if: env.MIGRATE_DATABASE_URL != ''
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sqlx-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: sqlx-cli
+
+      - name: Run migrations
+        run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
+
   deploy:
     name: Deploy to Render
     runs-on: ubuntu-latest
+    needs: [migrate]
     if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success')
     concurrency:
       group: api-deploy-${{ github.ref }}
       cancel-in-progress: true

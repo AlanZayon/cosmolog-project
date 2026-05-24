@@ -27,7 +27,7 @@ COPY --from=builder /app/migrations /app/migrations
 
 ENV API_HOST=0.0.0.0 \
     API_PORT=8080 \
-    RUN_MIGRATIONS=true
+    RUN_MIGRATIONS=false
 
 EXPOSE 8080
 

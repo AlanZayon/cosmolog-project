@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from "next/navigation";
-import { isApiConfigured, searchStories } from '@/lib/api';
+import { searchStories } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
@@ -17,11 +17,6 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!q) return;
-    if (!isApiConfigured()) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     searchStories(q)
       .then((data) => {

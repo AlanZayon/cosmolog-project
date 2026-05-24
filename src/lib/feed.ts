@@ -1,5 +1,4 @@
 import { fetchFeed } from '@/lib/api/feed';
-import { loadSession } from '@/lib/auth/session';
 
 export type FeedItemType = 'story' | 'arc' | 'universe';
 
@@ -149,8 +148,7 @@ function enforceStoryPriority(items: FeedItem[]) {
   return result;
 }
 
-export async function getFeed(limit = 24, token?: string): Promise<FeedItem[]> {
-  const accessToken = token ?? loadSession()?.access_token;
-  const data = await fetchFeed(accessToken, limit);
+export async function getFeed(limit = 24): Promise<FeedItem[]> {
+  const data = await fetchFeed(limit);
   return enforceStoryPriority(normalizeFeed(data as RawFeedRow[]));
 }

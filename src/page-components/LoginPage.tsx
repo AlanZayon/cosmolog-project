@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
@@ -15,14 +16,23 @@ export default function LoginPage() {
   const { signIn } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  const redirectPath = (() => {
+    const target = searchParams.get('redirect');
+    if (target?.startsWith('/') && !target.startsWith('//')) {
+      return target;
+    }
+    return '/';
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await signIn(email, password);
-      router.push("/");
+      router.push(redirectPath);
     } catch (err: any) {
       toast({ title: t('login.error'), description: err.message, variant: 'destructive' });
     } finally {

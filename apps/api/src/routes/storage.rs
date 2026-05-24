@@ -1,8 +1,11 @@
-use axum::extract::{Multipart, State};
-use axum::Json;
+use axum::{
+    extract::{Multipart, State},
+    Json,
+};
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
+use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::error::AppError;
 use crate::infra::supabase::StorageUploadResponse;
 use crate::state::AppState;
@@ -13,6 +16,13 @@ const ALLOWED_BUCKETS: &[&str] = &[
     "comics",
     "universe-covers",
     "arc-covers",
+];
+
+const ALLOWED_IMAGE_TYPES: &[&str] = &[
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
 ];
 
 /// Upload a file to Supabase Storage (proxied with the user's JWT).
@@ -71,8 +81,17 @@ pub async fn upload(
         return Err(AppError::BadRequest("invalid storage bucket".into()));
     }
     let bytes = file_bytes.ok_or_else(|| AppError::BadRequest("file is required".into()))?;
-    let path = path.unwrap_or_else(|| format!("{}/{}.bin", user.user_id, Uuid::new_v4()));
+    if bytes.len() > MAX_UPLOAD_BYTES {
+        return Err(AppError::BadRequest(format!(
+            "file exceeds maximum size of {} bytes",
+            MAX_UPLOAD_BYTES
+        )));
+    }
+    if !ALLOWED_IMAGE_TYPES.contains(&content_type.as_str()) {
+        return Err(AppError::BadRequest("unsupported file content type".into()));
+    }
 
+    let path = storage_path(user.user_id, path)?;
     let token = user
         .raw_token
         .as_deref()
@@ -94,4 +113,60 @@ pub async fn upload(
     );
 
     Ok(Json(response))
+}
+
+fn storage_path(user_id: Uuid, client_path: Option<String>) -> Result<String, AppError> {
+    let filename = match client_path {
+        Some(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty()
+                || trimmed.contains("..")
+                || trimmed.starts_with('/')
+                || trimmed.contains('\\')
+            {
+                return Err(AppError::BadRequest("invalid storage path".into()));
+            }
+            trimmed
+                .split('/')
+                .next_back()
+                .filter(|segment| !segment.is_empty())
+                .ok_or_else(|| AppError::BadRequest("invalid storage path".into()))?
+                .to_string()
+        }
+        None => format!("{}.bin", Uuid::new_v4()),
+    };
+
+    if filename.contains('/') || filename.contains('\\') {
+        return Err(AppError::BadRequest("invalid storage path".into()));
+    }
+
+    Ok(format!("{user_id}/{filename}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::storage_path;
+    use uuid::Uuid;
+
+    #[test]
+    fn builds_user_scoped_path_from_client_filename() {
+        let user_id = Uuid::new_v4();
+        let path = storage_path(user_id, Some("photo.png".into())).expect("path");
+        assert_eq!(path, format!("{user_id}/photo.png"));
+    }
+
+    #[test]
+    fn strips_foreign_prefix_from_client_path() {
+        let user_id = Uuid::new_v4();
+        let other = Uuid::new_v4();
+        let path =
+            storage_path(user_id, Some(format!("{other}/photo.png"))).expect("path");
+        assert_eq!(path, format!("{user_id}/photo.png"));
+    }
+
+    #[test]
+    fn rejects_path_traversal() {
+        let user_id = Uuid::new_v4();
+        assert!(storage_path(user_id, Some("../secret.png".into())).is_err());
+    }
 }

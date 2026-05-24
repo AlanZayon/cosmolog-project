@@ -89,3 +89,19 @@ pub fn sign_wrong_audience_token(user_id: Uuid) -> String {
 
     encode(&header, &claims, &encoding_key()).expect("sign jwt")
 }
+
+pub fn sign_anon_role_token(user_id: Uuid) -> String {
+    let mut header = Header::new(Algorithm::RS256);
+    header.kid = Some(TEST_KID.into());
+
+    let claims = TestClaims {
+        sub: user_id,
+        aud: TEST_AUDIENCE.into(),
+        exp: now_unix() + 3600,
+        iss: TEST_ISSUER.into(),
+        role: "anon".into(),
+        email: None,
+    };
+
+    encode(&header, &claims, &encoding_key()).expect("sign anon jwt")
+}

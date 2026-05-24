@@ -1,8 +1,8 @@
 import { apiFetch } from '@/lib/api/client';
 import type { ApiArc, ApiUniverse } from '@/lib/api/types';
 
-export function getMyUniverses(token: string) {
-  return apiFetch<ApiUniverse[]>('/universes/me', { token });
+export function getMyUniverses() {
+  return apiFetch<ApiUniverse[]>('/universes/me');
 }
 
 export function getUniverseById(id: string) {
@@ -19,10 +19,9 @@ export type CreateUniversePayload = {
   cover_image_url?: string | null;
 };
 
-export function createUniverse(token: string, body: CreateUniversePayload) {
+export function createUniverse(body: CreateUniversePayload) {
   return apiFetch<ApiUniverse>('/universes', {
     method: 'POST',
-    token,
     body: JSON.stringify(body),
   });
 }

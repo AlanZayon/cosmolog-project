@@ -72,7 +72,7 @@ export default function StoryPage({
 }: StoryPageProps = {}) {
   const params = useParams<{ id: string }>();
   const id = (storyIdOverride ?? params?.id) as string | undefined;
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [story, setStory] = useState<StoryWithProfile | null>(null);
@@ -162,8 +162,8 @@ export default function StoryPage({
         })) as CommentWithProfile[],
       );
 
-      if (user && session?.access_token) {
-        const { liked: isLiked } = await getLikeStatus(session.access_token, id);
+      if (user) {
+        const { liked: isLiked } = await getLikeStatus(id);
         setLiked(isLiked);
       } else {
         setLiked(false);
@@ -174,18 +174,18 @@ export default function StoryPage({
   };
 
   const toggleLikeHandler = async () => {
-    if (!user || !session?.access_token) {
+    if (!user || !user) {
       toast({ title: t('story.loginToLike'), variant: 'destructive' });
       return;
     }
-    const { liked: isLiked } = await toggleLike(session.access_token, id!);
+    const { liked: isLiked } = await toggleLike(id!);
     setLiked(isLiked);
     fetchAll();
   };
 
   const addComment = async () => {
-    if (!user || !session?.access_token || !comment.trim()) return;
-    await createComment(session.access_token, id!, comment.trim());
+    if (!user || !user || !comment.trim()) return;
+    await createComment(id!, comment.trim());
     setComment('');
     fetchAll();
   };
@@ -204,10 +204,10 @@ export default function StoryPage({
     }
     setAddingChapter(true);
     try {
-      if (!session?.access_token) throw new Error('Not authenticated');
-      const chapterRow = await createChapter(session.access_token, id!, chTitle);
+      if (!user) throw new Error('Not authenticated');
+      const chapterRow = await createChapter(id!, chTitle);
       if (chapterBlocks.some(blockHasContent)) {
-        await saveBlocks(id!, chapterRow.id, chapterBlocks, session.access_token, user!.id);
+        await saveBlocks(id!, chapterRow.id, chapterBlocks, user!.id);
       }
       setChapterTitle('');
       setChapterBlocks([]);
@@ -272,16 +272,16 @@ export default function StoryPage({
     setSaving(true);
     try {
       let cover_image_url = story.cover_image_url;
-      if (!session?.access_token) throw new Error('Not authenticated');
+      if (!user) throw new Error('Not authenticated');
       if (editCoverFile) {
         const ext = editCoverFile.name.split('.').pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        cover_image_url = await uploadFile(session.access_token, 'covers', editCoverFile, path);
+        cover_image_url = await uploadFile('covers', editCoverFile, path);
       } else if (!editCoverPreview) {
         cover_image_url = null;
       }
 
-      await updateStory(session.access_token, story.id, {
+      await updateStory(story.id, {
         title: titleT,
         description: descT || null,
         cover_image_url,
@@ -341,11 +341,11 @@ export default function StoryPage({
     setSavingContent(true);
     try {
 
-      if (!session?.access_token) throw new Error('Not authenticated');
+      if (!user) throw new Error('Not authenticated');
 
       if (type === 'short_story') {
-        await saveBlocks(story.id, null, editIllustratedBlocks, session.access_token, user.id);
-        await updateStory(session.access_token, story.id, { content: null });
+        await saveBlocks(story.id, null, editIllustratedBlocks, user.id);
+        await updateStory(story.id, { content: null });
       }
 
       if (type === 'comic') {
@@ -356,11 +356,11 @@ export default function StoryPage({
           if (page.file) {
             const ext = page.file.name.split('.').pop();
             const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-            image_url = await uploadFile(session.access_token, 'comics', page.file, path);
+            image_url = await uploadFile('comics', page.file, path);
           }
           if (image_url) pages.push({ image_url, page_order: i + 1 });
         }
-        await replaceComicPages(session.access_token, story.id, pages);
+        await replaceComicPages(story.id, pages);
       }
 
       toast({ title: t('story.contentUpdated') });

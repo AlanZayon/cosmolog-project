@@ -36,7 +36,10 @@ impl FromRequestParts<AppState> for OptionalAuth {
             .filter(|t| !t.is_empty())
             .map(str::to_string)
         else {
-            return Err(AppError::Unauthorized);
+            return Ok(OptionalAuth {
+                user: None,
+                token: None,
+            });
         };
 
         let user = state

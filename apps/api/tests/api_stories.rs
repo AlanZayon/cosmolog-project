@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 
 use common::app::{assert_status, json, setup_app};
-use common::fixtures::{seed_story, seed_user};
+use common::fixtures::{seed_story, seed_universe, seed_user};
 
 #[tokio::test]
 async fn create_story_requires_auth() {
@@ -171,6 +171,28 @@ async fn story_comments_create_and_list() {
 
     let list = app.get(&base, None).await;
     assert_eq!(json(list).await.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn create_story_rejects_foreign_universe() {
+    let Some(app) = setup_app().await else { return };
+    let owner = seed_user(&app.pool, "universe_owner").await;
+    let intruder = seed_user(&app.pool, "story_intruder").await;
+    let universe = seed_universe(&app.pool, owner.user_id, "Private Universe").await;
+    let token = app.register_user(&intruder);
+
+    let response = app
+        .post_json(
+            "/stories",
+            Some(&token),
+            json!({
+                "title": "Injected",
+                "type": "short_story",
+                "universe_id": universe.id
+            }),
+        )
+        .await;
+    assert_status(&response, StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

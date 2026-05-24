@@ -102,7 +102,7 @@ async fn optional_auth_allows_anonymous_requests() {
 }
 
 #[tokio::test]
-async fn optional_auth_rejects_malformed_bearer() {
+async fn optional_auth_treats_malformed_bearer_as_anonymous() {
     let jwt = MockTokenValidator::accepting(Uuid::new_v4());
     let config = common::test_config();
     let state = test_state(jwt, &config);
@@ -113,10 +113,11 @@ async fn optional_auth_rejects_malformed_bearer() {
         .unwrap()
         .into_parts();
 
-    assert!(matches!(
-        OptionalAuth::from_request_parts(&mut parts, &state).await,
-        Err(AppError::Unauthorized)
-    ));
+    let auth = OptionalAuth::from_request_parts(&mut parts, &state)
+        .await
+        .expect("malformed bearer treated as anonymous");
+    assert!(auth.user.is_none());
+    assert!(auth.token.is_none());
 }
 
 #[tokio::test]

@@ -12,7 +12,7 @@ services:
     name: cosmolog-api
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     rootDir: apps/api
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -24,11 +24,13 @@ services:
       - key: API_HOST
         value: 0.0.0.0
       - key: RUN_MIGRATIONS
-        value: "true"
+        value: "false"
       - key: SUPABASE_JWT_AUDIENCE
         value: authenticated
       - key: RUST_LOG
         value: cosmolog_api=info,tower_http=info,sqlx=warn
+      - key: APP_ENV
+        value: production
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL

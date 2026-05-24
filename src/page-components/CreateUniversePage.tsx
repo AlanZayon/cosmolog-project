@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { ApiError, createUniverse, isApiConfigured } from '@/lib/api';
+import { ApiError, createUniverse } from '@/lib/api';
 import { uploadFile } from '@/lib/api/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { CONTENT_LIMITS, describeViolations, validateUniverseFields } from '@/li
 import { ImagePlus, X } from 'lucide-react';
 
 export default function CreateUniversePage() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -70,19 +70,14 @@ export default function CreateUniversePage() {
       if (coverFile) {
         const ext = coverFile.name.split('.').pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        cover_image_url = await uploadFile(
-          session!.access_token,
-          'universe-covers',
-          coverFile,
-          path,
-        );
+        cover_image_url = await uploadFile('universe-covers', coverFile, path);
       }
 
-      if (!isApiConfigured() || !session?.access_token) {
-        throw new Error('NEXT_PUBLIC_API_URL is not configured');
+      if (!user) {
+        throw new Error('Not authenticated');
       }
 
-      const data = await createUniverse(session.access_token, {
+      const data = await createUniverse({
         title: titleTrim,
         description: descTrim || null,
         cover_image_url,

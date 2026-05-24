@@ -7,14 +7,13 @@ export type UpdateProfilePayload = {
   avatar_url?: string | null;
 };
 
-export function getMyProfile(token: string) {
-  return apiFetch<ApiProfile>('/profiles/me', { token });
+export function getMyProfile() {
+  return apiFetch<ApiProfile>('/profiles/me');
 }
 
-export function patchMyProfile(token: string, body: UpdateProfilePayload) {
+export function patchMyProfile(body: UpdateProfilePayload) {
   return apiFetch<ApiProfile>('/profiles/me', {
     method: 'PATCH',
-    token,
     body: JSON.stringify(body),
   });
 }

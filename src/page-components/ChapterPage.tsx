@@ -50,7 +50,7 @@ export default function ChapterPage({
   const chapterNum =
     chapterNumOverride != null ? String(chapterNumOverride) : (params?.chapterNum as string | undefined);
   const router = useRouter();
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [chapter, setChapter] = useState<Tables<'chapters'> | null>(null);
@@ -135,9 +135,9 @@ export default function ChapterPage({
     }
     setSaving(true);
     try {
-      if (!session?.access_token) throw new Error('Not authenticated');
-      await updateChapter(session.access_token, id, chapter.id, tT);
-      await saveBlocks(id, chapter.id, editBlocks, session.access_token, user.id);
+      if (!user) throw new Error('Not authenticated');
+      await updateChapter(id, chapter.id, tT);
+      await saveBlocks(id, chapter.id, editBlocks, user.id);
       const blocks = await loadBlocks(id, chapter.id);
       setChapter({ ...chapter, title: tT, content: '' });
       setChapterBlocks(blocks);

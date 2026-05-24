@@ -8,8 +8,10 @@ use crate::domain::blocks::{self, BlockInput, IllustratedBlock};
 use crate::domain::chapters::{self, Chapter};
 use crate::domain::comic_pages::{self, ComicPage};
 use crate::domain::comments::{self, CommentWithAuthor};
+use crate::domain::limits::{MAX_BLOCK_CONTENT_LEN, MAX_BLOCK_COUNT, MAX_COMMENT_LEN};
 use crate::domain::likes;
-use crate::domain::stories::{self, Story, UpdateStoryInput};
+use crate::domain::stories::{self, validate_scope, Story, UpdateStoryInput};
+use crate::domain::url_validation;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -31,7 +33,32 @@ pub async fn update_story(
     Json(body): Json<UpdateStoryInput>,
 ) -> Result<Json<Story>, AppError> {
     body.validate()?;
+    url_validation::validate_nullable_image_url_update(
+        body.cover_image_url.as_ref(),
+        &state.supabase.url,
+    )?;
+    let existing = stories::find_by_id(&state.pool, id)
+        .await
+        .map_err(AppError::from_db)?
+        .ok_or(AppError::NotFound)?;
     let _ = require_author(&state.pool, id, user.user_id).await?;
+
+    let effective_universe_id = match &body.universe_id {
+        None => existing.universe_id,
+        Some(value) => *value,
+    };
+    let effective_arc_id = match &body.arc_id {
+        None => existing.arc_id,
+        Some(value) => *value,
+    };
+    validate_scope(
+        &state.pool,
+        user.user_id,
+        effective_universe_id,
+        effective_arc_id,
+    )
+    .await?;
+
     let story = stories::update(&state.pool, id, user.user_id, &body)
         .await
         .map_err(|e| match e {
@@ -70,6 +97,18 @@ pub async fn replace_blocks(
     Json(body): Json<ReplaceBlocksBody>,
 ) -> Result<Json<Vec<IllustratedBlock>>, AppError> {
     let _ = require_author(&state.pool, id, user.user_id).await?;
+    if body.blocks.len() > MAX_BLOCK_COUNT {
+        return Err(AppError::BadRequest(format!(
+            "at most {MAX_BLOCK_COUNT} blocks allowed"
+        )));
+    }
+    for block in &body.blocks {
+        if block.content.len() > MAX_BLOCK_CONTENT_LEN {
+            return Err(AppError::BadRequest(format!(
+                "block content must be at most {MAX_BLOCK_CONTENT_LEN} characters"
+            )));
+        }
+    }
     let rows = blocks::replace_for_story(&state.pool, id, q.chapter_id, &body.blocks)
         .await
         .map_err(AppError::from_db)?;
@@ -185,11 +224,15 @@ pub async fn replace_comic_pages(
     Json(body): Json<ReplaceComicPagesBody>,
 ) -> Result<Json<Vec<ComicPage>>, AppError> {
     let _ = require_author(&state.pool, id, user.user_id).await?;
+    let supabase_url = &state.supabase.url;
     let pages: Vec<(String, i32)> = body
         .pages
         .into_iter()
-        .map(|p| (p.image_url, p.page_order))
-        .collect();
+        .map(|p| {
+            url_validation::validate_stored_image_url(&p.image_url, supabase_url)?;
+            Ok((p.image_url, p.page_order))
+        })
+        .collect::<Result<Vec<_>, AppError>>()?;
     let rows = comic_pages::replace_for_story(&state.pool, id, &pages)
         .await
         .map_err(AppError::from_db)?;
@@ -203,6 +246,7 @@ pub async fn insert_comic_page(
     Json(body): Json<ComicPageInput>,
 ) -> Result<Json<Vec<ComicPage>>, AppError> {
     let _ = require_author(&state.pool, id, user.user_id).await?;
+    url_validation::validate_stored_image_url(&body.image_url, &state.supabase.url)?;
     let existing = comic_pages::list_by_story_id(&state.pool, id)
         .await
         .map_err(AppError::from_db)?;
@@ -241,6 +285,11 @@ pub async fn create_comment(
     let content = body.content.trim();
     if content.is_empty() {
         return Err(AppError::BadRequest("content is required".into()));
+    }
+    if content.len() > MAX_COMMENT_LEN {
+        return Err(AppError::BadRequest(format!(
+            "comment must be at most {MAX_COMMENT_LEN} characters"
+        )));
     }
     let row = comments::insert(&state.pool, id, user.user_id, content)
         .await

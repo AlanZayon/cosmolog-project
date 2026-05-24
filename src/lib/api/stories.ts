@@ -1,8 +1,8 @@
 import { apiFetch } from '@/lib/api/client';
 import type { ApiStory, ApiStoryWithProfile } from '@/lib/api/types';
 
-export function getMyStories(token: string) {
-  return apiFetch<ApiStory[]>('/stories/me', { token });
+export function getMyStories() {
+  return apiFetch<ApiStory[]>('/stories/me');
 }
 
 export function getStoryById(id: string) {
@@ -30,10 +30,9 @@ export type CreateStoryPayload = {
   content?: string | null;
 };
 
-export function createStory(token: string, body: CreateStoryPayload) {
+export function createStory(body: CreateStoryPayload) {
   return apiFetch<ApiStory>('/stories', {
     method: 'POST',
-    token,
     body: JSON.stringify(body),
   });
 }

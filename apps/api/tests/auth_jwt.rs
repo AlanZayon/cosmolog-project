@@ -61,6 +61,14 @@ async fn rejects_unknown_kid_after_jwks_refresh() {
 }
 
 #[tokio::test]
+async fn rejects_anon_role_token() {
+    let (_server, jwt) = validator_with_mock_jwks().await;
+    let token = common::jwt::sign_anon_role_token(Uuid::new_v4());
+
+    assert!(jwt.validate(&token).await.is_err());
+}
+
+#[tokio::test]
 async fn refetches_jwks_when_kid_is_unknown_then_validates() {
     let server = MockServer::start().await;
     let jwks_initial = r#"{"keys":[]}"#;

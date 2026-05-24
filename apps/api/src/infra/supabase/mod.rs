@@ -4,6 +4,8 @@ mod storage;
 
 use std::sync::Arc;
 
+use crate::infra::http_client::build_http_client;
+
 pub use auth::{AuthSession, RefreshRequest, SignInRequest, SignUpRequest};
 pub use storage::StorageUploadResponse;
 
@@ -19,7 +21,7 @@ impl SupabaseClient {
         Self {
             url: url.trim_end_matches('/').to_string(),
             anon_key: anon_key.to_string(),
-            http: Arc::new(reqwest::Client::new()),
+            http: Arc::new(build_http_client()),
         }
     }
 

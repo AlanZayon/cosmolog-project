@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { ApiError, getMyUniverses, isApiConfigured } from '@/lib/api';
+import { ApiError, getMyUniverses } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { Plus, Globe } from 'lucide-react';
@@ -19,7 +19,7 @@ interface Universe {
 }
 
 export default function UniversesPage() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const [universes, setUniverses] = useState<Universe[]>([]);
@@ -36,8 +36,8 @@ export default function UniversesPage() {
   const fetchUniverses = async () => {
     setLoading(true);
     try {
-      if (isApiConfigured() && session?.access_token) {
-        const data = await getMyUniverses(session.access_token);
+      if (user) {
+        const data = await getMyUniverses();
         setUniverses(data as Universe[]);
       } else {
         setUniverses([]);

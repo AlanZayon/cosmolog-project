@@ -11,6 +11,7 @@ use crate::auth::claims::SupabaseClaims;
 use crate::auth::jwks::{fetch_jwks, CachedKey};
 use crate::auth::TokenValidator;
 use crate::config::Config;
+use crate::infra::http_client::build_http_client;
 
 /// Authenticated Supabase user extracted from a valid JWT.
 #[derive(Debug, Clone)]
@@ -36,7 +37,7 @@ impl JwtValidator {
             jwks_url: config.supabase_jwks_url.clone(),
             issuer: config.supabase_jwt_issuer.clone(),
             audience: config.supabase_jwt_audience.clone(),
-            client: reqwest::Client::new(),
+            client: build_http_client(),
             keys: RwLock::new(HashMap::new()),
         });
 
@@ -60,7 +61,7 @@ impl JwtValidator {
             jwks_url: String::new(),
             issuer: issuer.into(),
             audience: audience.into(),
-            client: reqwest::Client::new(),
+            client: build_http_client(),
             keys: RwLock::new(keys),
         })
     }
@@ -106,6 +107,9 @@ impl JwtValidator {
 
         let claims = token_data.claims;
         let role = claims.role.unwrap_or_else(|| "authenticated".to_string());
+        if role != "authenticated" {
+            return Err(anyhow!("invalid token role: {role}"));
+        }
 
         Ok(AuthUser {
             user_id: claims.sub,

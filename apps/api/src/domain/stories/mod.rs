@@ -2,6 +2,7 @@ pub mod create;
 pub mod model;
 pub mod present;
 pub mod repository;
+pub mod scope;
 pub mod update;
 
 pub use create::CreateStoryInput;
@@ -11,4 +12,5 @@ pub use repository::{
     find_by_id, insert, list_by_arc_id, list_by_author_id, list_by_universe_id, search_by_title,
     update,
 };
+pub use scope::validate_scope;
 pub use update::UpdateStoryInput;

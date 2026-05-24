@@ -45,14 +45,18 @@ services:
   web:
     image: node:22-bookworm
     working_dir: /workspace
+    # Match the WSL host user so bind-mounted files stay owned by alanz (uid 1000).
+    user: "1000:1000"
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      API_INTERNAL_URL: http://api:8080
       WATCHPACK_POLLING: "true"
     volumes:
       - .:/workspace:cached
       - web_node_modules:/workspace/node_modules
+      # Keep Docker's Turbopack cache off the host .next tree (avoids permission fights with local npm run dev).
+      - web_next:/workspace/.next
     command: bash -c "npm ci && npm run dev -- -H 0.0.0.0"
     depends_on:
       - api
@@ -78,3 +82,4 @@ volumes:
   api_cargo_target:
   api_cargo_registry:
   web_node_modules:
+  web_next:

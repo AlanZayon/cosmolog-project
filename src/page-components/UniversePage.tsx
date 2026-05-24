@@ -99,7 +99,7 @@ export default function UniversePage({
 }: UniversePageProps = {}) {
   const params = useParams<{ id: string }>();
   const id = (universeIdOverride ?? params?.id) as string | undefined;
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [universe, setUniverse] = useState<Universe | null>(null);
@@ -145,8 +145,8 @@ export default function UniversePage({
       const arcData = await getUniverseArcs(id);
       setArcs(arcData as Arc[]);
 
-      if (user && session?.access_token) {
-        const { following: isFollowing } = await getFollowStatus(session.access_token, id);
+      if (user) {
+        const { following: isFollowing } = await getFollowStatus(id);
         setFollowing(isFollowing);
       } else {
         setFollowing(false);
@@ -164,10 +164,10 @@ export default function UniversePage({
   };
 
   const uploadArcCover = async (file: File) => {
-    if (!session?.access_token) throw new Error('Not authenticated');
+    if (!user) throw new Error('Not authenticated');
     const ext = file.name.split('.').pop();
     const path = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    return uploadFile(session.access_token, 'arc-covers', file, path);
+    return uploadFile('arc-covers', file, path);
   };
 
   const resetArcForm = () => {
@@ -216,7 +216,7 @@ export default function UniversePage({
         cover_image_url = null;
       }
 
-      if (!session?.access_token) throw new Error('Not authenticated');
+      if (!user) throw new Error('Not authenticated');
       const payload = {
         name: nT,
         description: descT || null,
@@ -224,10 +224,10 @@ export default function UniversePage({
         cover_image_url,
       };
       if (editingArcId) {
-        await updateArc(session.access_token, editingArcId, payload);
+        await updateArc(editingArcId, payload);
         toast({ title: t('universe.arcUpdated') });
       } else {
-        await createArc(session.access_token, universe.id, payload);
+        await createArc(universe.id, payload);
         toast({ title: t('universe.arcCreated') });
       }
 
@@ -242,9 +242,9 @@ export default function UniversePage({
 
   const deleteArc = async (arcId: string) => {
     if (!window.confirm(t('universe.deleteArcConfirm'))) return;
-    if (!session?.access_token) return;
+    if (!user) return;
     try {
-      await deleteArcApi(session.access_token, arcId);
+      await deleteArcApi(arcId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       toast({ title: t('common.error'), description: message, variant: 'destructive' });
@@ -259,13 +259,13 @@ export default function UniversePage({
 
   const toggleFollow = async () => {
     if (!user || !universe || isOwner) return;
-    if (!session?.access_token) return;
+    if (!user) return;
     try {
       if (following) {
-        await unfollowUniverse(session.access_token, universe.id);
+        await unfollowUniverse(universe.id);
         setFollowing(false);
       } else {
-        await followUniverse(session.access_token, universe.id);
+        await followUniverse(universe.id);
         setFollowing(true);
       }
     } catch (err: unknown) {
@@ -315,16 +315,16 @@ export default function UniversePage({
     setSaving(true);
     try {
       let cover_image_url = universe.cover_image_url;
-      if (!session?.access_token) throw new Error('Not authenticated');
+      if (!user) throw new Error('Not authenticated');
       if (editCoverFile) {
         const ext = editCoverFile.name.split('.').pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        cover_image_url = await uploadFile(session.access_token, 'universe-covers', editCoverFile, path);
+        cover_image_url = await uploadFile('universe-covers', editCoverFile, path);
       } else if (!editCoverPreview) {
         cover_image_url = null;
       }
 
-      await updateUniverse(session.access_token, universe.id, {
+      await updateUniverse(universe.id, {
         title: tT,
         description: dT || null,
         cover_image_url,

@@ -3,46 +3,16 @@ export type ApiSessionUser = {
   email?: string | null;
 };
 
-export type ApiSession = {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  token_type: string;
+/** Client-visible session — tokens live in httpOnly cookies only. */
+export type PublicSession = {
   user: ApiSessionUser;
-  expires_at: number;
+  expires_at: number | null;
 };
 
-const STORAGE_KEY = 'cosmolog_session';
+const LEGACY_STORAGE_KEY = 'cosmolog_session';
 
-export function loadSession(): ApiSession | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as ApiSession;
-    if (!parsed.access_token || !parsed.user?.id) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-export function saveSession(session: ApiSession | null): void {
+/** Remove legacy localStorage tokens from older builds. */
+export function clearLegacySessionStorage(): void {
   if (typeof window === 'undefined') return;
-  if (!session) {
-    localStorage.removeItem(STORAGE_KEY);
-    return;
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-}
-
-export function sessionWithExpiry(data: Omit<ApiSession, 'expires_at'>): ApiSession {
-  return {
-    ...data,
-    expires_at: Date.now() + data.expires_in * 1000,
-  };
-}
-
-export function isSessionExpired(session: ApiSession, skewMs = 60_000): boolean {
-  return Date.now() >= session.expires_at - skewMs;
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
 }

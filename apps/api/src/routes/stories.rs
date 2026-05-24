@@ -4,7 +4,9 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
-use crate::domain::stories::{self, attach_profiles, CreateStoryInput, Story, StoryWithProfile};
+use crate::domain::limits::MAX_SEARCH_QUERY_LEN;
+use crate::domain::stories::{self, attach_profiles, validate_scope, CreateStoryInput, Story, StoryWithProfile};
+use crate::domain::url_validation;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -25,6 +27,17 @@ pub async fn create(
     Json(body): Json<CreateStoryInput>,
 ) -> Result<Json<Story>, AppError> {
     body.validate()?;
+    url_validation::validate_optional_stored_image_url(
+        body.cover_image_url.as_deref(),
+        &state.supabase.url,
+    )?;
+    validate_scope(
+        &state.pool,
+        user.user_id,
+        body.universe_id,
+        body.arc_id,
+    )
+    .await?;
     let story = stories::insert(&state.pool, user.user_id, &body)
         .await
         .map_err(AppError::from_db)?;
@@ -58,6 +71,11 @@ pub async fn search(
     let q = query.q.trim();
     if q.is_empty() {
         return Ok(Json(vec![]));
+    }
+    if q.len() > MAX_SEARCH_QUERY_LEN {
+        return Err(AppError::BadRequest(format!(
+            "search query must be at most {MAX_SEARCH_QUERY_LEN} characters"
+        )));
     }
 
     let stories = stories::search_by_title(&state.pool, q, 50)

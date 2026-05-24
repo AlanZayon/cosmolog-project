@@ -7,6 +7,7 @@ use crate::domain::arcs::{self, Arc};
 use crate::domain::stories::{attach_profiles, list_by_universe_id, StoryWithProfile};
 use crate::domain::follows;
 use crate::domain::universes::{self, CreateUniverseInput, Universe, UpdateUniverseInput};
+use crate::domain::url_validation;
 use serde::Serialize;
 use crate::error::AppError;
 use crate::routes::stories::UniverseStoriesQuery;
@@ -19,6 +20,10 @@ pub async fn create(
     Json(body): Json<CreateUniverseInput>,
 ) -> Result<Json<Universe>, AppError> {
     body.validate()?;
+    url_validation::validate_optional_stored_image_url(
+        body.cover_image_url.as_deref(),
+        &state.supabase.url,
+    )?;
     let universe = universes::insert(&state.pool, user.user_id, &body)
         .await
         .map_err(AppError::from_db)?;
@@ -92,6 +97,10 @@ pub async fn update(
     Json(body): Json<UpdateUniverseInput>,
 ) -> Result<Json<Universe>, AppError> {
     body.validate()?;
+    url_validation::validate_nullable_image_url_update(
+        body.cover_image_url.as_ref(),
+        &state.supabase.url,
+    )?;
     let universe = universes::update(&state.pool, id, user.user_id, &body)
         .await
         .map_err(|e| match e {

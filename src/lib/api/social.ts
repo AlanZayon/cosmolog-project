@@ -13,39 +13,35 @@ export function getStoryComments(storyId: string) {
   return apiFetch<ApiComment[]>(`/stories/${storyId}/comments`);
 }
 
-export function createComment(token: string, storyId: string, content: string) {
+export function createComment(storyId: string, content: string) {
   return apiFetch<ApiComment>(`/stories/${storyId}/comments`, {
     method: 'POST',
-    token,
     body: JSON.stringify({ content }),
   });
 }
 
-export function getLikeStatus(token: string, storyId: string) {
-  return apiFetch<{ liked: boolean }>(`/stories/${storyId}/like`, { token });
+export function getLikeStatus(storyId: string) {
+  return apiFetch<{ liked: boolean }>(`/stories/${storyId}/like`);
 }
 
-export function toggleLike(token: string, storyId: string) {
+export function toggleLike(storyId: string) {
   return apiFetch<{ liked: boolean }>(`/stories/${storyId}/like`, {
     method: 'POST',
-    token,
   });
 }
 
-export function getFollowStatus(token: string, universeId: string) {
-  return apiFetch<{ following: boolean }>(`/universes/${universeId}/follow`, { token });
+export function getFollowStatus(universeId: string) {
+  return apiFetch<{ following: boolean }>(`/universes/${universeId}/follow`);
 }
 
-export function followUniverse(token: string, universeId: string) {
+export function followUniverse(universeId: string) {
   return apiFetch<void>(`/universes/${universeId}/follow`, {
     method: 'POST',
-    token,
   });
 }
 
-export function unfollowUniverse(token: string, universeId: string) {
+export function unfollowUniverse(universeId: string) {
   return apiFetch<void>(`/universes/${universeId}/follow`, {
     method: 'DELETE',
-    token,
   });
 }

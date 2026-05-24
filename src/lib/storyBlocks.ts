@@ -46,21 +46,16 @@ export async function loadBlocks(
   return data as StoryBlockRow[];
 }
 
-export async function uploadBlockImage(
-  token: string,
-  userId: string,
-  file: File,
-): Promise<string> {
+export async function uploadBlockImage(userId: string, file: File): Promise<string> {
   const ext = file.name.split('.').pop();
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-  return uploadFile(token, 'comics', file, path);
+  return uploadFile('comics', file, path);
 }
 
 export async function saveBlocks(
   storyId: string,
   chapterId: string | null,
   blocks: IllustratedBlockItem[],
-  token: string,
   userId: string,
 ): Promise<void> {
   const payload: { block_type: string; content: string }[] = [];
@@ -69,10 +64,10 @@ export async function saveBlocks(
     if (!blockHasContent(block)) continue;
     let content = block.content;
     if (block.block_type === 'image' && block.file) {
-      content = await uploadBlockImage(token, userId, block.file);
+      content = await uploadBlockImage(userId, block.file);
     }
     payload.push({ block_type: block.block_type, content: content.trim() });
   }
 
-  await replaceBlocks(token, storyId, payload, chapterId ?? undefined);
+  await replaceBlocks(storyId, payload, chapterId ?? undefined);
 }

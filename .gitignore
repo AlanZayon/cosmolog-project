@@ -44,6 +44,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# supabase cli local state (contains project refs)
+/supabase/.temp/
+
 # rust (api)
 /apps/api/target/
 /apps/api/lcov.info

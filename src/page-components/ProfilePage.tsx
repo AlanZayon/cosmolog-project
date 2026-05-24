@@ -7,7 +7,6 @@ import {
   getMyProfile,
   getMyStories,
   getMyUniverses,
-  isApiConfigured,
   patchMyProfile,
 } from '@/lib/api';
 import Link from "next/link";
@@ -24,7 +23,7 @@ import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 
 export default function ProfilePage() {
-  const { user, session, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -37,31 +36,19 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const accessToken = session?.access_token;
-
   useEffect(() => {
     if (!user) {
       router.push("/login");
       return;
     }
-    if (!isApiConfigured()) {
-      toast({
-        title: t('common.error'),
-        description: 'NEXT_PUBLIC_API_URL is not configured',
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (!accessToken) return;
     void fetchProfile();
     void fetchStories();
     void fetchUniverses();
-  }, [user, accessToken, router, toast, t]);
+  }, [user, router]);
 
   const fetchProfile = async () => {
-    if (!accessToken) return;
     try {
-      const data = await getMyProfile(accessToken);
+      const data = await getMyProfile();
       setProfile(data as Tables<'profiles'>);
       setUsername(data.username);
       setBio(data.bio || '');
@@ -75,9 +62,8 @@ export default function ProfilePage() {
   };
 
   const fetchStories = async () => {
-    if (!accessToken) return;
     try {
-      const data = await getMyStories(accessToken);
+      const data = await getMyStories();
       setStories(data as Tables<'stories'>[]);
     } catch (err) {
       toast({
@@ -89,9 +75,8 @@ export default function ProfilePage() {
   };
 
   const fetchUniverses = async () => {
-    if (!accessToken) return;
     try {
-      const data = await getMyUniverses(accessToken);
+      const data = await getMyUniverses();
       setUniverses(data as Tables<'universes'>[]);
     } catch (err) {
       toast({
@@ -104,7 +89,7 @@ export default function ProfilePage() {
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user || !accessToken) return;
+    if (!file || !user) return;
     if (file.size > 2 * 1024 * 1024) {
       toast({ title: t('profile.imageTooLarge'), description: t('profile.max2mb'), variant: 'destructive' });
       return;
@@ -113,8 +98,8 @@ export default function ProfilePage() {
     try {
       const ext = file.name.split('.').pop();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const publicUrl = await uploadFile(accessToken, 'avatars', file, path);
-      await patchMyProfile(accessToken, { avatar_url: publicUrl });
+      const publicUrl = await uploadFile('avatars', file, path);
+      await patchMyProfile({ avatar_url: publicUrl });
       toast({ title: t('profile.avatarUpdated') });
       await refreshProfile();
       await fetchProfile();
@@ -128,9 +113,8 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!accessToken) return;
     try {
-      await patchMyProfile(accessToken, { username, bio });
+      await patchMyProfile({ username, bio });
       toast({ title: t('profile.updated') });
       setEditing(false);
       await refreshProfile();

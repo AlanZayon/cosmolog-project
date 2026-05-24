@@ -41,18 +41,16 @@ export function getChapterCount(storyId: string) {
   return apiFetch<{ count: number }>(`/stories/${storyId}/chapters/count`);
 }
 
-export function createChapter(token: string, storyId: string, title: string) {
+export function createChapter(storyId: string, title: string) {
   return apiFetch<ApiChapter>(`/stories/${storyId}/chapters`, {
     method: 'POST',
-    token,
     body: JSON.stringify({ title }),
   });
 }
 
-export function updateChapter(token: string, storyId: string, chapterId: string, title: string) {
+export function updateChapter(storyId: string, chapterId: string, title: string) {
   return apiFetch<ApiChapter>(`/stories/${storyId}/chapters/${chapterId}`, {
     method: 'PATCH',
-    token,
     body: JSON.stringify({ title }),
   });
 }
@@ -62,25 +60,21 @@ export function getComicPages(storyId: string) {
 }
 
 export function replaceComicPages(
-  token: string,
   storyId: string,
   pages: { image_url: string; page_order: number }[],
 ) {
   return apiFetch<ApiComicPage[]>(`/stories/${storyId}/comic-pages`, {
     method: 'PUT',
-    token,
     body: JSON.stringify({ pages }),
   });
 }
 
 export function appendComicPage(
-  token: string,
   storyId: string,
   page: { image_url: string; page_order: number },
 ) {
   return apiFetch<ApiComicPage[]>(`/stories/${storyId}/comic-pages/append`, {
     method: 'POST',
-    token,
     body: JSON.stringify(page),
   });
 }
@@ -91,7 +85,6 @@ export function getBlocks(storyId: string, chapterId?: string | null) {
 }
 
 export function replaceBlocks(
-  token: string,
   storyId: string,
   blocks: { block_type: string; content: string }[],
   chapterId?: string | null,
@@ -99,15 +92,13 @@ export function replaceBlocks(
   const params = chapterId ? `?chapter_id=${chapterId}` : '';
   return apiFetch<ApiBlock[]>(`/stories/${storyId}/blocks${params}`, {
     method: 'PUT',
-    token,
     body: JSON.stringify({ blocks }),
   });
 }
 
-export function updateStory(token: string, storyId: string, body: Record<string, unknown>) {
+export function updateStory(storyId: string, body: Record<string, unknown>) {
   return apiFetch<ApiStory>(`/stories/${storyId}`, {
     method: 'PATCH',
-    token,
     body: JSON.stringify(body),
   });
 }
