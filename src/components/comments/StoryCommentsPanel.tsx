@@ -59,7 +59,7 @@ function CommentAvatar({ name, size = 'md' }: { name: string; size?: 'md' | 'sm'
 }
 
 function CommentContent({ content }: { content: string }) {
-  const match = content.match(/^@(\S+)(?:\s+(.*))?$/s);
+  const match = content.match(/^@(\S+)(?:\s+([\s\S]*))?$/);
   if (!match) {
     return <span className="text-foreground/90">{content}</span>;
   }
