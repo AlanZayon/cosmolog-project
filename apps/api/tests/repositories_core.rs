@@ -144,6 +144,7 @@ async fn stories_insert_list_search_and_author_guard() {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         },
     )
@@ -163,6 +164,7 @@ async fn stories_insert_list_search_and_author_guard() {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         },
     )

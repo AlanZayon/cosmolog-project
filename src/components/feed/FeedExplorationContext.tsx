@@ -33,6 +33,7 @@ type FeedExplorationValue = {
   expandedArcId: string | null;
   setExpandedArcId: (id: string | null) => void;
   pushStory: (id: string) => void;
+  openStoryComments: (id: string) => void;
   pushArc: (id: string) => void;
   pushUniverse: (id: string) => void;
   pop: () => void;
@@ -296,6 +297,10 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
   );
 
   const pushStory = useCallback((id: string) => pushItem({ kind: 'story', id }), [pushItem]);
+  const openStoryComments = useCallback(
+    (id: string) => pushItem({ kind: 'story', id, surface: 'full', focusComments: true }),
+    [pushItem],
+  );
   const pushArc = useCallback((id: string) => pushItem({ kind: 'arc', id }), [pushItem]);
   const pushUniverse = useCallback((id: string) => pushItem({ kind: 'universe', id }), [pushItem]);
 
@@ -413,6 +418,7 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       expandedArcId,
       setExpandedArcId,
       pushStory,
+      openStoryComments,
       pushArc,
       pushUniverse,
       pop,
@@ -427,6 +433,7 @@ export function FeedExplorationProvider({ children }: { children: React.ReactNod
       expandedArcId,
       setExpandedArcId,
       pushStory,
+      openStoryComments,
       pushArc,
       pushUniverse,
       pop,

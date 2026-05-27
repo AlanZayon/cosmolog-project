@@ -33,6 +33,7 @@ import {
   validateStoryMeta,
 } from '@/lib/contentLimits';
 import { blockHasContent, saveBlocks } from '@/lib/storyBlocks';
+import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDisplayModeField';
 import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
 
 type StoryType = 'short_story' | 'chapters' | 'comic';
@@ -65,6 +66,7 @@ export default function CreateStoryPage() {
   const [selectedArcId, setSelectedArcId] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [feedDisplayMode, setFeedDisplayMode] = useState<FeedDisplayMode>('preview');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [shortStoryBlocks, setShortStoryBlocks] = useState<IllustratedBlockItem[]>([]);
@@ -197,6 +199,14 @@ export default function CreateStoryPage() {
       });
       return;
     }
+    if (feedDisplayMode === 'cover' && !coverFile && !coverPreview) {
+      toast({
+        title: t('common.error'),
+        description: t('story.feedDisplayCoverRequired'),
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     try {
       const cover_image_url = coverFile ? await uploadCoverOrAsset('covers', coverFile) : null;
@@ -216,6 +226,7 @@ export default function CreateStoryPage() {
         universe_id: selectedUniverseId || null,
         arc_id: selectedArcId || null,
         cover_image_url,
+        feed_display_mode: feedDisplayMode,
       });
 
       const storyId = data.id;
@@ -378,6 +389,8 @@ export default function CreateStoryPage() {
               </button>
             )}
           </div>
+
+          <FeedDisplayModeField value={feedDisplayMode} onChange={setFeedDisplayMode} />
 
           <div>
             <label className="text-sm font-medium text-foreground">{t('story.title')}</label>

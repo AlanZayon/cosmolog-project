@@ -2,4 +2,4 @@ mod model;
 mod repository;
 
 pub use model::CommentWithAuthor;
-pub use repository::{insert, list_by_story_id};
+pub use repository::{find_by_id, insert, list_by_story_id, resolve_thread_root};

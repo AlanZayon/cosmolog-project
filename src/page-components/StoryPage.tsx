@@ -1,7 +1,10 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  ApiError,
   createChapter,
   getComicPages,
   getProfileByUserId,
@@ -11,10 +14,9 @@ import {
   replaceComicPages,
   updateStory,
 } from '@/lib/api';
+import type { ApiStory } from '@/lib/api/types';
 import {
-  createComment,
   getLikeStatus,
-  getStoryComments,
   toggleLike,
 } from '@/lib/api/social';
 import { uploadFile } from '@/lib/api/storage';
@@ -49,12 +51,13 @@ import {
   saveBlocks,
 } from '@/lib/storyBlocks';
 import StoryBlocksView from '@/components/StoryBlocksView';
+import StoryCommentsPanel from '@/components/comments/StoryCommentsPanel';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
+import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDisplayModeField';
 import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string } | null };
-type CommentWithProfile = Tables<'comments'> & { profiles: { username: string } | null };
 type Arc = Tables<'arcs'>;
 
 export type StoryPageProps = {
@@ -63,12 +66,15 @@ export type StoryPageProps = {
   storyIdOverride?: string;
   /** Open a chapter inside the feed exploration stack instead of leaving for a canonical route. */
   explorationOpenChapter?: (chapterNum: number) => void;
+  /** Scroll to the comments section after the story loads (feed comment button). */
+  focusComments?: boolean;
 };
 
 export default function StoryPage({
   embedExploration = false,
   storyIdOverride,
   explorationOpenChapter,
+  focusComments = false,
 }: StoryPageProps = {}) {
   const params = useParams<{ id: string }>();
   const id = (storyIdOverride ?? params?.id) as string | undefined;
@@ -81,9 +87,7 @@ export default function StoryPage({
   const [chapters, setChapters] = useState<Tables<'chapters'>[]>([]);
   const [comicPages, setComicPages] = useState<any[]>([]);
   const [shortStoryBlocks, setShortStoryBlocks] = useState<any[]>([]);
-  const [comments, setComments] = useState<CommentWithProfile[]>([]);
   const [liked, setLiked] = useState(false);
-  const [comment, setComment] = useState('');
   const [showAddChapter, setShowAddChapter] = useState(false);
   const [chapterTitle, setChapterTitle] = useState('');
   const [chapterBlocks, setChapterBlocks] = useState<IllustratedBlockItem[]>([]);
@@ -103,8 +107,10 @@ export default function StoryPage({
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editArcId, setEditArcId] = useState('');
+  const [editFeedDisplayMode, setEditFeedDisplayMode] = useState<FeedDisplayMode>('preview');
   const [saving, setSaving] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const commentsSectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (id) fetchAll();
@@ -113,6 +119,14 @@ export default function StoryPage({
   useEffect(() => {
     if (!embedExploration && id) clearChapterReturnStoryId();
   }, [embedExploration, id]);
+
+  useEffect(() => {
+    if (!focusComments || !story) return;
+    const frame = requestAnimationFrame(() => {
+      commentsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusComments, story?.id]);
 
   const fetchAll = async () => {
     if (!id) return;
@@ -154,14 +168,6 @@ export default function StoryPage({
         setShortStoryBlocks([]);
       }
 
-      const commentRows = await getStoryComments(id);
-      setComments(
-        commentRows.map((c) => ({
-          ...c,
-          profiles: c.username ? { username: c.username } : null,
-        })) as CommentWithProfile[],
-      );
-
       if (user) {
         const { liked: isLiked } = await getLikeStatus(id);
         setLiked(isLiked);
@@ -180,13 +186,6 @@ export default function StoryPage({
     }
     const { liked: isLiked } = await toggleLike(id!);
     setLiked(isLiked);
-    fetchAll();
-  };
-
-  const addComment = async () => {
-    if (!user || !user || !comment.trim()) return;
-    await createComment(id!, comment.trim());
-    setComment('');
     fetchAll();
   };
 
@@ -227,6 +226,9 @@ export default function StoryPage({
     setEditCoverFile(null);
     setEditTags((story as any).tags || []);
     setEditArcId(story.arc_id || '');
+    setEditFeedDisplayMode(
+      (story as ApiStory).feed_display_mode === 'cover' ? 'cover' : 'preview',
+    );
     setEditing(true);
   };
 
@@ -269,6 +271,14 @@ export default function StoryPage({
       });
       return;
     }
+    if (editFeedDisplayMode === 'cover' && !editCoverPreview) {
+      toast({
+        title: t('common.error'),
+        description: t('story.feedDisplayCoverRequired'),
+        variant: 'destructive',
+      });
+      return;
+    }
     setSaving(true);
     try {
       let cover_image_url = story.cover_image_url;
@@ -287,6 +297,7 @@ export default function StoryPage({
         cover_image_url,
         tags: editTags,
         arc_id: editArcId || null,
+        feed_display_mode: editFeedDisplayMode,
       });
       toast({ title: t('story.updated') });
       setEditing(false);
@@ -439,6 +450,7 @@ export default function StoryPage({
                   </button>
                 )}
               </div>
+              <FeedDisplayModeField value={editFeedDisplayMode} onChange={setEditFeedDisplayMode} />
               <div>
                 <label className="text-sm font-medium text-foreground">{t('story.title')}</label>
                 <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
@@ -508,7 +520,16 @@ export default function StoryPage({
                   <Heart className={`h-4 w-4 mr-1 ${liked ? 'fill-current' : ''}`} /> {story.likes_count}
                 </Button>
                 <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <MessageCircle className="h-4 w-4" /> {story.comments_count}
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors hover:text-foreground"
+                    aria-label={t('story.comments')}
+                    onClick={() =>
+                      commentsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }
+                  >
+                    <MessageCircle className="h-4 w-4" /> {story.comments_count}
+                  </button>
                 </span>
               </div>
             </>
@@ -650,26 +671,31 @@ export default function StoryPage({
         )}
 
         {/* Comments */}
-        <section>
-          <h2 className="text-lg font-semibold mb-4">{t('story.comments')}</h2>
-          {user && (
-            <div className="flex gap-2 mb-4">
-              <Textarea placeholder={t('story.commentPlaceholder')} value={comment} onChange={e => setComment(e.target.value)} rows={2} className="flex-1" />
-              <Button onClick={addComment} size="sm" disabled={!comment.trim()}>{t('common.send')}</Button>
-            </div>
-          )}
-          {comments.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t('story.noComments')}</p>
-          ) : (
-            <div className="space-y-3">
-              {comments.map(c => (
-                <div key={c.id} className="p-3 rounded-lg border border-border bg-card">
-                  <p className="text-xs font-medium text-primary">{c.profiles?.username || t('common.anonymous')}</p>
-                  <p className="text-sm mt-1">{c.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
+        <section
+          ref={commentsSectionRef}
+          id="story-comments"
+          className="scroll-mt-4 mt-10 border-t border-border/60 pt-8"
+        >
+          <div className="mb-5 flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-xl font-semibold tracking-tight">{t('story.comments')}</h2>
+            {story ? (
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {story.comments_count}
+              </span>
+            ) : null}
+          </div>
+          {id ? (
+            <StoryCommentsPanel
+              storyId={id}
+              variant="inline"
+              autoFocusInput={focusComments}
+              onCommentCreated={() =>
+                setStory((prev) =>
+                  prev ? { ...prev, comments_count: prev.comments_count + 1 } : prev,
+                )
+              }
+            />
+          ) : null}
         </section>
       </main>
     </div>

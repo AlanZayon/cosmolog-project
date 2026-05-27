@@ -36,13 +36,13 @@ async fn comments_list_with_author_username() {
     let reader = seed_user(&pool, "reader").await;
     let story = seed_story(&pool, author.user_id, "Discuss", "short_story", None, None).await;
 
-    let comment = insert_comment(&pool, story.id, reader.user_id, "Great read!")
+    let comment = insert_comment(&pool, story.id, reader.user_id, "Great read!", None)
         .await
         .unwrap();
     assert_eq!(comment.content, "Great read!");
     assert_eq!(comment.username.as_deref(), Some("reader"));
 
-    let list = list_by_story_id(&pool, story.id).await.unwrap();
+    let list = list_by_story_id(&pool, story.id, None).await.unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].id, comment.id);
 }

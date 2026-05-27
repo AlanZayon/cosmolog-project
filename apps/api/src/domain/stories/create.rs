@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::error::AppError;
 
 const ALLOWED_TYPES: &[&str] = &["short_story", "chapters", "comic"];
+const ALLOWED_FEED_DISPLAY_MODES: &[&str] = &["preview", "cover"];
 
 #[derive(Debug, Deserialize)]
 pub struct CreateStoryInput {
@@ -13,6 +14,7 @@ pub struct CreateStoryInput {
     pub universe_id: Option<uuid::Uuid>,
     pub arc_id: Option<uuid::Uuid>,
     pub cover_image_url: Option<String>,
+    pub feed_display_mode: Option<String>,
     pub content: Option<String>,
 }
 
@@ -35,7 +37,19 @@ impl CreateStoryInput {
                 ));
             }
         }
+        if let Some(mode) = &self.feed_display_mode {
+            if !ALLOWED_FEED_DISPLAY_MODES.contains(&mode.as_str()) {
+                return Err(AppError::BadRequest("invalid feed display mode".into()));
+            }
+        }
         Ok(())
+    }
+
+    pub fn feed_display_mode(&self) -> &str {
+        self.feed_display_mode
+            .as_deref()
+            .filter(|m| ALLOWED_FEED_DISPLAY_MODES.contains(m))
+            .unwrap_or("preview")
     }
 
     pub fn title(&self) -> &str {
@@ -64,6 +78,7 @@ mod tests {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         }
     }

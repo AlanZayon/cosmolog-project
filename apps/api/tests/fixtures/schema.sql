@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.stories (
   title TEXT NOT NULL,
   description TEXT,
   cover_image_url TEXT,
+  feed_display_mode TEXT NOT NULL DEFAULT 'preview' CHECK (feed_display_mode IN ('preview', 'cover')),
   content TEXT,
   type TEXT NOT NULL DEFAULT 'short_story',
   universe_id UUID REFERENCES public.universes(id) ON DELETE CASCADE,
@@ -91,7 +92,16 @@ CREATE TABLE IF NOT EXISTS public.comments (
   story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
   content TEXT NOT NULL,
+  parent_id UUID REFERENCES public.comments(id) ON DELETE CASCADE,
+  likes_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.comment_likes (
+  user_id UUID NOT NULL,
+  comment_id UUID NOT NULL REFERENCES public.comments(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, comment_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.universe_follows (

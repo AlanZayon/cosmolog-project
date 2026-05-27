@@ -8,6 +8,10 @@ pub struct CommentWithAuthor {
     pub story_id: Uuid,
     pub user_id: Uuid,
     pub content: String,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    pub parent_id: Option<Uuid>,
+    pub likes_count: i32,
+    pub liked: bool,
     pub username: Option<String>,
 }

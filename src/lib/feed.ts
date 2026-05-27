@@ -2,6 +2,8 @@ import { fetchFeed } from '@/lib/api/feed';
 
 export type FeedItemType = 'story' | 'arc' | 'universe';
 
+export type FeedDisplayMode = 'preview' | 'cover';
+
 export interface FeedStoryPreview {
   kind: 'text' | 'image';
   text: string | null;
@@ -14,6 +16,7 @@ export interface FeedStoryPayload {
   description: string | null;
   storyType: string;
   coverImageUrl: string | null;
+  feedDisplayMode?: FeedDisplayMode;
   author: {
     id: string;
     username: string;

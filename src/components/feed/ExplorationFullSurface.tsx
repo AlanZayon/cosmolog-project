@@ -32,6 +32,7 @@ export default function ExplorationFullSurface({
           embedExploration
           storyIdOverride={item.id}
           explorationOpenChapter={(chapterNum) => pushChapter(item.id, chapterNum)}
+          focusComments={item.focusComments}
         />
       );
     case 'chapter':

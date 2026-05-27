@@ -1,22 +1,25 @@
 import { apiFetch } from '@/lib/api/client';
+import type { ApiComment } from '@/lib/api/types';
 
-export type ApiComment = {
-  id: string;
-  story_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-  username: string | null;
-};
+export type { ApiComment };
 
 export function getStoryComments(storyId: string) {
   return apiFetch<ApiComment[]>(`/stories/${storyId}/comments`);
 }
 
-export function createComment(storyId: string, content: string) {
+export function createComment(storyId: string, content: string, parentId?: string | null) {
   return apiFetch<ApiComment>(`/stories/${storyId}/comments`, {
     method: 'POST',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({
+      content,
+      parent_id: parentId ?? null,
+    }),
+  });
+}
+
+export function toggleCommentLike(storyId: string, commentId: string) {
+  return apiFetch<{ liked: boolean }>(`/stories/${storyId}/comments/${commentId}/like`, {
+    method: 'POST',
   });
 }
 

@@ -27,6 +27,7 @@ export type CreateStoryPayload = {
   universe_id?: string | null;
   arc_id?: string | null;
   cover_image_url?: string | null;
+  feed_display_mode?: 'preview' | 'cover';
   content?: string | null;
 };
 

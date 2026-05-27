@@ -5,6 +5,7 @@ pub mod blocks;
 pub mod chapters;
 pub mod comic_pages;
 pub mod comments;
+pub mod comment_likes;
 pub mod follows;
 pub mod likes;
 pub mod profiles;

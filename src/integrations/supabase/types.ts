@@ -262,6 +262,7 @@ export type Database = {
           comments_count: number
           content: string | null
           cover_image_url: string | null
+          feed_display_mode: string
           created_at: string
           description: string | null
           id: string
@@ -278,6 +279,7 @@ export type Database = {
           comments_count?: number
           content?: string | null
           cover_image_url?: string | null
+          feed_display_mode?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -294,6 +296,7 @@ export type Database = {
           comments_count?: number
           content?: string | null
           cover_image_url?: string | null
+          feed_display_mode?: string
           created_at?: string
           description?: string | null
           id?: string

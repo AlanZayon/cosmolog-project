@@ -55,6 +55,7 @@ pub async fn seed_story(
         universe_id,
         arc_id,
         cover_image_url: None,
+        feed_display_mode: None,
         content: Some("Once upon a time".into()),
     };
     stories::insert(pool, author_id, &input)

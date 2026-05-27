@@ -16,6 +16,7 @@ export type ApiStory = {
   title: string;
   description: string | null;
   cover_image_url: string | null;
+  feed_display_mode: 'preview' | 'cover';
   content: string | null;
   type: string;
   universe_id: string | null;
@@ -49,6 +50,18 @@ export type ApiArc = {
   type: string;
   cover_image_url: string | null;
   created_at: string;
+};
+
+export type ApiComment = {
+  id: string;
+  story_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  parent_id: string | null;
+  likes_count: number;
+  liked: boolean;
+  username: string | null;
 };
 
 export type ApiErrorBody = {

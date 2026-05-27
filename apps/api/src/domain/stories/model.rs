@@ -9,6 +9,7 @@ pub struct Story {
     pub title: String,
     pub description: Option<String>,
     pub cover_image_url: Option<String>,
+    pub feed_display_mode: String,
     pub content: Option<String>,
     pub r#type: String,
     pub universe_id: Option<Uuid>,

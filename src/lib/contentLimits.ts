@@ -18,6 +18,8 @@ export const CONTENT_LIMITS = {
   /** Short story block caps */
   shortStoryMaxBlocks: 50,
   shortStoryMaxImages: 30,
+  /** Story comment body — mirrors backend MAX_COMMENT_LEN */
+  commentBody: 4_000,
 } as const;
 
 export type CharLimitViolation = {

@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::error::AppError;
 
 const ALLOWED_TYPES: &[&str] = &["short_story", "chapters", "comic"];
+const ALLOWED_FEED_DISPLAY_MODES: &[&str] = &["preview", "cover"];
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateStoryInput {
@@ -13,6 +14,7 @@ pub struct UpdateStoryInput {
     pub universe_id: Option<Option<uuid::Uuid>>,
     pub arc_id: Option<Option<uuid::Uuid>>,
     pub cover_image_url: Option<Option<String>>,
+    pub feed_display_mode: Option<String>,
     pub content: Option<Option<String>>,
 }
 
@@ -41,6 +43,11 @@ impl UpdateStoryInput {
                 ));
             }
         }
+        if let Some(mode) = &self.feed_display_mode {
+            if !ALLOWED_FEED_DISPLAY_MODES.contains(&mode.as_str()) {
+                return Err(AppError::BadRequest("invalid feed display mode".into()));
+            }
+        }
         Ok(())
     }
 }
@@ -60,6 +67,7 @@ mod tests {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         };
         assert!(input.validate().is_ok());
@@ -75,6 +83,7 @@ mod tests {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
@@ -90,6 +99,7 @@ mod tests {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
@@ -105,6 +115,7 @@ mod tests {
             universe_id: None,
             arc_id: None,
             cover_image_url: None,
+            feed_display_mode: None,
             content: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));

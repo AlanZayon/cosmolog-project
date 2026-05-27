@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { feedCardArticleClasses } from '@/components/feed/feedCardArticleClasses';
 import { FeedClampScope, FeedClampToggle } from '@/components/feed/FeedClampedDescription';
 import { useFeedExploration } from '@/components/feed/FeedExplorationContext';
+import { useCommentsDrawer } from '@/components/comments/CommentsDrawerProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Heart, MessageCircle } from 'lucide-react';
 import type { FeedStoryPayload } from '@/lib/feed';
@@ -17,9 +18,11 @@ interface StoryFeedCardProps {
 function StoryFeedStatRow({
   story,
   statRowClassName,
+  onCommentClick,
 }: {
   story: FeedStoryPayload;
   statRowClassName?: string;
+  onCommentClick: () => void;
 }) {
   const { t } = useLanguage();
 
@@ -48,7 +51,10 @@ function StoryFeedStatRow({
             type="button"
             className={statButtonClass}
             aria-label={`${t('feed.commentStory')}, ${story.stats.comments}`}
-            onClick={isolateFromCard}
+            onClick={(e) => {
+              isolateFromCard(e);
+              onCommentClick();
+            }}
             onPointerDown={isolateFromCard}
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
@@ -64,11 +70,21 @@ function StoryFeedStatRow({
 export default function StoryFeedCard({ story, compact = false }: StoryFeedCardProps) {
   const { t } = useLanguage();
   const { pushStory } = useFeedExploration();
+  const { openComments } = useCommentsDrawer();
 
   const openStory = () => pushStory(story.id);
+  const openCommentsDrawer = () => openComments(story.id, story.title);
 
-  const clampText =
-    story.preview.kind === 'text'
+  const useCoverInFeed = story.feedDisplayMode === 'cover' && !!story.coverImageUrl;
+  const heroImageUrl = useCoverInFeed
+    ? story.coverImageUrl
+    : story.preview.kind === 'image'
+      ? story.preview.imageUrl
+      : null;
+
+  const clampText = useCoverInFeed
+    ? story.description || t('common.noContent')
+    : story.preview.kind === 'text'
       ? story.preview.text || story.description || t('common.noContent')
       : story.description || null;
 
@@ -111,9 +127,9 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
         }}
         className="block w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        {story.preview.kind === 'image' && story.preview.imageUrl ? (
+        {heroImageUrl ? (
           <div className="aspect-[16/10] overflow-hidden border-b border-border bg-muted">
-            <img src={story.preview.imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={heroImageUrl} alt="" className="h-full w-full object-cover" />
           </div>
         ) : null}
 
@@ -134,16 +150,24 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
               text={clampText}
               className="mt-0"
               textClassName={
-                story.preview.kind === 'text'
+                useCoverInFeed || story.preview.kind === 'text'
                   ? 'text-base leading-relaxed text-foreground/90'
                   : 'text-base leading-relaxed text-foreground/80'
               }
-              preWrap={story.preview.kind === 'text'}
+              preWrap={!useCoverInFeed && story.preview.kind === 'text'}
             >
-              <StoryFeedStatRow story={story} statRowClassName="relative z-[2] mt-4" />
+              <StoryFeedStatRow
+                story={story}
+                statRowClassName="relative z-[2] mt-4"
+                onCommentClick={openCommentsDrawer}
+              />
             </FeedClampScope>
           ) : (
-            <StoryFeedStatRow story={story} statRowClassName="relative z-[2]" />
+            <StoryFeedStatRow
+              story={story}
+              statRowClassName="relative z-[2]"
+              onCommentClick={openCommentsDrawer}
+            />
           )}
         </div>
       </div>

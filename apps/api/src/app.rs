@@ -91,6 +91,10 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/stories/{id}/comments",
             get(story_content::list_comments).post(story_content::create_comment),
         )
+        .route(
+            "/stories/{story_id}/comments/{comment_id}/like",
+            get(story_content::comment_like_status).post(story_content::toggle_comment_like),
+        )
         .route("/stories/{id}/like", get(story_content::like_status).post(story_content::toggle_like))
         .route("/universes", post(universes::create))
         .route("/universes/me", get(universes::list_mine))

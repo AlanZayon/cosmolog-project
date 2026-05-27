@@ -14,11 +14,11 @@ pub async fn insert(
         r#"
         INSERT INTO stories (
             title, description, author_id, tags, type, content,
-            universe_id, arc_id, cover_image_url
+            universe_id, arc_id, cover_image_url, feed_display_mode
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING
-            id, author_id, title, description, cover_image_url, content,
+            id, author_id, title, description, cover_image_url, feed_display_mode, content,
             type, universe_id, arc_id, tags, likes_count, comments_count,
             created_at, updated_at
         "#,
@@ -32,6 +32,7 @@ pub async fn insert(
     .bind(input.universe_id)
     .bind(input.arc_id)
     .bind(input.cover_image_url.as_deref())
+    .bind(input.feed_display_mode())
     .fetch_one(pool)
     .await
 }
@@ -40,7 +41,7 @@ pub async fn list_by_author_id(pool: &PgPool, author_id: Uuid) -> Result<Vec<Sto
     sqlx::query_as::<_, Story>(
         r#"
         SELECT
-            id, author_id, title, description, cover_image_url, content,
+            id, author_id, title, description, cover_image_url, feed_display_mode, content,
             type, universe_id, arc_id, tags, likes_count, comments_count,
             created_at, updated_at
         FROM stories
@@ -63,7 +64,7 @@ pub async fn list_by_universe_id(
             sqlx::query_as::<_, Story>(
                 r#"
                 SELECT
-                    id, author_id, title, description, cover_image_url, content,
+                    id, author_id, title, description, cover_image_url, feed_display_mode, content,
                     type, universe_id, arc_id, tags, likes_count, comments_count,
                     created_at, updated_at
                 FROM stories
@@ -80,7 +81,7 @@ pub async fn list_by_universe_id(
             sqlx::query_as::<_, Story>(
                 r#"
                 SELECT
-                    id, author_id, title, description, cover_image_url, content,
+                    id, author_id, title, description, cover_image_url, feed_display_mode, content,
                     type, universe_id, arc_id, tags, likes_count, comments_count,
                     created_at, updated_at
                 FROM stories
@@ -100,7 +101,7 @@ pub async fn search_by_title(pool: &PgPool, query: &str, limit: i64) -> Result<V
     sqlx::query_as::<_, Story>(
         r#"
         SELECT
-            id, author_id, title, description, cover_image_url, content,
+            id, author_id, title, description, cover_image_url, feed_display_mode, content,
             type, universe_id, arc_id, tags, likes_count, comments_count,
             created_at, updated_at
         FROM stories
@@ -119,7 +120,7 @@ pub async fn list_by_arc_id(pool: &PgPool, arc_id: Uuid) -> Result<Vec<Story>, s
     sqlx::query_as::<_, Story>(
         r#"
         SELECT
-            id, author_id, title, description, cover_image_url, content,
+            id, author_id, title, description, cover_image_url, feed_display_mode, content,
             type, universe_id, arc_id, tags, likes_count, comments_count,
             created_at, updated_at
         FROM stories
@@ -163,6 +164,10 @@ pub async fn update(
         .cover_image_url
         .clone()
         .unwrap_or(story.cover_image_url);
+    let feed_display_mode = input
+        .feed_display_mode
+        .clone()
+        .unwrap_or(story.feed_display_mode);
     let content = input.content.clone().unwrap_or(story.content);
 
     sqlx::query_as::<_, Story>(
@@ -175,11 +180,12 @@ pub async fn update(
             universe_id = $6,
             arc_id = $7,
             cover_image_url = $8,
-            content = $9,
+            feed_display_mode = $9,
+            content = $10,
             updated_at = NOW()
         WHERE id = $1
         RETURNING
-            id, author_id, title, description, cover_image_url, content,
+            id, author_id, title, description, cover_image_url, feed_display_mode, content,
             type, universe_id, arc_id, tags, likes_count, comments_count,
             created_at, updated_at
         "#,
@@ -192,6 +198,7 @@ pub async fn update(
     .bind(universe_id)
     .bind(arc_id)
     .bind(cover_image_url)
+    .bind(feed_display_mode)
     .bind(content)
     .fetch_one(pool)
     .await
@@ -201,7 +208,7 @@ pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Story>, sqlx::
     sqlx::query_as::<_, Story>(
         r#"
         SELECT
-            id, author_id, title, description, cover_image_url, content,
+            id, author_id, title, description, cover_image_url, feed_display_mode, content,
             type, universe_id, arc_id, tags, likes_count, comments_count,
             created_at, updated_at
         FROM stories

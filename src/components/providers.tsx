@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/hooks/useLanguage";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { FeedExplorationProvider } from "@/components/feed/FeedExplorationContext";
+import { CommentsDrawerProvider } from "@/components/comments/CommentsDrawerProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -19,11 +20,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <LanguageProvider>
           <AuthProvider>
             <FeedExplorationProvider>
+              <CommentsDrawerProvider>
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
                 {children}
               </TooltipProvider>
+              </CommentsDrawerProvider>
             </FeedExplorationProvider>
           </AuthProvider>
         </LanguageProvider>

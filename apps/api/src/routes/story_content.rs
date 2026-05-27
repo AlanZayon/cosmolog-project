@@ -3,10 +3,11 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::auth::AuthUser;
+use crate::auth::{AuthUser, OptionalAuth};
 use crate::domain::blocks::{self, BlockInput, IllustratedBlock};
 use crate::domain::chapters::{self, Chapter};
 use crate::domain::comic_pages::{self, ComicPage};
+use crate::domain::comment_likes;
 use crate::domain::comments::{self, CommentWithAuthor};
 use crate::domain::limits::{MAX_BLOCK_CONTENT_LEN, MAX_BLOCK_COUNT, MAX_COMMENT_LEN};
 use crate::domain::likes;
@@ -275,9 +276,11 @@ pub async fn insert_comic_page(
 
 pub async fn list_comments(
     State(state): State<AppState>,
+    OptionalAuth { user, .. }: OptionalAuth,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<CommentWithAuthor>>, AppError> {
-    let rows = comments::list_by_story_id(&state.pool, id)
+    let viewer_id = user.as_ref().map(|u| u.user_id);
+    let rows = comments::list_by_story_id(&state.pool, id, viewer_id)
         .await
         .map_err(AppError::from_db)?;
     Ok(Json(rows))
@@ -286,6 +289,7 @@ pub async fn list_comments(
 #[derive(Debug, Deserialize)]
 pub struct CreateCommentInput {
     pub content: String,
+    pub parent_id: Option<Uuid>,
 }
 
 pub async fn create_comment(
@@ -303,10 +307,73 @@ pub async fn create_comment(
             "comment must be at most {MAX_COMMENT_LEN} characters"
         )));
     }
-    let row = comments::insert(&state.pool, id, user.user_id, content)
+
+    let parent_id = if let Some(parent_id) = body.parent_id {
+        let Some((story_id, _)) = comments::find_by_id(&state.pool, parent_id)
+            .await
+            .map_err(AppError::from_db)?
+        else {
+            return Err(AppError::NotFound);
+        };
+        if story_id != id {
+            return Err(AppError::BadRequest(
+                "parent comment does not belong to this story".into(),
+            ));
+        }
+        comments::resolve_thread_root(&state.pool, parent_id)
+            .await
+            .map_err(AppError::from_db)?
+            .or(Some(parent_id))
+    } else {
+        None
+    };
+
+    let row = comments::insert(&state.pool, id, user.user_id, content, parent_id)
         .await
         .map_err(AppError::from_db)?;
     Ok(Json(row))
+}
+
+pub async fn comment_like_status(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path((_story_id, comment_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<LikedResponse>, AppError> {
+    let liked = comment_likes::has_like(&state.pool, comment_id, user.user_id)
+        .await
+        .map_err(AppError::from_db)?;
+    Ok(Json(LikedResponse { liked }))
+}
+
+pub async fn toggle_comment_like(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path((story_id, comment_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<LikedResponse>, AppError> {
+    let Some((comment_story_id, _)) = comments::find_by_id(&state.pool, comment_id)
+        .await
+        .map_err(AppError::from_db)?
+    else {
+        return Err(AppError::NotFound);
+    };
+    if comment_story_id != story_id {
+        return Err(AppError::NotFound);
+    }
+
+    let liked = comment_likes::has_like(&state.pool, comment_id, user.user_id)
+        .await
+        .map_err(AppError::from_db)?;
+    if liked {
+        comment_likes::delete_like(&state.pool, comment_id, user.user_id)
+            .await
+            .map_err(AppError::from_db)?;
+        Ok(Json(LikedResponse { liked: false }))
+    } else {
+        comment_likes::insert_like(&state.pool, comment_id, user.user_id)
+            .await
+            .map_err(AppError::from_db)?;
+        Ok(Json(LikedResponse { liked: true }))
+    }
 }
 
 #[derive(Debug, Serialize)]

@@ -12,6 +12,8 @@ export type StackItem = {
   id: string;
   surface?: StackSurface;
   chapterNum?: number;
+  /** Scroll to comments when opening a story in the full exploration surface. */
+  focusComments?: boolean;
 };
 
 export function stackItemMatchesStory(item: StackItem, storyId: string): boolean {
