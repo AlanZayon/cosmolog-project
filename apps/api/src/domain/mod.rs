@@ -7,6 +7,7 @@ pub mod comic_pages;
 pub mod comments;
 pub mod comment_likes;
 pub mod follows;
+pub mod library;
 pub mod likes;
 pub mod profiles;
 pub mod limits;

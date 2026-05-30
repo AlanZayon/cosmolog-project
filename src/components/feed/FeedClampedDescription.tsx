@@ -30,10 +30,19 @@ type FeedClampScopeProps = {
   className?: string;
   textClassName?: string;
   preWrap?: boolean;
+  /** When set, the clamped text area opens the story (feed card). */
+  onTextActivate?: () => void;
   children?: ReactNode;
 };
 
-export function FeedClampScope({ text, className, textClassName, preWrap, children }: FeedClampScopeProps) {
+export function FeedClampScope({
+  text,
+  className,
+  textClassName,
+  preWrap,
+  onTextActivate,
+  children,
+}: FeedClampScopeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [overflowsMobile, setOverflowsMobile] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -77,7 +86,32 @@ export function FeedClampScope({ text, className, textClassName, preWrap, childr
       <div className={cn(className, "relative z-[2]")}>
         <div
           ref={ref}
-          className={cn(textClassName, preWrap && "whitespace-pre-wrap", !expanded && "max-md:line-clamp-4")}
+          role={onTextActivate ? 'button' : undefined}
+          tabIndex={onTextActivate ? 0 : undefined}
+          onClick={
+            onTextActivate
+              ? () => {
+                  onTextActivate();
+                }
+              : undefined
+          }
+          onKeyDown={
+            onTextActivate
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onTextActivate();
+                  }
+                }
+              : undefined
+          }
+          className={cn(
+            textClassName,
+            preWrap && 'whitespace-pre-wrap',
+            !expanded && 'max-md:line-clamp-4',
+            onTextActivate &&
+              'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          )}
         >
           {text}
         </div>
@@ -103,8 +137,10 @@ export function FeedClampToggle({ className }: FeedClampToggleProps) {
     <button
       type="button"
       tabIndex={0}
+      aria-expanded={expanded}
+      aria-label={expanded ? t("feed.showLess") : t("feed.showMore")}
       className={cn(
-        "inline-flex min-h-11 min-w-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/60 px-4 py-2.5 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-muted hover:text-primary active:scale-[0.99]",
+        "inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-border bg-muted/60 text-primary shadow-sm transition-colors hover:bg-muted hover:text-primary active:scale-[0.99]",
         className,
       )}
       onClick={(e) => {
@@ -114,15 +150,9 @@ export function FeedClampToggle({ className }: FeedClampToggleProps) {
       }}
     >
       {expanded ? (
-        <>
-          <ChevronUp className="h-4 w-4 shrink-0" aria-hidden />
-          {t("feed.showLess")}
-        </>
+        <ChevronUp className="h-4 w-4 shrink-0" aria-hidden />
       ) : (
-        <>
-          <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
-          {t("feed.showMore")}
-        </>
+        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
       )}
     </button>
   );

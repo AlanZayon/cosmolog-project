@@ -17,6 +17,7 @@ import type { TranslationKey } from '@/i18n/translations';
 import { PEEK_ILLUSTRATED_BLOCKS } from '@/lib/storyPreviewPeek';
 import { loadBlocks, normalizeStoryType, type StoryBlockRow } from '@/lib/storyBlocks';
 import StoryBlocksView from '@/components/StoryBlocksView';
+import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 
 export type StoryWithProfile = Tables<'stories'> & {
   profiles: { username: string } | null;
@@ -274,6 +275,14 @@ export default function StoryFeedPreview({
               {story.description}
             </p>
           )}
+          {story ? (
+            <StoryLibraryActions
+              storyId={story.id}
+              likesCount={story.likes_count}
+              variant={peek ? 'feed' : 'page'}
+              className={peek ? 'mt-3 gap-3' : 'mt-4'}
+            />
+          ) : null}
           {fullPageControl}
         </header>
 

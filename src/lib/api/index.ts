@@ -3,6 +3,7 @@ export * from '@/lib/api/auth';
 export * from '@/lib/api/arcs';
 export * from '@/lib/api/content';
 export * from '@/lib/api/feed';
+export * from '@/lib/api/library';
 export * from '@/lib/api/profiles';
 export * from '@/lib/api/social';
 export * from '@/lib/api/storage';

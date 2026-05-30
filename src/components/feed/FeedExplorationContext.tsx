@@ -26,6 +26,7 @@ import {
   type StackItem,
   type StackKind,
 } from '@/lib/feedExplorationStorage';
+import { isCollectionPickerOpen } from '@/components/library/CollectionPickerDialog';
 import { useLanguage } from '@/hooks/useLanguage';
 
 type FeedExplorationValue = {
@@ -78,6 +79,7 @@ function FeedExplorationStackShell() {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (isCollectionPickerOpen()) return;
         e.preventDefault();
         pop();
       }
@@ -116,7 +118,10 @@ function FeedExplorationStackShell() {
           type="button"
           className="absolute inset-0 z-0 cursor-default border-0 bg-black/35 p-0 dark:bg-black/50 supports-[backdrop-filter]:backdrop-blur-md [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
           aria-label={t('feed.backOneLevel')}
-          onClick={() => pop()}
+          onClick={() => {
+            if (isCollectionPickerOpen()) return;
+            pop();
+          }}
         />
 
         <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center p-2 sm:p-6">

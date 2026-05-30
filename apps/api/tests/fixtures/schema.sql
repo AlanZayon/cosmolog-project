@@ -111,6 +111,29 @@ CREATE TABLE IF NOT EXISTS public.universe_follows (
   PRIMARY KEY (user_id, universe_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.library_collections (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  icon TEXT NOT NULL DEFAULT 'folder',
+  visibility TEXT NOT NULL DEFAULT 'private',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.library_collection_items (
+  collection_id UUID NOT NULL REFERENCES public.library_collections(id) ON DELETE CASCADE,
+  story_id UUID NOT NULL REFERENCES public.stories(id) ON DELETE CASCADE,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  position INTEGER,
+  PRIMARY KEY (collection_id, story_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_library_collections_user_id ON public.library_collections(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_library_collection_items_collection_id ON public.library_collection_items(collection_id, added_at DESC);
+CREATE INDEX IF NOT EXISTS idx_library_collection_items_story_id ON public.library_collection_items(story_id);
+
 CREATE INDEX IF NOT EXISTS idx_stories_author_id ON public.stories(author_id);
 CREATE INDEX IF NOT EXISTS idx_stories_universe_id ON public.stories(universe_id);
 CREATE INDEX IF NOT EXISTS idx_stories_arc_id ON public.stories(arc_id);

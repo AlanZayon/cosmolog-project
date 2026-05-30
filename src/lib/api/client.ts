@@ -57,7 +57,12 @@ export async function apiFetch<T>(
     return undefined as T;
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 /** Auth BFF routes (same-origin, cookies). */
@@ -83,5 +88,10 @@ export async function authFetch<T>(path: string, options: RequestInit = {}): Pro
     return undefined as T;
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }

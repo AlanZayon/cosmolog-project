@@ -38,6 +38,270 @@ const translations = {
   'header.signup': { pt: 'Cadastrar', en: 'Sign Up', ja: '新規登録', es: 'Registrarse' },
   'header.home': { pt: 'Início', en: 'Home', ja: 'ホーム', es: 'Inicio' },
   'header.quickLinks': { pt: 'Acesso rápido', en: 'Quick links', ja: 'クイックリンク', es: 'Accesos rápidos' },
+  'header.library': { pt: 'Estante', en: 'Shelf', ja: '本棚', es: 'Estantería' },
+
+  // Library (Estante)
+  'library.title': { pt: 'Estante', en: 'Shelf', ja: '本棚', es: 'Estantería' },
+  'library.liked': { pt: 'Curtidas', en: 'Liked', ja: 'いいね', es: 'Me gusta' },
+  'library.collections': { pt: 'Coleções', en: 'Collections', ja: 'コレクション', es: 'Colecciones' },
+  'library.saveToShelf': { pt: 'Salvar na Estante', en: 'Save to Shelf', ja: '本棚に保存', es: 'Guardar en estantería' },
+  'library.saveToShelfHint': {
+    pt: 'Escolha em quais coleções esta história deve aparecer.',
+    en: 'Choose which collections should include this story.',
+    ja: 'このストーリーを入れるコレクションを選んでください。',
+    es: 'Elige en qué colecciones debe aparecer esta historia.',
+  },
+  'library.pickerCreateNew': {
+    pt: 'Nova coleção',
+    en: 'New collection',
+    ja: '新しいコレクション',
+    es: 'Nueva colección',
+  },
+  'library.pickerCreateNewHint': {
+    pt: 'Crie uma coleção personalizada com ícone e descrição',
+    en: 'Create a custom collection with icon and description',
+    ja: 'アイコンと説明付きのコレクションを作成',
+    es: 'Crea una colección con icono y descripción',
+  },
+  'library.pickerYourCollections': {
+    pt: 'Suas coleções',
+    en: 'Your collections',
+    ja: 'あなたのコレクション',
+    es: 'Tus colecciones',
+  },
+  'library.pickerSavedIn': {
+    pt: 'Salva em {{n}} coleção(ões)',
+    en: 'Saved in {{n}} collection(s)',
+    ja: '{{n}}件のコレクションに保存済み',
+    es: 'Guardada en {{n}} colección(es)',
+  },
+  'library.pickerNotSavedYet': {
+    pt: 'Ainda não salva em nenhuma coleção',
+    en: 'Not saved in any collection yet',
+    ja: 'まだどのコレクションにも保存されていません',
+    es: 'Aún no guardada en ninguna colección',
+  },
+  'library.pickerDone': {
+    pt: 'Pronto',
+    en: 'Done',
+    ja: '完了',
+    es: 'Listo',
+  },
+  'library.createCollection': { pt: 'Criar coleção', en: 'Create collection', ja: 'コレクションを作成', es: 'Crear colección' },
+  'library.collectionName': { pt: 'Nome da coleção', en: 'Collection name', ja: 'コレクション名', es: 'Nombre de la colección' },
+  'library.removeFromCollection': { pt: 'Remover da coleção', en: 'Remove from collection', ja: 'コレクションから削除', es: 'Quitar de la colección' },
+  'library.storySaved': { pt: 'História salva', en: 'Story saved', ja: 'ストーリーを保存しました', es: 'Historia guardada' },
+  'library.loginToSaveOrLike': {
+    pt: 'Entre para curtir ou salvar na Estante',
+    en: 'Sign in to like or save to your Shelf',
+    ja: 'いいねや本棚への保存にはログインが必要です',
+    es: 'Inicia sesión para dar like o guardar en tu estantería',
+  },
+  'library.emptyLiked': { pt: 'Nenhuma história curtida ainda', en: 'No liked stories yet', ja: 'まだいいねしたストーリーはありません', es: 'Aún no hay historias con me gusta' },
+  'library.emptyLikedHint': {
+    pt: 'Explore o feed e curta histórias que você gostar.',
+    en: 'Browse the feed and like stories you enjoy.',
+    ja: 'フィードを見て、気に入ったストーリーにいいねしましょう。',
+    es: 'Explora el feed y dale me gusta a las historias que te gusten.',
+  },
+  'library.emptyCollections': { pt: 'Nenhuma coleção ainda', en: 'No collections yet', ja: 'まだコレクションがありません', es: 'Aún no hay colecciones' },
+  'library.emptyCollectionsHint': {
+    pt: 'Crie uma coleção para organizar histórias salvas.',
+    en: 'Create a collection to organize saved stories.',
+    ja: '保存したストーリーを整理するコレクションを作成しましょう。',
+    es: 'Crea una colección para organizar historias guardadas.',
+  },
+  'library.collectionStories': { pt: 'Histórias da coleção', en: 'Collection stories', ja: 'コレクションのストーリー', es: 'Historias de la colección' },
+  'library.storyCount': { pt: '{{n}} histórias', en: '{{n}} stories', ja: '{{n}}件', es: '{{n}} historias' },
+  'library.backToCollections': { pt: 'Voltar às coleções', en: 'Back to collections', ja: 'コレクションに戻る', es: 'Volver a colecciones' },
+  'library.exploreFeed': { pt: 'Explorar feed', en: 'Explore feed', ja: 'フィードを見る', es: 'Explorar feed' },
+  'library.saveError': { pt: 'Não foi possível salvar', en: 'Could not save', ja: '保存できませんでした', es: 'No se pudo guardar' },
+  'library.collectionDescription': {
+    pt: 'Descrição',
+    en: 'Description',
+    ja: '説明',
+    es: 'Descripción',
+  },
+  'library.collectionDescriptionPlaceholder': {
+    pt: 'Uma breve descrição da coleção…',
+    en: 'A short description for this collection…',
+    ja: 'コレクションの短い説明…',
+    es: 'Una breve descripción de la colección…',
+  },
+  'library.descriptionRemaining': {
+    pt: '{{n}} caracteres restantes',
+    en: '{{n}} characters remaining',
+    ja: '残り{{n}}文字',
+    es: '{{n}} caracteres restantes',
+  },
+  'library.collectionIcon': {
+    pt: 'Ícone',
+    en: 'Icon',
+    ja: 'アイコン',
+    es: 'Icono',
+  },
+  'library.editCollection': {
+    pt: 'Editar coleção',
+    en: 'Edit collection',
+    ja: 'コレクションを編集',
+    es: 'Editar colección',
+  },
+  'library.deleteCollection': {
+    pt: 'Excluir coleção',
+    en: 'Delete collection',
+    ja: 'コレクションを削除',
+    es: 'Eliminar colección',
+  },
+  'library.deleteCollectionConfirm': {
+    pt: 'Esta ação não pode ser desfeita. As histórias não serão apagadas, apenas removidas da coleção.',
+    en: 'This cannot be undone. Stories will not be deleted, only removed from this collection.',
+    ja: 'この操作は取り消せません。ストーリー自体は削除されず、コレクションから外れるだけです。',
+    es: 'Esta acción no se puede deshacer. Las historias no se borran, solo se quitan de la colección.',
+  },
+  'library.collectionUpdated': {
+    pt: 'Coleção atualizada',
+    en: 'Collection updated',
+    ja: 'コレクションを更新しました',
+    es: 'Colección actualizada',
+  },
+  'library.collectionDeleted': {
+    pt: 'Coleção excluída',
+    en: 'Collection deleted',
+    ja: 'コレクションを削除しました',
+    es: 'Colección eliminada',
+  },
+  'library.storyRemoved': {
+    pt: 'História removida da coleção',
+    en: 'Story removed from collection',
+    ja: 'コレクションからストーリーを削除しました',
+    es: 'Historia quitada de la colección',
+  },
+  'library.reorderHint': {
+    pt: 'Arraste pelo ícone para reordenar as histórias.',
+    en: 'Drag by the handle to reorder stories.',
+    ja: 'ハンドルをドラッグして順序を変更できます。',
+    es: 'Arrastra por el asa para reordenar las historias.',
+  },
+  'library.dragToReorder': {
+    pt: 'Arrastar para reordenar',
+    en: 'Drag to reorder',
+    ja: 'ドラッグして並べ替え',
+    es: 'Arrastrar para reordenar',
+  },
+  'library.removeStories': {
+    pt: 'Remover histórias',
+    en: 'Remove stories',
+    ja: 'ストーリーを削除',
+    es: 'Quitar historias',
+  },
+  'library.removeStoriesHint': {
+    pt: 'Toque nas histórias que deseja remover desta coleção.',
+    en: 'Tap the stories you want to remove from this collection.',
+    ja: 'このコレクションから外すストーリーをタップしてください。',
+    es: 'Toca las historias que quieras quitar de esta colección.',
+  },
+  'library.removeSelected': {
+    pt: 'Remover selecionadas ({{n}})',
+    en: 'Remove selected ({{n}})',
+    ja: '選択を削除 ({{n}})',
+    es: 'Quitar seleccionadas ({{n}})',
+  },
+  'library.storiesRemoved': {
+    pt: '{{n}} histórias removidas',
+    en: '{{n}} stories removed',
+    ja: '{{n}}件のストーリーを削除しました',
+    es: '{{n}} historias quitadas',
+  },
+  'library.save': {
+    pt: 'Salvar',
+    en: 'Save',
+    ja: '保存',
+    es: 'Guardar',
+  },
+  'library.cancel': {
+    pt: 'Cancelar',
+    en: 'Cancel',
+    ja: 'キャンセル',
+    es: 'Cancelar',
+  },
+  'library.icon.folder': { pt: 'Pasta', en: 'Folder', ja: 'フォルダ', es: 'Carpeta' },
+  'library.icon.bookmark': { pt: 'Marcador', en: 'Bookmark', ja: 'ブックマーク', es: 'Marcador' },
+  'library.icon.heart': { pt: 'Coração', en: 'Heart', ja: 'ハート', es: 'Corazón' },
+  'library.icon.star': { pt: 'Estrela', en: 'Star', ja: '星', es: 'Estrella' },
+  'library.icon.bookOpen': { pt: 'Livro', en: 'Book', ja: '本', es: 'Libro' },
+  'library.icon.library': { pt: 'Biblioteca', en: 'Library', ja: '図書館', es: 'Biblioteca' },
+  'library.icon.sparkles': { pt: 'Brilho', en: 'Sparkles', ja: 'きらめき', es: 'Destellos' },
+  'library.icon.moon': { pt: 'Lua', en: 'Moon', ja: '月', es: 'Luna' },
+  'library.icon.sun': { pt: 'Sol', en: 'Sun', ja: '太陽', es: 'Sol' },
+  'library.icon.flame': { pt: 'Chama', en: 'Flame', ja: '炎', es: 'Llama' },
+  'library.icon.compass': { pt: 'Bússola', en: 'Compass', ja: 'コンパス', es: 'Brújula' },
+  'library.icon.globe': { pt: 'Globo', en: 'Globe', ja: '地球', es: 'Globo' },
+  'library.icon.music': { pt: 'Música', en: 'Music', ja: '音楽', es: 'Música' },
+  'library.icon.palette': { pt: 'Paleta', en: 'Palette', ja: 'パレット', es: 'Paleta' },
+  'library.icon.rocket': { pt: 'Foguete', en: 'Rocket', ja: 'ロケット', es: 'Cohete' },
+  'library.icon.crown': { pt: 'Coroa', en: 'Crown', ja: '王冠', es: 'Corona' },
+  'library.icon.gem': { pt: 'Gema', en: 'Gem', ja: '宝石', es: 'Gema' },
+  'library.icon.coffee': { pt: 'Café', en: 'Coffee', ja: 'コーヒー', es: 'Café' },
+  'library.searchStories': {
+    pt: 'Buscar histórias',
+    en: 'Search stories',
+    ja: 'ストーリーを検索',
+    es: 'Buscar historias',
+  },
+  'library.searchStoriesPlaceholder': {
+    pt: 'Buscar por título, autor ou tag…',
+    en: 'Search by title, author, or tag…',
+    ja: 'タイトル・作者・タグで検索…',
+    es: 'Buscar por título, autor o etiqueta…',
+  },
+  'library.noSearchResults': {
+    pt: 'Nenhuma história encontrada para esta busca.',
+    en: 'No stories match your search.',
+    ja: '検索に一致するストーリーがありません。',
+    es: 'Ninguna historia coincide con la búsqueda.',
+  },
+  'library.searchActiveHint': {
+    pt: 'Limpe a busca para reordenar as histórias.',
+    en: 'Clear the search to reorder stories.',
+    ja: '並べ替えるには検索をクリアしてください。',
+    es: 'Borra la búsqueda para reordenar las historias.',
+  },
+  'library.searchResultsCount': {
+    pt: '{{n}} de {{total}} histórias',
+    en: '{{n}} of {{total}} stories',
+    ja: '{{total}}件中{{n}}件',
+    es: '{{n}} de {{total}} historias',
+  },
+  'library.clearSearch': {
+    pt: 'Limpar busca',
+    en: 'Clear search',
+    ja: '検索をクリア',
+    es: 'Borrar búsqueda',
+  },
+  'library.searchCollections': {
+    pt: 'Buscar coleções',
+    en: 'Search collections',
+    ja: 'コレクションを検索',
+    es: 'Buscar colecciones',
+  },
+  'library.searchCollectionsPlaceholder': {
+    pt: 'Buscar por nome ou descrição…',
+    en: 'Search by name or description…',
+    ja: '名前または説明で検索…',
+    es: 'Buscar por nombre o descripción…',
+  },
+  'library.noCollectionSearchResults': {
+    pt: 'Nenhuma coleção encontrada para esta busca.',
+    en: 'No collections match your search.',
+    ja: '検索に一致するコレクションがありません。',
+    es: 'Ninguna colección coincide con la búsqueda.',
+  },
+  'library.collectionSearchResultsCount': {
+    pt: '{{n}} de {{total}} coleções',
+    en: '{{n}} of {{total}} collections',
+    ja: '{{total}}件中{{n}}件',
+    es: '{{n}} de {{total}} colecciones',
+  },
 
   // Index
   'index.title.discover': { pt: 'Descubra', en: 'Discover', ja: '発見しよう', es: 'Descubre' },
@@ -175,6 +439,7 @@ const translations = {
   'common.noContent': { pt: 'Sem conteúdo.', en: 'No content.', ja: 'コンテンツなし。', es: 'Sin contenido.' },
   'common.none': { pt: 'Nenhum', en: 'None', ja: 'なし', es: 'Ninguno' },
   'common.delete': { pt: 'Excluir', en: 'Delete', ja: '削除', es: 'Eliminar' },
+  'common.close': { pt: 'Fechar', en: 'Close', ja: '閉じる', es: 'Cerrar' },
 
   // Login
   'login.welcome': { pt: 'Bem-vindo de volta', en: 'Welcome back', ja: 'おかえりなさい', es: 'Bienvenido de nuevo' },
@@ -522,6 +787,18 @@ export type TranslationKey = keyof typeof translations;
 
 export function getTranslation(key: TranslationKey, lang: Language): string {
   return translations[key]?.[lang] || translations[key]?.['pt'] || key;
+}
+
+export function formatTranslation(
+  key: TranslationKey,
+  lang: Language,
+  params: Record<string, string | number>,
+): string {
+  let text = getTranslation(key, lang);
+  for (const [name, value] of Object.entries(params)) {
+    text = text.replaceAll(`{{${name}}}`, String(value));
+  }
+  return text;
 }
 
 export default translations;

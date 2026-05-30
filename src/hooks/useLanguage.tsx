@@ -1,10 +1,16 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import { type Language, type TranslationKey, getTranslation } from "@/i18n/translations";
+import {
+  type Language,
+  type TranslationKey,
+  formatTranslation,
+  getTranslation,
+} from "@/i18n/translations";
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: TranslationKey) => string;
+  tf: (key: TranslationKey, params: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -27,9 +33,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: TranslationKey) => getTranslation(key, language), [language]);
+  const tf = useCallback(
+    (key: TranslationKey, params: Record<string, string | number>) =>
+      formatTranslation(key, language, params),
+    [language],
+  );
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>
+    <LanguageContext.Provider value={{ language, setLanguage, t, tf }}>{children}</LanguageContext.Provider>
   );
 }
 

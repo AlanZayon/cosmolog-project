@@ -10,7 +10,7 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::config::Config;
 use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::middleware::{rate_limit, request_context, security_headers};
-use crate::routes::{arcs, auth, db, feed, health, profiles, storage, stories, story_content, universes};
+use crate::routes::{arcs, auth, db, feed, health, library, profiles, storage, stories, story_content, universes};
 use crate::state::AppState;
 
 fn is_production() -> bool {
@@ -96,6 +96,25 @@ pub fn router(state: AppState, config: &Config) -> Router {
             get(story_content::comment_like_status).post(story_content::toggle_comment_like),
         )
         .route("/stories/{id}/like", get(story_content::like_status).post(story_content::toggle_like))
+        .route("/stories/{id}/library-status", get(library::library_status))
+        .route("/library/liked-stories", get(library::liked_stories))
+        .route(
+            "/library/collections",
+            get(library::list_collections).post(library::create_collection),
+        )
+        .route(
+            "/library/collections/{id}",
+            patch(library::update_collection).delete(library::delete_collection),
+        )
+        .route("/library/collections/{id}/stories", get(library::list_collection_stories))
+        .route(
+            "/library/collections/{id}/stories/order",
+            axum::routing::put(library::reorder_collection_stories),
+        )
+        .route(
+            "/library/collections/{collection_id}/stories/{story_id}",
+            post(library::add_story).delete(library::remove_story),
+        )
         .route("/universes", post(universes::create))
         .route("/universes/me", get(universes::list_mine))
         .route(

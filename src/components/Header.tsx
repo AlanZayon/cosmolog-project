@@ -14,7 +14,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { PenTool, Search, User, LogOut, Globe, Sun, Moon, LogIn, UserPlus, Home } from "lucide-react";
+import { PenTool, Search, User, LogOut, Globe, Sun, Moon, LogIn, UserPlus, Home, Library } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS, type Language } from "@/i18n/translations";
 import CosmologLogo from "@/components/CosmologLogo";
@@ -138,6 +138,17 @@ export default function Header() {
                   {t("header.write")}
                 </Link>
               </SheetClose>
+              {user ? (
+                <SheetClose asChild>
+                  <Link
+                    href="/library"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                  >
+                    <Library className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    {t("header.library")}
+                  </Link>
+                </SheetClose>
+              ) : null}
               <SheetClose asChild>
                 <Link
                   href="/universes"
@@ -235,6 +246,14 @@ export default function Header() {
                   <span className="hidden min-[400px]:inline">{t("header.write")}</span>
                 </Link>
               </Button>
+              {user ? (
+                <Button variant="outline" size="sm" asChild className="h-10 gap-1.5 px-2 font-medium sm:h-9 sm:px-2.5 md:px-3">
+                  <Link href="/library" title={t("header.library")}>
+                    <Library className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="hidden min-[400px]:inline">{t("header.library")}</span>
+                  </Link>
+                </Button>
+              ) : null}
               {!user ? (
                 <>
                   <Button variant="outline" size="sm" asChild className="h-10 shrink-0 gap-1 px-2 font-medium sm:h-9 sm:px-2.5">

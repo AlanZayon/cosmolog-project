@@ -15,10 +15,6 @@ import {
   updateStory,
 } from '@/lib/api';
 import type { ApiStory } from '@/lib/api/types';
-import {
-  getLikeStatus,
-  toggleLike,
-} from '@/lib/api/social';
 import { uploadFile } from '@/lib/api/storage';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -27,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
 import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
-import { Heart, MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, Save } from 'lucide-react';
+import { MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import TagInput from '@/components/TagInput';
 import ComicPageUploader from '@/components/ComicPageUploader';
@@ -55,6 +51,7 @@ import StoryCommentsPanel from '@/components/comments/StoryCommentsPanel';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDisplayModeField';
+import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string } | null };
@@ -87,7 +84,6 @@ export default function StoryPage({
   const [chapters, setChapters] = useState<Tables<'chapters'>[]>([]);
   const [comicPages, setComicPages] = useState<any[]>([]);
   const [shortStoryBlocks, setShortStoryBlocks] = useState<any[]>([]);
-  const [liked, setLiked] = useState(false);
   const [showAddChapter, setShowAddChapter] = useState(false);
   const [chapterTitle, setChapterTitle] = useState('');
   const [chapterBlocks, setChapterBlocks] = useState<IllustratedBlockItem[]>([]);
@@ -167,26 +163,9 @@ export default function StoryPage({
       } else {
         setShortStoryBlocks([]);
       }
-
-      if (user) {
-        const { liked: isLiked } = await getLikeStatus(id);
-        setLiked(isLiked);
-      } else {
-        setLiked(false);
-      }
     } catch {
       setStory(null);
     }
-  };
-
-  const toggleLikeHandler = async () => {
-    if (!user || !user) {
-      toast({ title: t('story.loginToLike'), variant: 'destructive' });
-      return;
-    }
-    const { liked: isLiked } = await toggleLike(id!);
-    setLiked(isLiked);
-    fetchAll();
   };
 
   const addChapter = async () => {
@@ -515,10 +494,14 @@ export default function StoryPage({
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-4 mt-4">
-                <Button variant={liked ? 'default' : 'outline'} size="sm" onClick={toggleLikeHandler} className={liked ? 'gradient-warm text-primary-foreground' : ''}>
-                  <Heart className={`h-4 w-4 mr-1 ${liked ? 'fill-current' : ''}`} /> {story.likes_count}
-                </Button>
+              <div className="flex flex-wrap items-center gap-4 mt-4">
+                <StoryLibraryActions
+                  storyId={id!}
+                  likesCount={story.likes_count}
+                  onLikesCountChange={(count) =>
+                    setStory((s) => (s ? { ...s, likes_count: count } : s))
+                  }
+                />
                 <span className="flex items-center gap-1 text-sm text-muted-foreground">
                   <button
                     type="button"
