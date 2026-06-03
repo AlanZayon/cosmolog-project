@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
+import ProfileAuthorLink from '@/components/ProfileAuthorLink';
 import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
 import { MessageCircle, Plus, BookOpen, Pencil, X, ImagePlus, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -484,7 +485,17 @@ export default function StoryPage({
                   </Button>
                 )}
               </div>
-              <p className="text-muted-foreground text-sm">{t('common.by')} {story.profiles?.username || t('common.anonymous')}</p>
+              <p className="text-muted-foreground text-sm">
+                {t('common.by')}{' '}
+                {story.profiles?.username ? (
+                  <ProfileAuthorLink
+                    username={story.profiles.username}
+                    className="font-normal text-muted-foreground"
+                  />
+                ) : (
+                  t('common.anonymous')
+                )}
+              </p>
               {storyArc && <p className="text-sm text-muted-foreground mt-1">{t('story.arc')}: {storyArc.name}</p>}
               {story.description && <p className="mt-3 text-foreground/80">{story.description}</p>}
               {(story as any).tags?.length > 0 && (

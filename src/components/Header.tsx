@@ -18,6 +18,7 @@ import { PenTool, Search, User, LogOut, Globe, Sun, Moon, LogIn, UserPlus, Home,
 import { useState } from "react";
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS, type Language } from "@/i18n/translations";
 import CosmologLogo from "@/components/CosmologLogo";
+import HeaderNotificationCenter from "@/components/HeaderNotificationCenter";
 import { COMMUNITY_FEED_ELEMENT_ID, HOME_FEED_PATH } from "@/lib/homeFeedNav";
 
 const LANGUAGES: Language[] = ["pt", "en", "ja", "es"];
@@ -275,6 +276,7 @@ export default function Header() {
                   </Button>
                 </>
               ) : null}
+              {user ? <HeaderNotificationCenter /> : null}
               <Button
                 type="button"
                 variant="ghost"

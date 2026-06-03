@@ -24,6 +24,8 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "time
 thiserror = "2.0"
 time = { version = "0.3", features = ["serde", "serde-human-readable"] }
 tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures-util = { version = "0.3" }
 tower-http = { version = "0.6", features = ["cors", "set-header"] }
 governor = { version = "0.8", features = ["std", "dashmap"] }
 tracing = "0.1"

@@ -10,7 +10,10 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::config::Config;
 use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::middleware::{rate_limit, request_context, security_headers};
-use crate::routes::{arcs, auth, db, feed, health, library, profiles, storage, stories, story_content, universes};
+use crate::routes::{
+    arcs, auth, db, feed, health, library, notifications, profiles, storage, stories,
+    story_content, universes,
+};
 use crate::state::AppState;
 
 fn is_production() -> bool {
@@ -65,8 +68,17 @@ pub fn router(state: AppState, config: &Config) -> Router {
             get(profiles::me).patch(profiles::update_me),
         )
         .route("/profiles/batch", get(profiles::batch))
+        .route("/profiles/search", get(profiles::search))
         .route("/profiles/user/{user_id}", get(profiles::by_user_id))
         .route("/profiles/{username}", get(profiles::by_username))
+        .route(
+            "/profiles/{username}/notification-subscription",
+            get(notifications::profile_subscription_status)
+                .post(notifications::subscribe_profile)
+                .delete(notifications::unsubscribe_profile),
+        )
+        .route("/profiles/{username}/stories", get(profiles::stories_by_username))
+        .route("/profiles/{username}/universes", get(profiles::universes_by_username))
         .route("/stories", post(stories::create))
         .route("/stories/search", get(stories::search))
         .route("/stories/me", get(stories::list_mine))
@@ -122,13 +134,23 @@ pub fn router(state: AppState, config: &Config) -> Router {
             get(universes::by_id).patch(universes::update),
         )
         .route("/universes/{id}/follow", get(universes::follow_status).post(universes::follow).delete(universes::unfollow))
+        .route(
+            "/universes/{id}/notification-subscription",
+            get(notifications::universe_subscription_status)
+                .post(notifications::subscribe_universe)
+                .delete(notifications::unsubscribe_universe),
+        )
         .route("/universes/{id}/arcs", get(universes::arcs).post(arcs::create_for_universe))
         .route("/universes/{id}/stories", get(universes::stories))
         .route(
             "/arcs/{id}",
             get(arcs::by_id).patch(arcs::update).delete(arcs::delete),
         )
-        .route("/arcs/{id}/stories", get(arcs::stories));
+        .route("/arcs/{id}/stories", get(arcs::stories))
+        .route("/notifications/stream", get(notifications::stream))
+        .route("/notifications", get(notifications::list))
+        .route("/notifications/unread-count", get(notifications::unread_count))
+        .route("/notifications/{id}/consume", post(notifications::consume));
 
     if !is_production() {
         api = api.route("/db/ping", get(db::ping));

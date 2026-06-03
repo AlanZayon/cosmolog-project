@@ -16,7 +16,12 @@ export const LANGUAGE_FLAGS: Record<Language, string> = {
 
 const translations = {
   // Header
-  'header.search': { pt: 'Buscar histórias...', en: 'Search stories...', ja: 'ストーリーを検索...', es: 'Buscar historias...' },
+  'header.search': {
+    pt: 'Buscar perfis ou histórias...',
+    en: 'Search profiles or stories...',
+    ja: 'プロフィールやストーリーを検索...',
+    es: 'Buscar perfiles o historias...',
+  },
   'header.themeLight': { pt: 'Modo claro', en: 'Light mode', ja: 'ライトモード', es: 'Modo claro' },
   'header.themeDark': { pt: 'Modo escuro', en: 'Dark mode', ja: 'ダークモード', es: 'Modo oscuro' },
   'header.chooseLanguage': { pt: 'Idioma', en: 'Language', ja: '言語', es: 'Idioma' },
@@ -39,6 +44,13 @@ const translations = {
   'header.home': { pt: 'Início', en: 'Home', ja: 'ホーム', es: 'Inicio' },
   'header.quickLinks': { pt: 'Acesso rápido', en: 'Quick links', ja: 'クイックリンク', es: 'Accesos rápidos' },
   'header.library': { pt: 'Estante', en: 'Shelf', ja: '本棚', es: 'Estantería' },
+  'header.notifications': { pt: 'Avisos', en: 'Alerts', ja: 'お知らせ', es: 'Avisos' },
+  'header.notificationsEmpty': {
+    pt: 'Nenhum aviso por aqui.',
+    en: 'No alerts yet.',
+    ja: 'お知らせはまだありません。',
+    es: 'No hay avisos aún.',
+  },
 
   // Library (Estante)
   'library.title': { pt: 'Estante', en: 'Shelf', ja: '本棚', es: 'Estantería' },
@@ -478,6 +490,187 @@ const translations = {
   'profile.avatarUpdated': { pt: 'Avatar atualizado!', en: 'Avatar updated!', ja: 'アバターが更新されました！', es: '¡Avatar actualizado!' },
   'profile.imageTooLarge': { pt: 'Imagem muito grande', en: 'Image too large', ja: '画像が大きすぎます', es: 'Imagen demasiado grande' },
   'profile.max2mb': { pt: 'Máximo 2MB', en: 'Max 2MB', ja: '最大2MB', es: 'Máximo 2MB' },
+
+  // Public profile
+  'publicProfile.stories': { pt: 'Histórias', en: 'Stories', ja: 'ストーリー', es: 'Historias' },
+  'publicProfile.universes': { pt: 'Universos', en: 'Universes', ja: 'ユニバース', es: 'Universos' },
+  'publicProfile.noStories': {
+    pt: 'Nenhuma história publicada ainda.',
+    en: 'No published stories yet.',
+    ja: 'まだ公開されたストーリーはありません。',
+    es: 'Aún no hay historias publicadas.',
+  },
+  'publicProfile.noUniverses': {
+    pt: 'Nenhum universo criado ainda.',
+    en: 'No universes created yet.',
+    ja: 'まだユニバースはありません。',
+    es: 'Aún no hay universos creados.',
+  },
+  'publicProfile.notFound': {
+    pt: 'Perfil não encontrado.',
+    en: 'Profile not found.',
+    ja: 'プロフィールが見つかりません。',
+    es: 'Perfil no encontrado.',
+  },
+
+  // Notifications (subscriptions)
+  'notifications.button': { pt: 'Notificações', en: 'Notifications', ja: '通知', es: 'Notificaciones' },
+  'notifications.followCta': {
+    pt: 'Seguir novidades',
+    en: 'Follow updates',
+    ja: '更新をフォロー',
+    es: 'Seguir novedades',
+  },
+  'notifications.manage': {
+    pt: 'Gerenciar notificações',
+    en: 'Manage notifications',
+    ja: '通知を管理',
+    es: 'Gestionar notificaciones',
+  },
+  'notifications.panelTitle': {
+    pt: 'Notificações',
+    en: 'Notifications',
+    ja: '通知',
+    es: 'Notificaciones',
+  },
+  'notifications.panelSubtitle': {
+    pt: 'Escolha o que quer receber quando {{username}} publicar.',
+    en: 'Choose what to get when {{username}} publishes.',
+    ja: '{{username}} が公開したときに受け取る内容を選びます。',
+    es: 'Elige qué recibir cuando {{username}} publique.',
+  },
+  'notifications.confirmStepTitle': {
+    pt: 'Confirmar ativação',
+    en: 'Confirm activation',
+    ja: '有効化の確認',
+    es: 'Confirmar activación',
+  },
+  'notifications.profileOptionDesc': {
+    pt: 'Toda nova história publicada por @{{username}}.',
+    en: 'Every new story published by @{{username}}.',
+    ja: '@{{username}} の新しいストーリーすべて。',
+    es: 'Cada historia nueva de @{{username}}.',
+  },
+  'notifications.universeSection': {
+    pt: 'Por universo',
+    en: 'By universe',
+    ja: 'ユニバース別',
+    es: 'Por universo',
+  },
+  'notifications.universeOptionDesc': {
+    pt: 'Só histórias novas neste universo.',
+    en: 'Only new stories in this universe.',
+    ja: 'このユニバースの新しいストーリーのみ。',
+    es: 'Solo historias nuevas en este universo.',
+  },
+  'notifications.activeBadge': { pt: 'Ativo', en: 'On', ja: 'オン', es: 'Activo' },
+  'notifications.activate': { pt: 'Ativar', en: 'Turn on', ja: '有効にする', es: 'Activar' },
+  'notifications.deactivate': { pt: 'Desativar', en: 'Turn off', ja: '無効にする', es: 'Desactivar' },
+  'notifications.back': { pt: 'Voltar', en: 'Back', ja: '戻る', es: 'Volver' },
+  'notifications.confirmLead': {
+    pt: 'Você será avisado quando houver uma nova publicação.',
+    en: 'You will be alerted when something new is published.',
+    ja: '新しい投稿があるとお知らせします。',
+    es: 'Te avisaremos cuando haya una nueva publicación.',
+  },
+  'notifications.bulletNotify': {
+    pt: 'Aviso na hora em que uma história for publicada.',
+    en: 'Alert as soon as a story is published.',
+    ja: 'ストーリーが公開されたらすぐにお知らせ。',
+    es: 'Aviso en cuanto se publique una historia.',
+  },
+  'notifications.bulletAutoOff': {
+    pt: 'Se você ignorar muitos avisos sem abrir, a notificação desliga sozinha.',
+    en: 'If you ignore many alerts without opening them, notifications turn off automatically.',
+    ja: '開かずに通知が溜まると、自動でオフになります。',
+    es: 'Si ignoras muchos avisos sin abrirlos, se desactivan solas.',
+  },
+  'notifications.followCardTitle': {
+    pt: 'Não perca as próximas histórias',
+    en: "Don't miss the next stories",
+    ja: '次のストーリーを見逃さない',
+    es: 'No te pierdas las próximas historias',
+  },
+  'notifications.followCardHint': {
+    pt: 'Ative avisos do perfil inteiro ou de universos específicos.',
+    en: 'Turn on alerts for the whole profile or specific universes.',
+    ja: 'プロフィール全体または特定のユニバースの通知をオンにできます。',
+    es: 'Activa avisos del perfil completo o de universos concretos.',
+  },
+  'notifications.active': {
+    pt: 'Notificações ativas',
+    en: 'Notifications on',
+    ja: '通知オン',
+    es: 'Notificaciones activas',
+  },
+  'notifications.subscribeAllStories': {
+    pt: 'Todas as novas histórias deste perfil',
+    en: 'All new stories from this profile',
+    ja: 'このプロフィールの新しいストーリーすべて',
+    es: 'Todas las historias nuevas de este perfil',
+  },
+  'notifications.universeMenu': {
+    pt: 'Histórias de um universo',
+    en: 'Stories from a universe',
+    ja: 'ユニバースのストーリー',
+    es: 'Historias de un universo',
+  },
+  'notifications.cancelProfile': {
+    pt: 'Cancelar notificações do perfil',
+    en: 'Unsubscribe from profile',
+    ja: 'プロフィールの通知を解除',
+    es: 'Cancelar notificaciones del perfil',
+  },
+  'notifications.cancelUniverse': {
+    pt: 'Cancelar: {{title}}',
+    en: 'Unsubscribe: {{title}}',
+    ja: '解除: {{title}}',
+    es: 'Cancelar: {{title}}',
+  },
+  'notifications.activateProfileTitle': {
+    pt: 'Ativar notificações do perfil',
+    en: 'Turn on profile notifications',
+    ja: 'プロフィール通知を有効にする',
+    es: 'Activar notificaciones del perfil',
+  },
+  'notifications.activateUniverseTitle': {
+    pt: 'Ativar notificações: {{title}}',
+    en: 'Turn on notifications: {{title}}',
+    ja: '通知を有効にする: {{title}}',
+    es: 'Activar notificaciones: {{title}}',
+  },
+  'notifications.activateDescription': {
+    pt: 'Se você receber muitas notificações sem abrir nenhuma história, essa notificação será desativada automaticamente.',
+    en: 'If you receive many notifications without opening any story, this subscription will be turned off automatically.',
+    ja: '通知を開かずに多数受け取ると、この通知は自動的に無効になります。',
+    es: 'Si recibes muchas notificaciones sin abrir ninguna historia, esta suscripción se desactivará automáticamente.',
+  },
+  'notifications.confirm': { pt: 'Ativar', en: 'Turn on', ja: '有効にする', es: 'Activar' },
+  'notifications.subscribed': {
+    pt: 'Notificações ativadas.',
+    en: 'Notifications turned on.',
+    ja: '通知を有効にしました。',
+    es: 'Notificaciones activadas.',
+  },
+  'notifications.unsubscribed': {
+    pt: 'Notificações canceladas.',
+    en: 'Notifications turned off.',
+    ja: '通知を解除しました。',
+    es: 'Notificaciones canceladas.',
+  },
+  'notifications.inboxLine': {
+    pt: 'Nova história de {{username}}',
+    en: 'New story from {{username}}',
+    ja: '{{username}} の新しいストーリー',
+    es: 'Nueva historia de {{username}}',
+  },
+  'notifications.inboxUniverseLine': {
+    pt: '{{username}} · {{universe}}',
+    en: '{{username}} · {{universe}}',
+    ja: '{{username}} · {{universe}}',
+    es: '{{username}} · {{universe}}',
+  },
+
   'arc.storiesInArc': {
     pt: 'Histórias neste arco',
     en: 'Stories in this arc',
@@ -488,7 +681,14 @@ const translations = {
   // Search
   'search.resultsFor': { pt: 'Resultados para', en: 'Results for', ja: '検索結果:', es: 'Resultados para' },
   'search.searching': { pt: 'Buscando...', en: 'Searching...', ja: '検索中...', es: 'Buscando...' },
-  'search.noResults': { pt: 'Nenhuma história encontrada.', en: 'No stories found.', ja: 'ストーリーが見つかりません。', es: 'No se encontraron historias.' },
+  'search.noResults': {
+    pt: 'Nenhum perfil ou história encontrado.',
+    en: 'No profiles or stories found.',
+    ja: 'プロフィールもストーリーも見つかりません。',
+    es: 'No se encontraron perfiles ni historias.',
+  },
+  'search.profilesSection': { pt: 'Perfis', en: 'Profiles', ja: 'プロフィール', es: 'Perfiles' },
+  'search.storiesSection': { pt: 'Histórias', en: 'Stories', ja: 'ストーリー', es: 'Historias' },
 
   // Universes
   'universes.title': { pt: 'Meus Universos', en: 'My Universes', ja: 'マイユニバース', es: 'Mis universos' },

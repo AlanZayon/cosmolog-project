@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api/client';
-import type { ApiProfile } from '@/lib/api/types';
+import type { ApiProfile, ApiStoryWithProfile, ApiUniverse } from '@/lib/api/types';
 
 export type UpdateProfilePayload = {
   username?: string;
@@ -18,12 +18,30 @@ export function patchMyProfile(body: UpdateProfilePayload) {
   });
 }
 
+/** Username path segment — the BFF proxy encodes segments; do not encodeURIComponent here. */
+function profileUsernamePath(username: string, suffix = '') {
+  return `/profiles/${username}${suffix}`;
+}
+
 export function getProfileByUsername(username: string) {
-  return apiFetch<ApiProfile>(`/profiles/${encodeURIComponent(username)}`);
+  return apiFetch<ApiProfile>(profileUsernamePath(username));
+}
+
+export function getProfileStoriesByUsername(username: string) {
+  return apiFetch<ApiStoryWithProfile[]>(profileUsernamePath(username, '/stories'));
+}
+
+export function getProfileUniversesByUsername(username: string) {
+  return apiFetch<ApiUniverse[]>(profileUsernamePath(username, '/universes'));
 }
 
 export function getProfileByUserId(userId: string) {
   return apiFetch<ApiProfile>(`/profiles/user/${userId}`);
+}
+
+export function searchProfiles(query: string) {
+  const q = encodeURIComponent(query.trim());
+  return apiFetch<ApiProfile[]>(`/profiles/search?q=${q}`);
 }
 
 export function getProfilesBatch(ids: string[]) {

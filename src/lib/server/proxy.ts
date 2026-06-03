@@ -3,12 +3,20 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/server/auth-cookies';
 import { internalApiBaseUrl } from '@/lib/server/rust-api';
 
+function encodePathSegment(segment: string): string {
+  try {
+    return encodeURIComponent(decodeURIComponent(segment));
+  } catch {
+    return encodeURIComponent(segment);
+  }
+}
+
 export async function proxyToRust(
   request: NextRequest,
   pathSegments: string[],
 ): Promise<NextResponse> {
   const base = internalApiBaseUrl();
-  const path = pathSegments.map(encodeURIComponent).join('/');
+  const path = pathSegments.map(encodePathSegment).join('/');
   const url = `${base}/${path}${request.nextUrl.search}`;
 
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
@@ -31,6 +39,11 @@ export async function proxyToRust(
   const upstreamContentType = upstream.headers.get('content-type');
   if (upstreamContentType) {
     responseHeaders.set('content-type', upstreamContentType);
+    if (upstreamContentType.includes('text/event-stream')) {
+      responseHeaders.set('cache-control', 'no-cache, no-transform');
+      responseHeaders.set('connection', 'keep-alive');
+      responseHeaders.set('x-accel-buffering', 'no');
+    }
   }
   const requestId = upstream.headers.get('x-request-id');
   if (requestId) {

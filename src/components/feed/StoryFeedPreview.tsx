@@ -11,6 +11,7 @@ import {
   getUniverseById,
 } from '@/lib/api';
 import { getBlocks } from '@/lib/api/content';
+import ProfileAuthorLink from '@/components/ProfileAuthorLink';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
@@ -268,7 +269,15 @@ export default function StoryFeedPreview({
           </div>
           {titleNode}
           <p className={`mt-1.5 ${peek ? 'text-xs text-muted-foreground sm:text-sm' : 'mt-2 text-sm text-muted-foreground'}`}>
-            {t('common.by')} {story.profiles?.username || t('common.anonymous')}
+            {t('common.by')}{' '}
+            {story.profiles?.username ? (
+              <ProfileAuthorLink
+                username={story.profiles.username}
+                className="font-normal text-muted-foreground"
+              />
+            ) : (
+              t('common.anonymous')
+            )}
           </p>
           {story.description && (
             <p className={`text-foreground/80 ${peek ? 'mt-2 line-clamp-4 text-sm leading-relaxed sm:line-clamp-5 sm:text-[0.9375rem]' : 'mt-3 text-base'}`}>

@@ -8,6 +8,7 @@ import { useFeedExploration } from '@/components/feed/FeedExplorationContext';
 import { useCommentsDrawer } from '@/components/comments/CommentsDrawerProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MessageCircle } from 'lucide-react';
+import ProfileAuthorLink from '@/components/ProfileAuthorLink';
 import type { FeedStoryPayload } from '@/lib/feed';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -92,26 +93,34 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
 
   if (compact) {
     return (
-      <button
-        type="button"
-        onClick={openStory}
-        className="w-full rounded-xl border border-border bg-background p-3 text-left transition-colors hover:bg-accent touch-manipulation"
-      >
-        <div className="flex items-start gap-3">
-          {story.coverImageUrl && (
-            <img src={story.coverImageUrl} alt="" className="h-16 w-12 shrink-0 rounded-md object-cover border border-border" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold line-clamp-1">{story.title}</p>
-            <p className="text-xs text-muted-foreground line-clamp-1">{t('common.by')} {story.author.username}</p>
-            {(story.preview.text || story.description) && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {story.preview.text || story.description}
-              </p>
+      <div className="w-full rounded-xl border border-border bg-background text-left">
+        <button
+          type="button"
+          onClick={openStory}
+          className="w-full p-3 text-left transition-colors hover:bg-accent touch-manipulation rounded-xl"
+        >
+          <div className="flex items-start gap-3">
+            {story.coverImageUrl && (
+              <img src={story.coverImageUrl} alt="" className="h-16 w-12 shrink-0 rounded-md object-cover border border-border" />
             )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold line-clamp-1">{story.title}</p>
+              {(story.preview.text || story.description) && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {story.preview.text || story.description}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      </button>
+        </button>
+        <p className="px-3 pb-3 text-xs text-muted-foreground line-clamp-1 -mt-1">
+          {t('common.by')}{' '}
+          <ProfileAuthorLink
+            username={story.author.username}
+            className="font-normal text-muted-foreground"
+          />
+        </p>
+      </div>
     );
   }
 
@@ -133,8 +142,15 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
         </div>
 
         <h2 className="text-2xl font-semibold font-serif leading-tight">{story.title}</h2>
-        <p className="text-sm text-muted-foreground mt-1">{t('common.by')} {story.author.username}</p>
       </div>
+
+      <p className="px-5 -mt-1 text-sm text-muted-foreground">
+        {t('common.by')}{' '}
+        <ProfileAuthorLink
+          username={story.author.username}
+          className="font-normal text-muted-foreground"
+        />
+      </p>
 
       <div className="flex flex-col gap-4 px-5 pb-5">
         {clampText ? (

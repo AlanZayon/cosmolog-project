@@ -4,8 +4,10 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
-use crate::domain::limits::MAX_PROFILE_BATCH_IDS;
+use crate::domain::limits::{MAX_PROFILE_BATCH_IDS, MAX_SEARCH_QUERY_LEN};
 use crate::domain::profiles::{self, Profile, UpdateProfileInput};
+use crate::domain::stories::{attach_profiles, list_by_author_id, StoryWithProfile};
+use crate::domain::universes::{self, Universe};
 use crate::domain::url_validation;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -13,6 +15,11 @@ use crate::state::AppState;
 #[derive(Debug, Deserialize)]
 pub struct BatchQuery {
     pub ids: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SearchQuery {
+    pub q: String,
 }
 
 /// Returns the authenticated user's profile row from `profiles`.
@@ -86,6 +93,28 @@ pub async fn batch(
     Ok(Json(profiles))
 }
 
+/// Search profiles by username prefix/substring (public).
+pub async fn search(
+    State(state): State<AppState>,
+    Query(query): Query<SearchQuery>,
+) -> Result<Json<Vec<Profile>>, AppError> {
+    let q = query.q.trim();
+    if q.is_empty() {
+        return Ok(Json(vec![]));
+    }
+    if q.len() > MAX_SEARCH_QUERY_LEN {
+        return Err(AppError::BadRequest(format!(
+            "search query must be at most {MAX_SEARCH_QUERY_LEN} characters"
+        )));
+    }
+
+    let profiles = profiles::search_by_username(&state.pool, q, 20)
+        .await
+        .map_err(AppError::from_db)?;
+
+    Ok(Json(profiles))
+}
+
 /// Public profile lookup by username.
 pub async fn by_username(
     State(state): State<AppState>,
@@ -102,4 +131,51 @@ pub async fn by_username(
         .ok_or(AppError::NotFound)?;
 
     Ok(Json(profile))
+}
+
+/// Public stories by profile username.
+pub async fn stories_by_username(
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<Json<Vec<StoryWithProfile>>, AppError> {
+    let username = username.trim();
+    if username.is_empty() {
+        return Err(AppError::BadRequest("username is required".into()));
+    }
+
+    let profile = profiles::find_by_username(&state.pool, username)
+        .await
+        .map_err(AppError::from_db)?
+        .ok_or(AppError::NotFound)?;
+
+    let rows = list_by_author_id(&state.pool, profile.user_id)
+        .await
+        .map_err(AppError::from_db)?;
+    let with_profiles = attach_profiles(&state.pool, rows)
+        .await
+        .map_err(AppError::from_db)?;
+
+    Ok(Json(with_profiles))
+}
+
+/// Public universes owned by profile username.
+pub async fn universes_by_username(
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<Json<Vec<Universe>>, AppError> {
+    let username = username.trim();
+    if username.is_empty() {
+        return Err(AppError::BadRequest("username is required".into()));
+    }
+
+    let profile = profiles::find_by_username(&state.pool, username)
+        .await
+        .map_err(AppError::from_db)?
+        .ok_or(AppError::NotFound)?;
+
+    let rows = universes::list_by_owner_id(&state.pool, profile.user_id)
+        .await
+        .map_err(AppError::from_db)?;
+
+    Ok(Json(rows))
 }

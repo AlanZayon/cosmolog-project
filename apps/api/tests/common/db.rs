@@ -49,21 +49,22 @@ async fn acquire_test_lock(pool: &PgPool) -> bool {
 }
 
 pub async fn ensure_schema(pool: &PgPool) {
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = 'public' AND table_name = 'profiles'
-        )",
-    )
-    .fetch_one(pool)
-    .await
-    .unwrap_or(false);
-
-    if exists {
-        return;
-    }
-
+    // Idempotent (CREATE IF NOT EXISTS): safe on fresh DBs and when new tables are added.
     apply_schema(pool).await;
+    apply_schema_patches(pool).await;
+}
+
+/// ALTERs for databases created before newer columns/tables (CREATE IF NOT EXISTS skips existing tables).
+async fn apply_schema_patches(pool: &PgPool) {
+    let patches = [
+        "ALTER TABLE public.stories ADD COLUMN IF NOT EXISTS feed_display_mode TEXT NOT NULL DEFAULT 'preview'",
+        "ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS parent_id UUID",
+        "ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE public.library_collections ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT 'folder'",
+    ];
+    for sql in patches {
+        let _ = sqlx::query(sql).execute(pool).await;
+    }
 }
 
 async fn apply_schema(pool: &PgPool) {
@@ -83,12 +84,17 @@ async fn apply_schema(pool: &PgPool) {
 pub async fn truncate_all(pool: &PgPool) {
     sqlx::query(
         "TRUNCATE TABLE
+            notifications,
+            notification_subscriptions,
             illustrated_blocks,
             comic_pages,
             chapters,
             comments,
+            comment_likes,
             likes,
             universe_follows,
+            library_collection_items,
+            library_collections,
             stories,
             arcs,
             universes,

@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::auth::AuthUser;
 use crate::domain::limits::MAX_SEARCH_QUERY_LEN;
+use crate::domain::notifications;
 use crate::domain::stories::{self, attach_profiles, validate_scope, CreateStoryInput, Story, StoryWithProfile};
 use crate::domain::url_validation;
 use crate::error::AppError;
@@ -39,6 +40,9 @@ pub async fn create(
     )
     .await?;
     let story = stories::insert(&state.pool, user.user_id, &body)
+        .await
+        .map_err(AppError::from_db)?;
+    notifications::fanout_new_story(&state.pool, &state.notification_events, &story)
         .await
         .map_err(AppError::from_db)?;
     tracing::info!(

@@ -22,6 +22,8 @@ This document describes **who can do what** on the Rust API (`apps/api`). Enforc
 | Chapter / blocks / comic pages | via story author | Story author only |
 | Comment | any authenticated user | Create on any story; no edit/delete API yet |
 | Like / follow | any authenticated user | Toggle on any public story/universe |
+| Notification subscription | `notification_subscriptions.subscriber_id` | Subscriber manages own subscriptions; cannot subscribe to self |
+| Notification | `notifications.recipient_id` | Recipient may list and consume **own** notifications only |
 | Storage upload | path prefix `{user_id}/` | Authenticated; path forced to caller's id |
 
 ## Story scope (`universe_id` / `arc_id`)
@@ -42,11 +44,18 @@ Cross-user assignment returns **401 Unauthorized** (not 404) to avoid leaking ex
 |------------------|-----------|---------------|
 | `GET /stories/{id}` | ✅ | ✅ |
 | `GET /stories/search` | ✅ | ✅ |
+| `GET /profiles/search` | ✅ | ✅ |
 | `GET /universes/{id}` | ✅ | ✅ |
 | `POST /stories` | ❌ 401 | ✅ (own scope) |
 | `PATCH /stories/{id}` | ❌ 401 | ✅ author only |
 | `PUT /stories/{id}/blocks` | ❌ 401 | ✅ author only |
 | `POST /storage/upload` | ❌ 401 | ✅ own path prefix |
+| `GET/POST/DELETE /profiles/{username}/notification-subscription` | ❌ 401 | ✅ (not own profile; profile needs ≥1 story on subscribe) |
+| `GET/POST/DELETE /universes/{id}/notification-subscription` | ❌ 401 | ✅ (not universe owner) |
+| `GET /notifications`, `GET /notifications/unread-count`, `GET /notifications/stream` (SSE) | ❌ 401 | ✅ own inbox only |
+| `POST /notifications/{id}/consume` | ❌ 401 | ✅ own notification only |
+
+`universe_follows` (feed) and `notification_subscriptions` (in-app notifications) are separate features.
 
 ## Input validation (abuse prevention)
 
@@ -80,6 +89,7 @@ Integration coverage lives in `apps/api/tests/`:
 - `api_stories.rs` — author-only patch, foreign universe on create
 - `api_universes.rs` — owner-only patch
 - `api_authz.rs` — extended matrix (arc scope, blocks URL, blocks author)
+- `api_notifications.rs` — subscriptions, fan-out on story create, thresholds, consume
 
 Run: `cd apps/api && cargo test` (requires `TEST_DATABASE_URL` / Postgres).
 

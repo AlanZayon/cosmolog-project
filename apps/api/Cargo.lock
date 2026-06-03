@@ -211,6 +211,7 @@ dependencies = [
  "async-trait",
  "axum",
  "dotenvy",
+ "futures-util",
  "governor",
  "http-body-util",
  "jsonwebtoken",
@@ -221,6 +222,7 @@ dependencies = [
  "thiserror",
  "time",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
@@ -2289,6 +2291,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

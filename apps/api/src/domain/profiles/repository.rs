@@ -34,6 +34,27 @@ pub async fn find_by_user_ids(pool: &PgPool, user_ids: &[Uuid]) -> Result<Vec<Pr
     .await
 }
 
+pub async fn search_by_username(
+    pool: &PgPool,
+    query: &str,
+    limit: i64,
+) -> Result<Vec<Profile>, sqlx::Error> {
+    let pattern = format!("%{query}%");
+    sqlx::query_as::<_, Profile>(
+        r#"
+        SELECT id, user_id, username, avatar_url, bio, created_at, updated_at
+        FROM profiles
+        WHERE username ILIKE $1
+        ORDER BY username ASC
+        LIMIT $2
+        "#,
+    )
+    .bind(pattern)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn find_by_username(pool: &PgPool, username: &str) -> Result<Option<Profile>, sqlx::Error> {
     sqlx::query_as::<_, Profile>(
         r#"

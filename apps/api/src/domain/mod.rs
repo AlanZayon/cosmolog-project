@@ -9,6 +9,7 @@ pub mod comment_likes;
 pub mod follows;
 pub mod library;
 pub mod likes;
+pub mod notifications;
 pub mod profiles;
 pub mod limits;
 pub mod stories;

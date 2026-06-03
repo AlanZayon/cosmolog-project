@@ -18,6 +18,8 @@ pub enum AppError {
     BadRequest(String),
     #[error("conflict: {0}")]
     Conflict(String),
+    #[error("too many requests: {0}")]
+    TooManyRequests(String),
     #[error("upstream error: {0}")]
     Upstream(String),
 }
@@ -39,6 +41,7 @@ impl AppError {
             AppError::NotFound => "not_found",
             AppError::BadRequest(_) => "bad_request",
             AppError::Conflict(_) => "conflict",
+            AppError::TooManyRequests(_) => "too_many_requests",
             AppError::Upstream(_) => "upstream",
         }
     }
@@ -93,6 +96,15 @@ impl IntoResponse for AppError {
                     "resource conflict"
                 );
                 (StatusCode::CONFLICT, msg.clone())
+            }
+            AppError::TooManyRequests(msg) => {
+                tracing::warn!(
+                    event = "error.too_many_requests",
+                    error_kind = kind,
+                    error = %msg,
+                    "rate limited"
+                );
+                (StatusCode::TOO_MANY_REQUESTS, msg.clone())
             }
             AppError::Upstream(msg) => {
                 tracing::warn!(
@@ -155,6 +167,16 @@ mod tests {
         let (status, msg) = response_for(AppError::Conflict("duplicate".into())).await;
         assert_eq!(status, StatusCode::CONFLICT);
         assert_eq!(msg, "duplicate");
+    }
+
+    #[tokio::test]
+    async fn too_many_requests_returns_429_with_message() {
+        let (status, msg) = response_for(AppError::TooManyRequests(
+            "wait 24 seconds".into(),
+        ))
+        .await;
+        assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(msg, "wait 24 seconds");
     }
 
     #[tokio::test]

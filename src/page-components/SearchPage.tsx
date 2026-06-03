@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from "next/navigation";
-import { searchStories } from '@/lib/api';
+import { searchProfiles, searchStories } from '@/lib/api';
+import ProfileSearchCard from '@/components/search/ProfileSearchCard';
+import type { ApiProfile } from '@/lib/api/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
@@ -13,16 +15,21 @@ export default function SearchPage() {
   const q = searchParams.get("q") || "";
   const { t } = useLanguage();
   const [results, setResults] = useState<StoryWithProfile[]>([]);
+  const [profileResults, setProfileResults] = useState<ApiProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!q) return;
     setLoading(true);
-    searchStories(q)
-      .then((data) => {
-        setResults(data as StoryWithProfile[]);
+    Promise.all([searchProfiles(q), searchStories(q)])
+      .then(([profiles, stories]) => {
+        setProfileResults(profiles);
+        setResults(stories as StoryWithProfile[]);
       })
-      .catch(() => setResults([]))
+      .catch(() => {
+        setProfileResults([]);
+        setResults([]);
+      })
       .finally(() => setLoading(false));
   }, [q]);
 
@@ -33,11 +40,34 @@ export default function SearchPage() {
         <h1 className="text-xl font-bold mb-4">{t('search.resultsFor')} "{q}"</h1>
         {loading ? (
           <p className="text-muted-foreground">{t('search.searching')}</p>
-        ) : results.length === 0 ? (
+        ) : profileResults.length === 0 && results.length === 0 ? (
           <p className="text-muted-foreground">{t('search.noResults')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {results.map(s => <StoryCard key={s.id} story={s} />)}
+          <div className="space-y-10">
+            {profileResults.length > 0 ? (
+              <section>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  {t('search.profilesSection')}
+                </h2>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-w-3xl">
+                  {profileResults.map((p) => (
+                    <ProfileSearchCard key={p.id} profile={p} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+            {results.length > 0 ? (
+              <section>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  {t('search.storiesSection')}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {results.map((s) => (
+                    <StoryCard key={s.id} story={s} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
         )}
       </main>

@@ -67,3 +67,47 @@ export type ApiComment = {
 export type ApiErrorBody = {
   error: string;
 };
+
+export type NotificationSubscriptionScope = 'profile' | 'universe';
+
+export type ApiNotificationSubscriptionStatus = {
+  subscribed: boolean;
+  active: boolean;
+  scope: NotificationSubscriptionScope;
+  universe_id: string | null;
+  unconsumed_count: number;
+  disabled_reason: 'unconsumed_threshold' | 'user' | null;
+  disabled_at: string | null;
+  last_consumed_at: string | null;
+};
+
+export type ApiNotificationListItem = {
+  id: string;
+  kind: 'new_story';
+  story_id: string;
+  story_title: string;
+  read_at: string | null;
+  clicked_at: string | null;
+  created_at: string;
+  scope: NotificationSubscriptionScope;
+  target_user_id: string;
+  target_username: string;
+  target_avatar_url: string | null;
+  universe_id: string | null;
+  universe_title: string | null;
+};
+
+export type ApiNotificationListResponse = {
+  items: ApiNotificationListItem[];
+};
+
+export type ApiNotificationUnreadCount = {
+  count: number;
+};
+
+export type ApiConsumeNotificationResponse = {
+  id: string;
+  read_at: string;
+  clicked_at: string;
+  subscription_unconsumed_count: number;
+};
