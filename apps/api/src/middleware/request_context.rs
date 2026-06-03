@@ -28,8 +28,7 @@ pub async fn middleware(mut req: Request, next: Next) -> Response {
         .map(str::to_string)
         .unwrap_or_else(|| Uuid::new_v4().to_string());
 
-    req.extensions_mut()
-        .insert(RequestId(request_id.clone()));
+    req.extensions_mut().insert(RequestId(request_id.clone()));
 
     let method = req.method().to_string();
     let path = req.uri().path().to_string();

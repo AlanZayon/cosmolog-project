@@ -20,7 +20,10 @@ pub struct StoryWithProfile {
     pub profiles: Option<ProfileSnippet>,
 }
 
-pub async fn attach_profiles(pool: &PgPool, stories: Vec<Story>) -> Result<Vec<StoryWithProfile>, sqlx::Error> {
+pub async fn attach_profiles(
+    pool: &PgPool,
+    stories: Vec<Story>,
+) -> Result<Vec<StoryWithProfile>, sqlx::Error> {
     let author_ids: Vec<Uuid> = stories
         .iter()
         .map(|s| s.author_id)

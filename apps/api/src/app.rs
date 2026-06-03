@@ -44,9 +44,7 @@ pub fn router(state: AppState, config: &Config) -> Router {
             header::ACCEPT,
             HeaderName::from_static(request_context::REQUEST_ID_HEADER),
         ])
-        .expose_headers([HeaderName::from_static(
-            request_context::REQUEST_ID_HEADER,
-        )]);
+        .expose_headers([HeaderName::from_static(request_context::REQUEST_ID_HEADER)]);
 
     let auth_routes = Router::new()
         .route("/auth/sign-in", post(auth::sign_in))
@@ -63,10 +61,7 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/storage/upload",
             post(storage::upload).layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES)),
         )
-        .route(
-            "/profiles/me",
-            get(profiles::me).patch(profiles::update_me),
-        )
+        .route("/profiles/me", get(profiles::me).patch(profiles::update_me))
         .route("/profiles/batch", get(profiles::batch))
         .route("/profiles/search", get(profiles::search))
         .route("/profiles/user/{user_id}", get(profiles::by_user_id))
@@ -77,8 +72,14 @@ pub fn router(state: AppState, config: &Config) -> Router {
                 .post(notifications::subscribe_profile)
                 .delete(notifications::unsubscribe_profile),
         )
-        .route("/profiles/{username}/stories", get(profiles::stories_by_username))
-        .route("/profiles/{username}/universes", get(profiles::universes_by_username))
+        .route(
+            "/profiles/{username}/stories",
+            get(profiles::stories_by_username),
+        )
+        .route(
+            "/profiles/{username}/universes",
+            get(profiles::universes_by_username),
+        )
         .route("/stories", post(stories::create))
         .route("/stories/search", get(stories::search))
         .route("/stories/me", get(stories::list_mine))
@@ -86,15 +87,30 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/stories/{id}",
             get(stories::by_id).patch(story_content::update_story),
         )
-        .route("/stories/{id}/chapters", get(story_content::list_chapters).post(story_content::create_chapter))
-        .route("/stories/{id}/chapters/count", get(story_content::chapter_count))
-        .route("/stories/{id}/chapters/by-number", get(story_content::chapter_by_number))
+        .route(
+            "/stories/{id}/chapters",
+            get(story_content::list_chapters).post(story_content::create_chapter),
+        )
+        .route(
+            "/stories/{id}/chapters/count",
+            get(story_content::chapter_count),
+        )
+        .route(
+            "/stories/{id}/chapters/by-number",
+            get(story_content::chapter_by_number),
+        )
         .route(
             "/stories/{story_id}/chapters/{chapter_id}",
             patch(story_content::update_chapter),
         )
-        .route("/stories/{id}/comic-pages", get(story_content::list_comic_pages).put(story_content::replace_comic_pages))
-        .route("/stories/{id}/comic-pages/append", post(story_content::insert_comic_page))
+        .route(
+            "/stories/{id}/comic-pages",
+            get(story_content::list_comic_pages).put(story_content::replace_comic_pages),
+        )
+        .route(
+            "/stories/{id}/comic-pages/append",
+            post(story_content::insert_comic_page),
+        )
         .route(
             "/stories/{id}/blocks",
             get(story_content::list_blocks).put(story_content::replace_blocks),
@@ -107,7 +123,10 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/stories/{story_id}/comments/{comment_id}/like",
             get(story_content::comment_like_status).post(story_content::toggle_comment_like),
         )
-        .route("/stories/{id}/like", get(story_content::like_status).post(story_content::toggle_like))
+        .route(
+            "/stories/{id}/like",
+            get(story_content::like_status).post(story_content::toggle_like),
+        )
         .route("/stories/{id}/library-status", get(library::library_status))
         .route("/library/liked-stories", get(library::liked_stories))
         .route(
@@ -118,7 +137,10 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/library/collections/{id}",
             patch(library::update_collection).delete(library::delete_collection),
         )
-        .route("/library/collections/{id}/stories", get(library::list_collection_stories))
+        .route(
+            "/library/collections/{id}/stories",
+            get(library::list_collection_stories),
+        )
         .route(
             "/library/collections/{id}/stories/order",
             axum::routing::put(library::reorder_collection_stories),
@@ -133,14 +155,22 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/universes/{id}",
             get(universes::by_id).patch(universes::update),
         )
-        .route("/universes/{id}/follow", get(universes::follow_status).post(universes::follow).delete(universes::unfollow))
+        .route(
+            "/universes/{id}/follow",
+            get(universes::follow_status)
+                .post(universes::follow)
+                .delete(universes::unfollow),
+        )
         .route(
             "/universes/{id}/notification-subscription",
             get(notifications::universe_subscription_status)
                 .post(notifications::subscribe_universe)
                 .delete(notifications::unsubscribe_universe),
         )
-        .route("/universes/{id}/arcs", get(universes::arcs).post(arcs::create_for_universe))
+        .route(
+            "/universes/{id}/arcs",
+            get(universes::arcs).post(arcs::create_for_universe),
+        )
         .route("/universes/{id}/stories", get(universes::stories))
         .route(
             "/arcs/{id}",
@@ -149,7 +179,10 @@ pub fn router(state: AppState, config: &Config) -> Router {
         .route("/arcs/{id}/stories", get(arcs::stories))
         .route("/notifications/stream", get(notifications::stream))
         .route("/notifications", get(notifications::list))
-        .route("/notifications/unread-count", get(notifications::unread_count))
+        .route(
+            "/notifications/unread-count",
+            get(notifications::unread_count),
+        )
         .route("/notifications/{id}/consume", post(notifications::consume));
 
     if !is_production() {

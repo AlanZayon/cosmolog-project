@@ -25,7 +25,9 @@ impl CreateStoryInput {
             return Err(AppError::BadRequest("title is required".into()));
         }
         if title.len() > 200 {
-            return Err(AppError::BadRequest("title must be at most 200 characters".into()));
+            return Err(AppError::BadRequest(
+                "title must be at most 200 characters".into(),
+            ));
         }
         if !ALLOWED_TYPES.contains(&self.r#type.as_str()) {
             return Err(AppError::BadRequest("invalid story type".into()));
@@ -96,7 +98,9 @@ mod tests {
 
     #[test]
     fn rejects_title_over_200_chars() {
-        let err = sample_input(&"a".repeat(201), "chapters").validate().unwrap_err();
+        let err = sample_input(&"a".repeat(201), "chapters")
+            .validate()
+            .unwrap_err();
         assert!(matches!(err, AppError::BadRequest(_)));
     }
 

@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use crate::auth::AuthUser;
 use crate::domain::arcs::{self, Arc};
-use crate::domain::stories::{attach_profiles, list_by_arc_id};
 use crate::domain::stories::StoryWithProfile;
+use crate::domain::stories::{attach_profiles, list_by_arc_id};
 use crate::domain::universes;
 use crate::domain::url_validation;
 use crate::error::AppError;

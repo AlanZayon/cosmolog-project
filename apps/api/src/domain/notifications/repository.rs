@@ -13,12 +13,10 @@ use super::model::{
 };
 
 pub async fn count_stories_by_author(pool: &PgPool, author_id: Uuid) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar(
-        "SELECT COUNT(*)::bigint FROM stories WHERE author_id = $1",
-    )
-    .bind(author_id)
-    .fetch_one(pool)
-    .await
+    sqlx::query_scalar("SELECT COUNT(*)::bigint FROM stories WHERE author_id = $1")
+        .bind(author_id)
+        .fetch_one(pool)
+        .await
 }
 
 pub async fn find_universe_owner(

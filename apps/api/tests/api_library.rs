@@ -20,7 +20,15 @@ async fn user_cannot_access_other_users_collection_stories() {
     let owner = seed_user(&app.pool, "api_lib_owner").await;
     let intruder = seed_user(&app.pool, "api_lib_intruder").await;
     let author = seed_user(&app.pool, "api_lib_author").await;
-    let story = seed_story(&app.pool, author.user_id, "API Story", "short_story", None, None).await;
+    let story = seed_story(
+        &app.pool,
+        author.user_id,
+        "API Story",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
 
     let owner_token = app.register_user(&owner);
     let intruder_token = app.register_user(&intruder);
@@ -59,8 +67,24 @@ async fn liked_stories_returns_liked_only() {
     let Some(app) = setup_app().await else { return };
     let author = seed_user(&app.pool, "api_like_author").await;
     let fan = seed_user(&app.pool, "api_like_fan").await;
-    let liked_story = seed_story(&app.pool, author.user_id, "Liked One", "short_story", None, None).await;
-    let _other = seed_story(&app.pool, author.user_id, "Not Liked", "short_story", None, None).await;
+    let liked_story = seed_story(
+        &app.pool,
+        author.user_id,
+        "Liked One",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
+    let _other = seed_story(
+        &app.pool,
+        author.user_id,
+        "Not Liked",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
 
     let fan_token = app.register_user(&fan);
 
@@ -86,7 +110,15 @@ async fn library_status_endpoint() {
     let Some(app) = setup_app().await else { return };
     let owner = seed_user(&app.pool, "api_status_owner").await;
     let author = seed_user(&app.pool, "api_status_author").await;
-    let story = seed_story(&app.pool, author.user_id, "Status Story", "short_story", None, None).await;
+    let story = seed_story(
+        &app.pool,
+        author.user_id,
+        "Status Story",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
     let token = app.register_user(&owner);
 
     let create_resp = app

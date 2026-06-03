@@ -1,9 +1,18 @@
 mod common;
 
-use cosmolog_api::domain::profiles::{find_by_user_id, find_by_username, update_by_user_id, ValidatedUpdate};
-use cosmolog_api::domain::stories::{attach_profiles, find_by_id as find_story, list_by_author_id, list_by_universe_id, search_by_title, update, UpdateStoryInput};
-use cosmolog_api::domain::universes::{find_by_id as find_universe, list_by_owner_id, update as update_universe, UpdateUniverseInput};
-use cosmolog_api::domain::arcs::{delete_by_id, find_by_id as find_arc, list_by_universe_id as list_arcs, update as update_arc};
+use cosmolog_api::domain::arcs::{
+    delete_by_id, find_by_id as find_arc, list_by_universe_id as list_arcs, update as update_arc,
+};
+use cosmolog_api::domain::profiles::{
+    find_by_user_id, find_by_username, update_by_user_id, ValidatedUpdate,
+};
+use cosmolog_api::domain::stories::{
+    attach_profiles, find_by_id as find_story, list_by_author_id, list_by_universe_id,
+    search_by_title, update, UpdateStoryInput,
+};
+use cosmolog_api::domain::universes::{
+    find_by_id as find_universe, list_by_owner_id, update as update_universe, UpdateUniverseInput,
+};
 use uuid::Uuid;
 
 use common::fixtures::{seed_arc, seed_story, seed_universe, seed_user};
@@ -124,9 +133,7 @@ async fn stories_insert_list_search_and_author_guard() {
     let mine = list_by_author_id(&pool, author.user_id).await.unwrap();
     assert_eq!(mine.len(), 1);
 
-    let in_universe = list_by_universe_id(&pool, universe.id, None)
-        .await
-        .unwrap();
+    let in_universe = list_by_universe_id(&pool, universe.id, None).await.unwrap();
     assert_eq!(in_universe[0].id, story.id);
 
     let hits = search_by_title(&pool, "star", 10).await.unwrap();

@@ -4,14 +4,14 @@ use uuid::Uuid;
 
 use crate::auth::AuthUser;
 use crate::domain::arcs::{self, Arc};
-use crate::domain::stories::{attach_profiles, list_by_universe_id, StoryWithProfile};
 use crate::domain::follows;
+use crate::domain::stories::{attach_profiles, list_by_universe_id, StoryWithProfile};
 use crate::domain::universes::{self, CreateUniverseInput, Universe, UpdateUniverseInput};
 use crate::domain::url_validation;
-use serde::Serialize;
 use crate::error::AppError;
 use crate::routes::stories::UniverseStoriesQuery;
 use crate::state::AppState;
+use serde::Serialize;
 
 /// Creates a universe for the authenticated user.
 pub async fn create(

@@ -36,7 +36,9 @@ impl UpdateProfileInput {
         if let Some(ref value) = self.bio {
             let trimmed = value.trim();
             if trimmed.len() > 500 {
-                return Err(AppError::BadRequest("bio must be at most 500 characters".into()));
+                return Err(AppError::BadRequest(
+                    "bio must be at most 500 characters".into(),
+                ));
             }
             bio = Some(trimmed.to_string());
         }

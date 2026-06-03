@@ -8,11 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use governor::{
-    clock::DefaultClock,
-    state::keyed::DashMapStateStore,
-    Quota, RateLimiter,
-};
+use governor::{clock::DefaultClock, state::keyed::DashMapStateStore, Quota, RateLimiter};
 use serde_json::json;
 
 type KeyedLimiter = RateLimiter<String, DashMapStateStore<String>, DefaultClock>;

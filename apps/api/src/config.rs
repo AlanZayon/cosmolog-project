@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub app_env: String,
     pub host: String,
     pub port: u16,
     pub database_url: String,
@@ -14,18 +15,20 @@ pub struct Config {
     pub supabase_jwks_url: String,
     pub supabase_jwt_audience: String,
     pub supabase_anon_key: String,
+    /// Redis URL for cross-instance notification SSE fan-out (`redis://host:6379`).
+    pub redis_url: Option<String>,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self> {
+        let app_env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
         let host = std::env::var("API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
         let port = std::env::var("API_PORT")
             .or_else(|_| std::env::var("PORT"))
             .unwrap_or_else(|_| "8080".to_string())
             .parse::<u16>()
             .context("API_PORT must be a valid port number")?;
-        let database_url_raw =
-            std::env::var("DATABASE_URL").context("DATABASE_URL is required")?;
+        let database_url_raw = std::env::var("DATABASE_URL").context("DATABASE_URL is required")?;
         let default_database_url = normalize_supabase_database_url(&database_url_raw);
         let database_url = std::env::var("RUNTIME_DATABASE_URL")
             .map(|url| strip_connect_param(&url, "pgbouncer"))
@@ -39,8 +42,8 @@ impl Config {
         let supabase_url = std::env::var("SUPABASE_URL")
             .context("SUPABASE_URL is required (e.g. https://<project-ref>.supabase.co)")?;
         let supabase_url = supabase_url.trim_end_matches('/').to_string();
-        let supabase_jwt_audience = std::env::var("SUPABASE_JWT_AUDIENCE")
-            .unwrap_or_else(|_| "authenticated".to_string());
+        let supabase_jwt_audience =
+            std::env::var("SUPABASE_JWT_AUDIENCE").unwrap_or_else(|_| "authenticated".to_string());
         let supabase_jwt_issuer = format!("{supabase_url}/auth/v1");
         let supabase_jwks_url = format!("{supabase_jwt_issuer}/.well-known/jwks.json");
         let supabase_anon_key = std::env::var("SUPABASE_ANON_KEY")
@@ -48,8 +51,17 @@ impl Config {
             .context(
                 "SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is required for auth/storage proxy",
             )?;
+        let redis_url = std::env::var("REDIS_URL")
+            .ok()
+            .map(|url| url.trim().to_string())
+            .filter(|url| !url.is_empty());
+
+        if app_env == "production" && redis_url.is_none() {
+            anyhow::bail!("REDIS_URL is required when APP_ENV=production");
+        }
 
         Ok(Self {
+            app_env,
             host,
             port,
             database_url,
@@ -61,6 +73,7 @@ impl Config {
             supabase_jwks_url,
             supabase_jwt_audience,
             supabase_anon_key,
+            redis_url,
         })
     }
 
@@ -74,10 +87,12 @@ impl Config {
         let supabase_url = "https://test-project.supabase.co".to_string();
         let supabase_jwt_issuer = format!("{supabase_url}/auth/v1");
         Self {
+            app_env: "test".into(),
             host: "127.0.0.1".into(),
             port: 8080,
             database_url: "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into(),
-            migrate_database_url: "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into(),
+            migrate_database_url: "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test"
+                .into(),
             cors_allowed_origin: "http://localhost:3000".into(),
             run_migrations: false,
             supabase_url: supabase_url.clone(),
@@ -85,6 +100,7 @@ impl Config {
             supabase_jwks_url: format!("{supabase_jwt_issuer}/.well-known/jwks.json"),
             supabase_jwt_audience: "authenticated".into(),
             supabase_anon_key: "test-anon-key".into(),
+            redis_url: None,
         }
     }
 }
@@ -124,10 +140,7 @@ fn strip_connect_param(database_url: &str, key: &str) -> String {
 
 fn env_bool(key: &str, default: bool) -> bool {
     match std::env::var(key) {
-        Ok(value) => matches!(
-            value.to_lowercase().as_str(),
-            "1" | "true" | "yes" | "on"
-        ),
+        Ok(value) => matches!(value.to_lowercase().as_str(), "1" | "true" | "yes" | "on"),
         Err(_) => default,
     }
 }
@@ -168,7 +181,10 @@ mod tests {
     #[test]
     fn strip_connect_param_only_pgbouncer() {
         let url = "postgres://localhost/db?pgbouncer=true";
-        assert_eq!(strip_connect_param(url, "pgbouncer"), "postgres://localhost/db");
+        assert_eq!(
+            strip_connect_param(url, "pgbouncer"),
+            "postgres://localhost/db"
+        );
     }
 
     #[test]

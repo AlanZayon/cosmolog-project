@@ -3,7 +3,10 @@ use uuid::Uuid;
 
 use super::model::ComicPage;
 
-pub async fn list_by_story_id(pool: &PgPool, story_id: Uuid) -> Result<Vec<ComicPage>, sqlx::Error> {
+pub async fn list_by_story_id(
+    pool: &PgPool,
+    story_id: Uuid,
+) -> Result<Vec<ComicPage>, sqlx::Error> {
     sqlx::query_as::<_, ComicPage>(
         r#"
         SELECT id, story_id, image_url, page_order, created_at

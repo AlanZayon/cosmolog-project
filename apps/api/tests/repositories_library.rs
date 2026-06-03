@@ -23,13 +23,13 @@ async fn collection_crud_and_items() {
         description: Some("Later".into()),
         icon: Some("bookmark".into()),
     };
-    let collection = library::insert(&pool, owner.user_id, &input)
-        .await
-        .unwrap();
+    let collection = library::insert(&pool, owner.user_id, &input).await.unwrap();
     assert_eq!(collection.name, "To Read");
     assert_eq!(collection.icon, "bookmark");
 
-    let list = library::list_by_user_id(&pool, owner.user_id).await.unwrap();
+    let list = library::list_by_user_id(&pool, owner.user_id)
+        .await
+        .unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].item_count, 0);
 
@@ -40,7 +40,9 @@ async fn collection_crud_and_items() {
         .await
         .unwrap();
 
-    let list = library::list_by_user_id(&pool, owner.user_id).await.unwrap();
+    let list = library::list_by_user_id(&pool, owner.user_id)
+        .await
+        .unwrap();
     assert_eq!(list[0].item_count, 1);
 
     let stories = library::list_stories_in_collection(&pool, collection.id, owner.user_id)
@@ -75,7 +77,9 @@ async fn collection_crud_and_items() {
     library::delete(&pool, collection.id, owner.user_id)
         .await
         .unwrap();
-    let list = library::list_by_user_id(&pool, owner.user_id).await.unwrap();
+    let list = library::list_by_user_id(&pool, owner.user_id)
+        .await
+        .unwrap();
     assert!(list.is_empty());
 }
 
@@ -90,12 +94,16 @@ async fn list_liked_stories_ordered_by_like_time() {
     insert_like(&pool, story_a.id, fan.user_id).await.unwrap();
     insert_like(&pool, story_b.id, fan.user_id).await.unwrap();
 
-    let liked = library::list_liked_stories(&pool, fan.user_id).await.unwrap();
+    let liked = library::list_liked_stories(&pool, fan.user_id)
+        .await
+        .unwrap();
     assert_eq!(liked.len(), 2);
     assert_eq!(liked[0].id, story_b.id);
 
     delete_like(&pool, story_b.id, fan.user_id).await.unwrap();
-    let liked = library::list_liked_stories(&pool, fan.user_id).await.unwrap();
+    let liked = library::list_liked_stories(&pool, fan.user_id)
+        .await
+        .unwrap();
     assert_eq!(liked.len(), 1);
     assert_eq!(liked[0].id, story_a.id);
 }

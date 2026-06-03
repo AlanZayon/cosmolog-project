@@ -38,12 +38,11 @@ pub async fn find_by_id(
     pool: &PgPool,
     comment_id: Uuid,
 ) -> Result<Option<(Uuid, Option<Uuid>)>, sqlx::Error> {
-    let row: Option<(Uuid, Option<Uuid>)> = sqlx::query_as(
-        "SELECT story_id, parent_id FROM comments WHERE id = $1",
-    )
-    .bind(comment_id)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(Uuid, Option<Uuid>)> =
+        sqlx::query_as("SELECT story_id, parent_id FROM comments WHERE id = $1")
+            .bind(comment_id)
+            .fetch_optional(pool)
+            .await?;
     Ok(row)
 }
 

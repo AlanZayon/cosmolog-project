@@ -15,9 +15,9 @@ async fn validator_with_mock_jwks() -> (MockServer, Arc<dyn TokenValidator>) {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/.well-known/jwks.json"))
-        .respond_with(ResponseTemplate::new(200).set_body_string(include_str!(
-            "fixtures/auth/jwks.json"
-        )))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(include_str!("fixtures/auth/jwks.json")),
+        )
         .mount(&server)
         .await;
 
@@ -81,9 +81,9 @@ async fn refetches_jwks_when_kid_is_unknown_then_validates() {
 
     Mock::given(method("GET"))
         .and(path("/.well-known/jwks.json"))
-        .respond_with(ResponseTemplate::new(200).set_body_string(include_str!(
-            "fixtures/auth/jwks.json"
-        )))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(include_str!("fixtures/auth/jwks.json")),
+        )
         .mount(&server)
         .await;
 
@@ -104,9 +104,9 @@ async fn fetch_jwks_parses_rsa_key() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/jwks"))
-        .respond_with(ResponseTemplate::new(200).set_body_string(include_str!(
-            "fixtures/auth/jwks.json"
-        )))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(include_str!("fixtures/auth/jwks.json")),
+        )
         .mount(&server)
         .await;
 

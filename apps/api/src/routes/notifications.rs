@@ -45,13 +45,10 @@ pub async fn profile_subscription_status(
         .map_err(AppError::from_db)?
         .ok_or(AppError::NotFound)?;
 
-    let status = notifications::profile_subscription_status(
-        &state.pool,
-        user.user_id,
-        profile.user_id,
-    )
-    .await
-    .map_err(AppError::from_db)?;
+    let status =
+        notifications::profile_subscription_status(&state.pool, user.user_id, profile.user_id)
+            .await
+            .map_err(AppError::from_db)?;
 
     Ok(Json(status))
 }
@@ -87,13 +84,10 @@ pub async fn subscribe_profile(
         ));
     }
 
-    let row = notifications::upsert_profile_subscription(
-        &state.pool,
-        user.user_id,
-        profile.user_id,
-    )
-    .await
-    .map_err(AppError::from_db)?;
+    let row =
+        notifications::upsert_profile_subscription(&state.pool, user.user_id, profile.user_id)
+            .await
+            .map_err(AppError::from_db)?;
 
     Ok(Json(SubscriptionStatus::from_row(&row)))
 }
@@ -158,14 +152,9 @@ pub async fn subscribe_universe(
         ));
     }
 
-    let row = notifications::upsert_universe_subscription(
-        &state.pool,
-        user.user_id,
-        owner_id,
-        id,
-    )
-    .await
-    .map_err(AppError::from_db)?;
+    let row = notifications::upsert_universe_subscription(&state.pool, user.user_id, owner_id, id)
+        .await
+        .map_err(AppError::from_db)?;
 
     let mut status = SubscriptionStatus::from_row(&row);
     status.universe_id = Some(id);

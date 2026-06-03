@@ -72,7 +72,10 @@ pub async fn delete_by_id(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn list_by_universe_id(pool: &PgPool, universe_id: Uuid) -> Result<Vec<Arc>, sqlx::Error> {
+pub async fn list_by_universe_id(
+    pool: &PgPool,
+    universe_id: Uuid,
+) -> Result<Vec<Arc>, sqlx::Error> {
     sqlx::query_as::<_, Arc>(
         r#"
         SELECT id, universe_id, name, description, type, cover_image_url, created_at

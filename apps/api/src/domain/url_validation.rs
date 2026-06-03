@@ -22,7 +22,9 @@ pub fn validate_stored_image_url(url: &str, supabase_url: &str) -> Result<(), Ap
         )));
     }
     if trimmed.chars().any(char::is_control) {
-        return Err(AppError::BadRequest("image URL contains invalid characters".into()));
+        return Err(AppError::BadRequest(
+            "image URL contains invalid characters".into(),
+        ));
     }
     let lower = trimmed.to_ascii_lowercase();
     if lower.starts_with("javascript:") || lower.starts_with("data:") {

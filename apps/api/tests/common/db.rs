@@ -7,9 +7,8 @@ use sqlx::PgPool;
 const TEST_DB_LOCK_ID: i64 = 0x636f_736d_6f6c_0001;
 
 pub async fn test_db() -> Option<PgPool> {
-    let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into()
-    });
+    let url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into());
     let pool = match PgPoolOptions::new()
         // One connection per test: advisory locks are session-scoped and released when the pool drops.
         .max_connections(1)

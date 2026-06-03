@@ -9,9 +9,8 @@ pub const SERVICE_NAME: &str = "cosmolog-api";
 /// - `LOG_FORMAT` — `json` or `pretty` (default: `json` in production, `pretty` otherwise)
 /// - `APP_ENV` — included in startup log (default: `development`)
 pub fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-        EnvFilter::new("cosmolog_api=info,sqlx=warn")
-    });
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("cosmolog_api=info,sqlx=warn"));
 
     let app_env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
     let log_format = resolve_log_format(&app_env);

@@ -26,11 +26,23 @@ async fn subscribe_profile_success() {
     let Some(app) = setup_app().await else { return };
     let author = seed_user(&app.pool, "notif_author").await;
     let subscriber = seed_user(&app.pool, "notif_subscriber").await;
-    seed_story(&app.pool, author.user_id, "First", "short_story", None, None).await;
+    seed_story(
+        &app.pool,
+        author.user_id,
+        "First",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
 
     let token = app.register_user(&subscriber);
     let response = app
-        .post_json(&profile_sub_path(&author.profile.username), Some(&token), json!({}))
+        .post_json(
+            &profile_sub_path(&author.profile.username),
+            Some(&token),
+            json!({}),
+        )
         .await;
     assert_status(&response, StatusCode::OK);
 
@@ -78,7 +90,11 @@ async fn subscribe_own_profile_forbidden() {
 
     let token = app.register_user(&author);
     let response = app
-        .post_json(&profile_sub_path(&author.profile.username), Some(&token), json!({}))
+        .post_json(
+            &profile_sub_path(&author.profile.username),
+            Some(&token),
+            json!({}),
+        )
         .await;
     assert_status(&response, StatusCode::BAD_REQUEST);
 }
@@ -91,7 +107,11 @@ async fn subscribe_profile_without_stories_forbidden() {
 
     let token = app.register_user(&subscriber);
     let response = app
-        .post_json(&profile_sub_path(&author.profile.username), Some(&token), json!({}))
+        .post_json(
+            &profile_sub_path(&author.profile.username),
+            Some(&token),
+            json!({}),
+        )
         .await;
     assert_status(&response, StatusCode::BAD_REQUEST);
 }
@@ -101,7 +121,15 @@ async fn fanout_on_story_create() {
     let Some(app) = setup_app().await else { return };
     let author = seed_user(&app.pool, "fanout_author").await;
     let subscriber = seed_user(&app.pool, "fanout_sub").await;
-    seed_story(&app.pool, author.user_id, "Existing", "short_story", None, None).await;
+    seed_story(
+        &app.pool,
+        author.user_id,
+        "Existing",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
 
     let sub_token = app.register_user(&subscriber);
     let sub = app
@@ -225,7 +253,9 @@ async fn universe_subscription_deactivates_at_10() {
         assert_status(&create, StatusCode::OK);
     }
 
-    let status = app.get(&universe_sub_path(universe.id), Some(&sub_token)).await;
+    let status = app
+        .get(&universe_sub_path(universe.id), Some(&sub_token))
+        .await;
     assert_status(&status, StatusCode::OK);
     let body = json(status).await;
     assert_eq!(body["active"], false);
@@ -238,7 +268,15 @@ async fn consume_resets_unconsumed_count() {
     let Some(app) = setup_app().await else { return };
     let author = seed_user(&app.pool, "consume_author").await;
     let subscriber = seed_user(&app.pool, "consume_sub").await;
-    seed_story(&app.pool, author.user_id, "Existing", "short_story", None, None).await;
+    seed_story(
+        &app.pool,
+        author.user_id,
+        "Existing",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
 
     let sub_token = app.register_user(&subscriber);
     let author_token = app.register_user(&author);
@@ -278,10 +316,7 @@ async fn consume_resets_unconsumed_count() {
 
     let list = app.get("/notifications", Some(&sub_token)).await;
     let list_body = json(list).await;
-    let notification_id = list_body["items"][0]["id"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let notification_id = list_body["items"][0]["id"].as_str().unwrap().to_string();
 
     let consume = app
         .post_json(
@@ -306,7 +341,9 @@ async fn consume_resets_unconsumed_count() {
     assert_eq!(after["unconsumed_count"], 0);
     assert!(after["last_consumed_at"].is_string());
 
-    let unread = app.get("/notifications/unread-count", Some(&sub_token)).await;
+    let unread = app
+        .get("/notifications/unread-count", Some(&sub_token))
+        .await;
     let unread_body = json(unread).await;
     assert_eq!(unread_body["count"], 2);
 }

@@ -9,14 +9,18 @@ use crate::domain::chapters::{self, Chapter};
 use crate::domain::comic_pages::{self, ComicPage};
 use crate::domain::comment_likes;
 use crate::domain::comments::{self, CommentWithAuthor};
-use crate::domain::limits::{MAX_BLOCK_CONTENT_LEN, MAX_BLOCK_COUNT, MAX_COMMENT_LEN};
 use crate::domain::likes;
+use crate::domain::limits::{MAX_BLOCK_CONTENT_LEN, MAX_BLOCK_COUNT, MAX_COMMENT_LEN};
 use crate::domain::stories::{self, validate_scope, Story, UpdateStoryInput};
 use crate::domain::url_validation;
 use crate::error::AppError;
 use crate::state::AppState;
 
-async fn require_author(pool: &sqlx::PgPool, story_id: Uuid, user_id: Uuid) -> Result<Story, AppError> {
+async fn require_author(
+    pool: &sqlx::PgPool,
+    story_id: Uuid,
+    user_id: Uuid,
+) -> Result<Story, AppError> {
     let story = stories::find_by_id(pool, story_id)
         .await
         .map_err(AppError::from_db)?

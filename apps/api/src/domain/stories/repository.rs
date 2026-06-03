@@ -96,7 +96,11 @@ pub async fn list_by_universe_id(
     }
 }
 
-pub async fn search_by_title(pool: &PgPool, query: &str, limit: i64) -> Result<Vec<Story>, sqlx::Error> {
+pub async fn search_by_title(
+    pool: &PgPool,
+    query: &str,
+    limit: i64,
+) -> Result<Vec<Story>, sqlx::Error> {
     let pattern = format!("%{query}%");
     sqlx::query_as::<_, Story>(
         r#"

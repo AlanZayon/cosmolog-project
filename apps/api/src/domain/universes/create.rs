@@ -16,7 +16,9 @@ impl CreateUniverseInput {
             return Err(AppError::BadRequest("title is required".into()));
         }
         if title.len() > 200 {
-            return Err(AppError::BadRequest("title must be at most 200 characters".into()));
+            return Err(AppError::BadRequest(
+                "title must be at most 200 characters".into(),
+            ));
         }
         if let Some(desc) = &self.description {
             if desc.len() > 2000 {
@@ -60,7 +62,10 @@ mod tests {
 
     #[test]
     fn rejects_empty_title() {
-        assert!(matches!(sample("  ").validate(), Err(AppError::BadRequest(_))));
+        assert!(matches!(
+            sample("  ").validate(),
+            Err(AppError::BadRequest(_))
+        ));
     }
 
     #[test]

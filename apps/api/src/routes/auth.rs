@@ -27,11 +27,7 @@ pub async fn sign_in(
     State(state): State<AppState>,
     Json(body): Json<SignInRequest>,
 ) -> Result<Json<AuthSession>, AppError> {
-    let session = state
-        .supabase
-        .sign_in(body)
-        .await
-        .map_err(auth_error)?;
+    let session = state.supabase.sign_in(body).await.map_err(auth_error)?;
     tracing::info!(
         event = "auth.sign_in",
         user_id = %session.user.id,
@@ -44,11 +40,7 @@ pub async fn sign_up(
     State(state): State<AppState>,
     Json(body): Json<SignUpRequest>,
 ) -> Result<Json<AuthSession>, AppError> {
-    let session = state
-        .supabase
-        .sign_up(body)
-        .await
-        .map_err(auth_error)?;
+    let session = state.supabase.sign_up(body).await.map_err(auth_error)?;
     tracing::info!(
         event = "auth.sign_up",
         user_id = %session.user.id,
@@ -61,11 +53,7 @@ pub async fn refresh(
     State(state): State<AppState>,
     Json(body): Json<RefreshRequest>,
 ) -> Result<Json<AuthSession>, AppError> {
-    let session = state
-        .supabase
-        .refresh(body)
-        .await
-        .map_err(auth_error)?;
+    let session = state.supabase.refresh(body).await.map_err(auth_error)?;
     tracing::info!(
         event = "auth.refresh",
         user_id = %session.user.id,
@@ -115,7 +103,10 @@ mod tests {
     #[test]
     fn maps_supabase_rate_limit_to_too_many_requests() {
         let msg = "For security purposes, you can only request this after 24 seconds.";
-        assert!(matches!(auth_error(msg.into()), AppError::TooManyRequests(_)));
+        assert!(matches!(
+            auth_error(msg.into()),
+            AppError::TooManyRequests(_)
+        ));
     }
 
     #[test]

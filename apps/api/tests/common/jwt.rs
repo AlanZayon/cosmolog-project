@@ -24,6 +24,7 @@ struct TestClaims {
 
 pub fn jwt_test_config(jwks_url: &str) -> Config {
     Config {
+        app_env: "test".into(),
         host: "127.0.0.1".into(),
         port: 8080,
         database_url: String::new(),
@@ -35,6 +36,7 @@ pub fn jwt_test_config(jwks_url: &str) -> Config {
         supabase_jwks_url: jwks_url.into(),
         supabase_jwt_audience: TEST_AUDIENCE.into(),
         supabase_anon_key: "test-anon-key".into(),
+        redis_url: None,
     }
 }
 

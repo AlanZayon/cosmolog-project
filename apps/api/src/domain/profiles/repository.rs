@@ -17,7 +17,10 @@ pub async fn find_by_user_id(pool: &PgPool, user_id: Uuid) -> Result<Option<Prof
     .await
 }
 
-pub async fn find_by_user_ids(pool: &PgPool, user_ids: &[Uuid]) -> Result<Vec<Profile>, sqlx::Error> {
+pub async fn find_by_user_ids(
+    pool: &PgPool,
+    user_ids: &[Uuid],
+) -> Result<Vec<Profile>, sqlx::Error> {
     if user_ids.is_empty() {
         return Ok(vec![]);
     }
@@ -55,7 +58,10 @@ pub async fn search_by_username(
     .await
 }
 
-pub async fn find_by_username(pool: &PgPool, username: &str) -> Result<Option<Profile>, sqlx::Error> {
+pub async fn find_by_username(
+    pool: &PgPool,
+    username: &str,
+) -> Result<Option<Profile>, sqlx::Error> {
     sqlx::query_as::<_, Profile>(
         r#"
         SELECT id, user_id, username, avatar_url, bio, created_at, updated_at
@@ -78,10 +84,7 @@ pub async fn update_by_user_id(
         return Ok(None);
     };
 
-    let username = input
-        .username
-        .as_ref()
-        .unwrap_or(&current.username);
+    let username = input.username.as_ref().unwrap_or(&current.username);
     let bio = input
         .bio
         .as_ref()

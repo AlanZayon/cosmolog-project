@@ -48,13 +48,11 @@ pub async fn replace_for_story(
     let mut tx = pool.begin().await?;
     match chapter_id {
         Some(cid) => {
-            sqlx::query(
-                "DELETE FROM illustrated_blocks WHERE story_id = $1 AND chapter_id = $2",
-            )
-            .bind(story_id)
-            .bind(cid)
-            .execute(&mut *tx)
-            .await?;
+            sqlx::query("DELETE FROM illustrated_blocks WHERE story_id = $1 AND chapter_id = $2")
+                .bind(story_id)
+                .bind(cid)
+                .execute(&mut *tx)
+                .await?;
         }
         None => {
             sqlx::query(

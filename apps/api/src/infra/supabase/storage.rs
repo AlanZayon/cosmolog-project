@@ -36,7 +36,10 @@ pub async fn upload(
         return Err(body);
     }
 
-    let public_url = format!("{}/storage/v1/object/public/{}/{}", client.url, bucket, path);
+    let public_url = format!(
+        "{}/storage/v1/object/public/{}/{}",
+        client.url, bucket, path
+    );
     Ok(StorageUploadResponse {
         path: path.to_string(),
         public_url,

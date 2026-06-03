@@ -23,10 +23,7 @@ pub struct SearchQuery {
 }
 
 /// Returns the authenticated user's profile row from `profiles`.
-pub async fn me(
-    State(state): State<AppState>,
-    user: AuthUser,
-) -> Result<Json<Profile>, AppError> {
+pub async fn me(State(state): State<AppState>, user: AuthUser) -> Result<Json<Profile>, AppError> {
     let profile = profiles::find_by_user_id(&state.pool, user.user_id)
         .await
         .map_err(AppError::from_db)?

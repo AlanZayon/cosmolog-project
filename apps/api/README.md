@@ -6,6 +6,7 @@ Backend HTTP service (Rust + Axum) for domain logic, auth, and data access.
 
 - [Rust](https://rustup.rs/) (stable toolchain)
 - PostgreSQL connection string from Supabase (see below)
+- Redis (optional locally; required in production for multi-instance notification SSE)
 - [sqlx-cli](https://github.com/launchbadge/sqlx/tree/main/sqlx-cli) for creating migrations (optional if you only run the API)
 
 ```bash
@@ -115,7 +116,7 @@ cp apps/api/.env.docker.example apps/api/.env.docker
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-The API uses local Postgres from compose; auth/storage still call your Supabase project.
+The API uses local Postgres and Redis from compose; auth/storage still call your Supabase project.
 
 ## Deploy (Render)
 
@@ -131,6 +132,7 @@ The API is configured for [Render](https://render.com) via [`render.yaml`](../..
 | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | `SUPABASE_ANON_KEY` | Supabase anon / publishable key |
 | `CORS_ALLOWED_ORIGIN` | Frontend URL (e.g. `https://your-app.vercel.app`) |
+| `REDIS_URL` | Redis URI for cross-instance notification SSE (e.g. `redis://...`). Required when `APP_ENV=production`. |
 
 Render sets `PORT` automatically; the API reads `PORT` or `API_PORT`.
 
@@ -298,7 +300,8 @@ Use this in production if you prefer a deploy step (`sqlx migrate run`) instead 
 | `SUPABASE_JWT_AUDIENCE` | No | `authenticated` | Expected JWT `aud` claim |
 | `RUST_LOG` | No | `cosmolog_api=info,sqlx=warn` | Log filter (see [Structured logging](#structured-logging)) |
 | `LOG_FORMAT` | No | `pretty` (dev) / `json` (prod) | Log output format: `json` or `pretty` |
-| `APP_ENV` | No | `development` | Environment label included in logs (`development`, `production`, …) |
+| `APP_ENV` | No | `development` | Environment label included in logs (`development`, `production`, …). When `production`, `REDIS_URL` is required. |
+| `REDIS_URL` | No* | — | Redis URI for notification SSE fan-out across API instances (`redis://127.0.0.1:6379`). Optional in development; **required when `APP_ENV=production`**. Without Redis, realtime notifications work on a single instance only (in-memory bus). |
 
 ## Structured logging
 

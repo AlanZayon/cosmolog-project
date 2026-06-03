@@ -5,7 +5,9 @@ use crate::domain::likes;
 use crate::domain::stories::model::Story;
 
 use super::create::CreateCollectionInput;
-use super::model::{LibraryCollection, LibraryCollectionSummary, LibraryStatus, LibraryStatusCollection};
+use super::model::{
+    LibraryCollection, LibraryCollectionSummary, LibraryStatus, LibraryStatusCollection,
+};
 use super::reorder::ReorderCollectionStoriesInput;
 use super::update::UpdateCollectionInput;
 
@@ -52,8 +54,8 @@ pub async fn insert(
     user_id: Uuid,
     input: &CreateCollectionInput,
 ) -> Result<LibraryCollection, sqlx::Error> {
-    let icon = super::icons::resolved_icon(input.icon.as_deref())
-        .unwrap_or(super::icons::DEFAULT_ICON);
+    let icon =
+        super::icons::resolved_icon(input.icon.as_deref()).unwrap_or(super::icons::DEFAULT_ICON);
     sqlx::query_as::<_, LibraryCollection>(
         r#"
         INSERT INTO library_collections (user_id, name, description, icon)
@@ -133,10 +135,7 @@ pub async fn delete(pool: &PgPool, id: Uuid, user_id: Uuid) -> Result<(), sqlx::
     Ok(())
 }
 
-pub async fn find_by_id(
-    pool: &PgPool,
-    id: Uuid,
-) -> Result<Option<LibraryCollection>, sqlx::Error> {
+pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<LibraryCollection>, sqlx::Error> {
     sqlx::query_as::<_, LibraryCollection>(
         r#"
         SELECT id, user_id, name, description, icon, visibility, created_at, updated_at
@@ -206,12 +205,10 @@ pub async fn insert_item(
     .execute(pool)
     .await?;
 
-    sqlx::query(
-        "UPDATE library_collections SET updated_at = NOW() WHERE id = $1",
-    )
-    .bind(collection_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE library_collections SET updated_at = NOW() WHERE id = $1")
+        .bind(collection_id)
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
@@ -230,20 +227,16 @@ pub async fn delete_item(
         return Err(sqlx::Error::RowNotFound);
     }
 
-    sqlx::query(
-        "DELETE FROM library_collection_items WHERE collection_id = $1 AND story_id = $2",
-    )
-    .bind(collection_id)
-    .bind(story_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("DELETE FROM library_collection_items WHERE collection_id = $1 AND story_id = $2")
+        .bind(collection_id)
+        .bind(story_id)
+        .execute(pool)
+        .await?;
 
-    sqlx::query(
-        "UPDATE library_collections SET updated_at = NOW() WHERE id = $1",
-    )
-    .bind(collection_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE library_collections SET updated_at = NOW() WHERE id = $1")
+        .bind(collection_id)
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
@@ -292,12 +285,10 @@ pub async fn reorder_stories(
         .await?;
     }
 
-    sqlx::query(
-        "UPDATE library_collections SET updated_at = NOW() WHERE id = $1",
-    )
-    .bind(collection_id)
-    .execute(&mut *tx)
-    .await?;
+    sqlx::query("UPDATE library_collections SET updated_at = NOW() WHERE id = $1")
+        .bind(collection_id)
+        .execute(&mut *tx)
+        .await?;
 
     tx.commit().await?;
     Ok(())
@@ -329,13 +320,15 @@ pub async fn library_status(
 
     let collections = rows
         .into_iter()
-        .map(|(id, name, icon, description, contains_story)| LibraryStatusCollection {
-            id,
-            name,
-            icon,
-            description,
-            contains_story,
-        })
+        .map(
+            |(id, name, icon, description, contains_story)| LibraryStatusCollection {
+                id,
+                name,
+                icon,
+                description,
+                contains_story,
+            },
+        )
         .collect();
 
     Ok(LibraryStatus { liked, collections })

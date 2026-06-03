@@ -171,10 +171,7 @@ mod tests {
 
     #[tokio::test]
     async fn too_many_requests_returns_429_with_message() {
-        let (status, msg) = response_for(AppError::TooManyRequests(
-            "wait 24 seconds".into(),
-        ))
-        .await;
+        let (status, msg) = response_for(AppError::TooManyRequests("wait 24 seconds".into())).await;
         assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(msg, "wait 24 seconds");
     }
@@ -189,7 +186,8 @@ mod tests {
 
     #[tokio::test]
     async fn upstream_returns_sanitized_502() {
-        let (status, msg) = response_for(AppError::Upstream("supabase internal detail".into())).await;
+        let (status, msg) =
+            response_for(AppError::Upstream("supabase internal detail".into())).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert_eq!(msg, "upstream service unavailable");
     }

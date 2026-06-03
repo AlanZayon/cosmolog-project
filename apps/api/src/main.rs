@@ -21,11 +21,14 @@ async fn main() -> Result<()> {
 
     if config.run_migrations {
         migrate::run(&config.migrate_database_url).await?;
-        tracing::info!(event = "db.migrations_applied", "database migrations applied");
+        tracing::info!(
+            event = "db.migrations_applied",
+            "database migrations applied"
+        );
     }
 
     let jwt: Arc<dyn TokenValidator> = JwtValidator::new(&config).await?;
-    let state = AppState::new(pool, jwt, &config);
+    let state = AppState::try_new(pool, jwt, &config).await?;
 
     let listener = TcpListener::bind(config.socket_addr()).await?;
     tracing::info!(

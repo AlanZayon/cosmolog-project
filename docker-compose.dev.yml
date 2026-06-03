@@ -17,6 +17,16 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: ./apps/api
@@ -33,6 +43,7 @@ services:
       MIGRATE_DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
       RUN_MIGRATIONS: "true"
       CORS_ALLOWED_ORIGIN: http://localhost:3000
+      REDIS_URL: redis://redis:6379
       RUST_LOG: cosmolog_api=debug,tower_http=debug,sqlx=warn
     volumes:
       - ./apps/api:/app
@@ -40,6 +51,8 @@ services:
       - api_cargo_registry:/usr/local/cargo/registry
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   web:

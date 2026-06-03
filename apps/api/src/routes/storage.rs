@@ -18,12 +18,7 @@ const ALLOWED_BUCKETS: &[&str] = &[
     "arc-covers",
 ];
 
-const ALLOWED_IMAGE_TYPES: &[&str] = &[
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-];
+const ALLOWED_IMAGE_TYPES: &[&str] = &["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 /// Upload a file to Supabase Storage (proxied with the user's JWT).
 pub async fn upload(
@@ -92,10 +87,7 @@ pub async fn upload(
     }
 
     let path = storage_path(user.user_id, path)?;
-    let token = user
-        .raw_token
-        .as_deref()
-        .ok_or(AppError::Unauthorized)?;
+    let token = user.raw_token.as_deref().ok_or(AppError::Unauthorized)?;
 
     let response = state
         .supabase
@@ -159,8 +151,7 @@ mod tests {
     fn strips_foreign_prefix_from_client_path() {
         let user_id = Uuid::new_v4();
         let other = Uuid::new_v4();
-        let path =
-            storage_path(user_id, Some(format!("{other}/photo.png"))).expect("path");
+        let path = storage_path(user_id, Some(format!("{other}/photo.png"))).expect("path");
         assert_eq!(path, format!("{user_id}/photo.png"));
     }
 

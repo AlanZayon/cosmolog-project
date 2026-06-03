@@ -27,18 +27,14 @@ impl FromRequestParts<AppState> for AuthUser {
             .filter(|t| !t.is_empty())
             .ok_or(AppError::Unauthorized)?;
 
-        let mut user = state
-            .jwt
-            .validate(token)
-            .await
-            .map_err(|err| {
-                tracing::debug!(
-                    event = "auth.jwt_validation_failed",
-                    error = %err,
-                    "JWT validation failed"
-                );
-                AppError::Unauthorized
-            })?;
+        let mut user = state.jwt.validate(token).await.map_err(|err| {
+            tracing::debug!(
+                event = "auth.jwt_validation_failed",
+                error = %err,
+                "JWT validation failed"
+            );
+            AppError::Unauthorized
+        })?;
         record_user_id(user.user_id);
         user.raw_token = Some(token.to_string());
         Ok(user)

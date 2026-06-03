@@ -5,7 +5,7 @@ use crate::domain::stories::Story;
 use super::realtime::{NotificationEventBus, NotificationRealtimeEvent};
 use super::repository::{
     deliver_notification, list_active_profile_subscriptions, list_active_universe_subscriptions,
-    profile_threshold, unread_count, universe_threshold, DeliveredNotification,
+    profile_threshold, universe_threshold, unread_count, DeliveredNotification,
 };
 
 async fn publish_realtime(
@@ -26,11 +26,22 @@ async fn publish_realtime(
         }
     };
 
-    bus.publish(NotificationRealtimeEvent {
-        recipient_id: delivered.recipient_id,
-        notification_id: delivered.notification_id,
-        unread_count: unread,
-    });
+    if let Err(err) = bus
+        .publish(NotificationRealtimeEvent {
+            recipient_id: delivered.recipient_id,
+            notification_id: delivered.notification_id,
+            unread_count: unread,
+        })
+        .await
+    {
+        tracing::warn!(
+            event = "notifications.realtime.publish_failed",
+            recipient_id = %delivered.recipient_id,
+            notification_id = %delivered.notification_id,
+            error = %err,
+            "failed to publish notification realtime event"
+        );
+    }
 }
 
 pub async fn fanout_new_story(

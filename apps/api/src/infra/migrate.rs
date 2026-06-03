@@ -9,7 +9,10 @@ use std::path::Path;
 /// Migrations are read from disk at runtime (not compile-time embed) so dev/docker picks up new
 /// SQL files without requiring a rebuild after `sqlx migrate run`.
 pub async fn run(migrate_database_url: &str) -> anyhow::Result<()> {
-    tracing::info!(event = "db.migrations_started", "running database migrations");
+    tracing::info!(
+        event = "db.migrations_started",
+        "running database migrations"
+    );
 
     let pool = PgPoolOptions::new()
         .max_connections(1)
@@ -21,7 +24,10 @@ pub async fn run(migrate_database_url: &str) -> anyhow::Result<()> {
     let migrator = sqlx::migrate::Migrator::new(Path::new("./migrations")).await?;
     migrator.run(&pool).await?;
 
-    tracing::info!(event = "db.migrations_completed", "database migrations complete");
+    tracing::info!(
+        event = "db.migrations_completed",
+        "database migrations complete"
+    );
     Ok(())
 }
 

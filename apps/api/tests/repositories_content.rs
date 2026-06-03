@@ -5,7 +5,9 @@ use cosmolog_api::domain::chapters::{
     count_by_story_id, find_by_story_and_number, insert as insert_chapter, list_by_story_id,
     update_title,
 };
-use cosmolog_api::domain::comic_pages::{list_by_story_id as list_comic_pages, replace_for_story as replace_comic_pages};
+use cosmolog_api::domain::comic_pages::{
+    list_by_story_id as list_comic_pages, replace_for_story as replace_comic_pages,
+};
 
 use common::fixtures::{seed_story, seed_user};
 
@@ -36,9 +38,7 @@ async fn chapters_insert_list_and_unique_number() {
         .unwrap();
     assert_eq!(found.id, ch1.id);
 
-    let renamed = update_title(&pool, ch1.id, "Chapter One")
-        .await
-        .unwrap();
+    let renamed = update_title(&pool, ch1.id, "Chapter One").await.unwrap();
     assert_eq!(renamed.title, "Chapter One");
 
     let dup = insert_chapter(&pool, story.id, "Duplicate", 1).await;

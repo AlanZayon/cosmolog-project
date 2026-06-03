@@ -12,6 +12,7 @@ pub fn test_config() -> Config {
     let supabase_url = "https://test-project.supabase.co".to_string();
     let supabase_jwt_issuer = format!("{supabase_url}/auth/v1");
     Config {
+        app_env: "test".into(),
         host: "127.0.0.1".into(),
         port: 8080,
         database_url: "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into(),
@@ -23,14 +24,14 @@ pub fn test_config() -> Config {
         supabase_jwks_url: format!("{supabase_jwt_issuer}/.well-known/jwks.json"),
         supabase_jwt_audience: "authenticated".into(),
         supabase_anon_key: "test-anon-key".into(),
+        redis_url: None,
     }
 }
 
 #[allow(dead_code)]
 pub async fn connect_test_pool() -> PgPool {
-    let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into()
-    });
+    let url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into());
     PgPoolOptions::new()
         .max_connections(5)
         .connect(&url)

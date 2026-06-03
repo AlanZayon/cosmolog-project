@@ -50,8 +50,7 @@ impl Jwk {
             "RSA" => {
                 let n = self.n.context("RSA key missing n")?;
                 let e = self.e.context("RSA key missing e")?;
-                DecodingKey::from_rsa_components(&n, &e)
-                    .context("invalid RSA key components")?
+                DecodingKey::from_rsa_components(&n, &e).context("invalid RSA key components")?
             }
             "EC" => {
                 let x = self.x.context("EC key missing x")?;
@@ -80,8 +79,5 @@ pub async fn fetch_jwks(client: &reqwest::Client, jwks_url: &str) -> Result<Vec<
 
     let jwks: JwksResponse = response.json().await.context("invalid JWKS JSON")?;
 
-    jwks.keys
-        .into_iter()
-        .map(Jwk::into_cached_key)
-        .collect()
+    jwks.keys.into_iter().map(Jwk::into_cached_key).collect()
 }
