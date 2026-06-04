@@ -231,9 +231,10 @@ async fn public_collection_readable_and_saveable() {
         .unwrap();
     assert_eq!(stories.len(), 1);
 
-    library::save_collection(&pool, collection.id, fan.user_id)
+    let saved = library::save_collection(&pool, collection.id, fan.user_id)
         .await
         .unwrap();
+    assert!(saved);
     assert!(library::is_saved(&pool, collection.id, fan.user_id)
         .await
         .unwrap());

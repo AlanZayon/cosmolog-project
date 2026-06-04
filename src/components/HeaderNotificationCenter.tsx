@@ -15,9 +15,12 @@ import {
   ApiError,
   consumeNotification,
   listNotifications,
+  markAllNotificationsRead,
 } from '@/lib/api';
 import type { ApiNotificationListItem } from '@/lib/api/types';
 import { formatCommentRelative } from '@/lib/formatDate';
+import TranslationWithParams from '@/components/TranslationWithParams';
+import type { TranslationKey } from '@/i18n/translations';
 import { cn } from '@/lib/utils';
 
 const RECENT_LIMIT = 20;
@@ -28,30 +31,34 @@ function formatBadgeCount(count: number): string {
   return String(count);
 }
 
-function notificationSummary(
-  item: ApiNotificationListItem,
-  tf: (
-    key: 'notifications.inboxLine' | 'notifications.inboxUniverseLine',
-    params: Record<string, string>,
-  ) => string,
-): string {
+function alertNotificationMessage(item: ApiNotificationListItem): {
+  key: TranslationKey;
+  params: Record<string, string>;
+} {
   if (item.scope === 'universe' && item.universe_title) {
-    return tf('notifications.inboxUniverseLine', {
-      username: item.target_username,
-      universe: item.universe_title,
-    });
+    return {
+      key: 'notifications.inboxUniverseLine',
+      params: {
+        username: item.target_username,
+        universe: item.universe_title,
+      },
+    };
   }
-  return tf('notifications.inboxLine', { username: item.target_username });
+  return {
+    key: 'notifications.inboxLine',
+    params: { username: item.target_username },
+  };
 }
 
 export default function HeaderNotificationCenter() {
   const router = useRouter();
-  const { t, tf, language } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { unreadCount, setUnreadCount, refreshUnreadCount } = useNotificationInbox();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<ApiNotificationListItem[]>([]);
   const [loadingList, setLoadingList] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -87,6 +94,37 @@ export default function HeaderNotificationCenter() {
       window.removeEventListener('cosmolog:notifications-refresh-list', onInboxRefresh);
     };
   }, [refreshList]);
+
+  const handleMarkAllRead = () => {
+    if (unreadCount === 0 || markingAll) return;
+    setMarkingAll(true);
+    void (async () => {
+      try {
+        await markAllNotificationsRead();
+        setUnreadCount(0);
+        setItems((prev) =>
+          prev.map((n) =>
+            n.read_at == null
+              ? {
+                  ...n,
+                  read_at: new Date().toISOString(),
+                  clicked_at: new Date().toISOString(),
+                }
+              : n,
+          ),
+        );
+        await refreshUnreadCount();
+      } catch (err) {
+        toast({
+          title: t('common.error'),
+          description: err instanceof ApiError ? err.message : String(err),
+          variant: 'destructive',
+        });
+      } finally {
+        setMarkingAll(false);
+      }
+    })();
+  };
 
   const handleItemClick = (item: ApiNotificationListItem) => {
     const storyPath = `/story/${item.story_id}`;
@@ -160,8 +198,20 @@ export default function HeaderNotificationCenter() {
           'max-sm:w-[min(calc(100vw-1rem),18rem)]',
         )}
       >
-        <div className="border-b border-border px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
           <p className="text-sm font-semibold text-foreground">{t('header.notifications')}</p>
+          {unreadCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 px-2 text-xs font-medium"
+              disabled={markingAll}
+              onClick={handleMarkAllRead}
+            >
+              {t('notifications.markAllRead')}
+            </Button>
+          ) : null}
         </div>
         {loadingList ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground">
@@ -177,6 +227,7 @@ export default function HeaderNotificationCenter() {
             <ul className="divide-y divide-border py-0.5">
               {items.map((item) => {
                 const unread = item.read_at == null;
+                const message = alertNotificationMessage(item);
                 return (
                   <li key={item.id}>
                     <button
@@ -210,7 +261,11 @@ export default function HeaderNotificationCenter() {
                           {item.story_title}
                         </p>
                         <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                          {notificationSummary(item, tf)}
+                          <TranslationWithParams
+                            translationKey={message.key}
+                            language={language}
+                            params={message.params}
+                          />
                         </p>
                         <p className="mt-1 text-[10px] text-muted-foreground/80">
                           {formatCommentRelative(item.created_at, language)}

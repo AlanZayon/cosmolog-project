@@ -46,6 +46,18 @@ pub async fn find_by_id(
     Ok(row)
 }
 
+pub async fn find_author_and_story(
+    pool: &PgPool,
+    comment_id: Uuid,
+) -> Result<Option<(Uuid, Uuid)>, sqlx::Error> {
+    let row: Option<(Uuid, Uuid)> =
+        sqlx::query_as("SELECT user_id, story_id FROM comments WHERE id = $1")
+            .bind(comment_id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(row)
+}
+
 pub async fn resolve_thread_root(
     pool: &PgPool,
     comment_id: Uuid,

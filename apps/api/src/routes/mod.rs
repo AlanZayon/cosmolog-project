@@ -1,3 +1,4 @@
+pub mod activity_notifications;
 pub mod arcs;
 pub mod auth;
 pub mod db;

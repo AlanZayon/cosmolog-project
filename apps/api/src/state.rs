@@ -5,6 +5,7 @@ use sqlx::PgPool;
 
 use crate::auth::TokenValidator;
 use crate::config::Config;
+use crate::domain::activity_notifications::ActivityNotificationEventBus;
 use crate::domain::notifications::NotificationEventBus;
 use crate::infra::supabase::SupabaseClient;
 
@@ -14,6 +15,7 @@ pub struct AppState {
     pub jwt: Arc<dyn TokenValidator>,
     pub supabase: SupabaseClient,
     pub notification_events: NotificationEventBus,
+    pub activity_notification_events: ActivityNotificationEventBus,
 }
 
 impl AppState {
@@ -24,6 +26,7 @@ impl AppState {
             jwt,
             supabase: SupabaseClient::new(&config.supabase_url, &config.supabase_anon_key),
             notification_events: NotificationEventBus::new_local(),
+            activity_notification_events: ActivityNotificationEventBus::new_local(),
         }
     }
 
@@ -50,11 +53,29 @@ impl AppState {
             }
         };
 
+        let activity_notification_events = match config.redis_url.as_deref() {
+            Some(redis_url) => {
+                tracing::info!(
+                    event = "activity_notifications.realtime.redis_enabled",
+                    "activity notification realtime using redis pub/sub"
+                );
+                ActivityNotificationEventBus::connect(redis_url).await?
+            }
+            None => {
+                tracing::info!(
+                    event = "activity_notifications.realtime.local_only",
+                    "activity notification realtime using in-memory bus (single instance)"
+                );
+                ActivityNotificationEventBus::new_local()
+            }
+        };
+
         Ok(Self {
             pool,
             jwt,
             supabase: SupabaseClient::new(&config.supabase_url, &config.supabase_anon_key),
             notification_events,
+            activity_notification_events,
         })
     }
 }

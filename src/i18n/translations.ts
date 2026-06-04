@@ -52,6 +52,73 @@ const translations = {
     es: 'No hay avisos aún.',
   },
 
+  'activityNotifications.title': {
+    pt: 'Notificações',
+    en: 'Notifications',
+    ja: '通知',
+    es: 'Notificaciones',
+  },
+  'activityNotifications.empty': {
+    pt: 'Nenhuma notificação por aqui.',
+    en: 'No notifications yet.',
+    ja: '通知はまだありません。',
+    es: 'No hay notificaciones aún.',
+  },
+  'activityNotifications.inboxCommentMention': {
+    pt: '{{username}} mencionou você nos comentários de {{story}}',
+    en: '{{username}} mentioned you in the comments on {{story}}',
+    ja: '{{username}}が{{story}}のコメントであなたにメンションしました',
+    es: '{{username}} te mencionó en los comentarios de {{story}}',
+  },
+  'activityNotifications.inboxProfileAlert': {
+    pt: '{{username}} ativou avisos para suas novas histórias no perfil',
+    en: '{{username}} turned on alerts for your new stories on their feed',
+    ja: '{{username}}があなたの新しいストーリーのプロフィール通知をオンにしました',
+    es: '{{username}} activó avisos para tus nuevas historias en el perfil',
+  },
+  'activityNotifications.inboxUniverseAlert': {
+    pt: '{{username}} ativou avisos de novas histórias no universo {{universe}}',
+    en: '{{username}} turned on alerts for new stories in the universe {{universe}}',
+    ja: '{{username}}がユニバース{{universe}}の新しいストーリー通知をオンにしました',
+    es: '{{username}} activó avisos de nuevas historias en el universo {{universe}}',
+  },
+  'activityNotifications.inboxCollectionSaved': {
+    pt: '{{username}} salvou sua coleção {{collection}} na estante dele(a)',
+    en: '{{username}} saved your collection {{collection}} to their shelf',
+    ja: '{{username}}があなたのコレクション{{collection}}を本棚に保存しました',
+    es: '{{username}} guardó tu colección {{collection}} en su estantería',
+  },
+  'activityNotifications.inboxStoryComment': {
+    pt: '{{username}} comentou na sua história {{story}}',
+    en: '{{username}} commented on your story {{story}}',
+    ja: '{{username}}があなたのストーリー{{story}}にコメントしました',
+    es: '{{username}} comentó en tu historia {{story}}',
+  },
+  'activityNotifications.inboxCommentLiked': {
+    pt: '{{username}} curtiu seu comentário em {{story}}',
+    en: '{{username}} liked your comment on {{story}}',
+    ja: '{{username}}が{{story}}のあなたのコメントにいいねしました',
+    es: '{{username}} dio me gusta a tu comentario en {{story}}',
+  },
+  'activityNotifications.inboxCommentReply': {
+    pt: '{{username}} respondeu seu comentário em {{story}}',
+    en: '{{username}} replied to your comment on {{story}}',
+    ja: '{{username}}が{{story}}であなたのコメントに返信しました',
+    es: '{{username}} respondió tu comentario en {{story}}',
+  },
+  'activityNotifications.markAllRead': {
+    pt: 'Marcar todas como lidas',
+    en: 'Mark all as read',
+    ja: 'すべて既読にする',
+    es: 'Marcar todas como leídas',
+  },
+  'notifications.markAllRead': {
+    pt: 'Marcar todas como lidas',
+    en: 'Mark all as read',
+    ja: 'すべて既読にする',
+    es: 'Marcar todas como leídas',
+  },
+
   // Library (Estante)
   'library.title': { pt: 'Estante', en: 'Shelf', ja: '本棚', es: 'Estantería' },
   'library.liked': { pt: 'Curtidas', en: 'Liked', ja: 'いいね', es: 'Me gusta' },
@@ -803,16 +870,16 @@ const translations = {
     es: 'Notificaciones canceladas.',
   },
   'notifications.inboxLine': {
-    pt: 'Nova história de {{username}}',
-    en: 'New story from {{username}}',
-    ja: '{{username}} の新しいストーリー',
-    es: 'Nueva historia de {{username}}',
+    pt: 'Nova história publicada no perfil de {{username}}',
+    en: 'New story published on {{username}}’s profile',
+    ja: '{{username}} のプロフィールに新しいストーリーが公開されました',
+    es: 'Nueva historia publicada en el perfil de {{username}}',
   },
   'notifications.inboxUniverseLine': {
-    pt: '{{username}} · {{universe}}',
-    en: '{{username}} · {{universe}}',
-    ja: '{{username}} · {{universe}}',
-    es: '{{username}} · {{universe}}',
+    pt: 'Nova história no universo {{universe}} de {{username}}',
+    en: 'New story in {{username}}’s universe {{universe}}',
+    ja: '{{username}}のユニバース{{universe}}に新しいストーリー',
+    es: 'Nueva historia en el universo {{universe}} de {{username}}',
   },
   'notifications.alertsPageTitle': {
     pt: 'Avisos ativos',

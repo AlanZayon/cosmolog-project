@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::auth::{AuthUser, OptionalAuth};
+use crate::domain::activity_notifications;
 use crate::domain::blocks::{self, BlockInput, IllustratedBlock};
 use crate::domain::chapters::{self, Chapter};
 use crate::domain::comic_pages::{self, ComicPage};
@@ -312,6 +313,8 @@ pub async fn create_comment(
         )));
     }
 
+    let reply_to_comment_id = body.parent_id;
+
     let parent_id = if let Some(parent_id) = body.parent_id {
         let Some((story_id, _)) = comments::find_by_id(&state.pool, parent_id)
             .await
@@ -335,6 +338,19 @@ pub async fn create_comment(
     let row = comments::insert(&state.pool, id, user.user_id, content, parent_id)
         .await
         .map_err(AppError::from_db)?;
+
+    activity_notifications::fanout_comment_activity(
+        &state.pool,
+        &state.activity_notification_events,
+        user.user_id,
+        id,
+        row.id,
+        content,
+        reply_to_comment_id,
+    )
+    .await
+    .map_err(AppError::from_db)?;
+
     Ok(Json(row))
 }
 
@@ -373,9 +389,34 @@ pub async fn toggle_comment_like(
             .map_err(AppError::from_db)?;
         Ok(Json(LikedResponse { liked: false }))
     } else {
-        comment_likes::insert_like(&state.pool, comment_id, user.user_id)
+        let newly_liked = comment_likes::insert_like(&state.pool, comment_id, user.user_id)
             .await
             .map_err(AppError::from_db)?;
+
+        if newly_liked {
+            if let Some((author_id, comment_story_id)) =
+                comments::find_author_and_story(&state.pool, comment_id)
+                    .await
+                    .map_err(AppError::from_db)?
+            {
+                let delivered = activity_notifications::insert_comment_liked(
+                    &state.pool,
+                    author_id,
+                    user.user_id,
+                    comment_story_id,
+                    comment_id,
+                )
+                .await
+                .map_err(AppError::from_db)?;
+                activity_notifications::deliver_optional(
+                    &state.pool,
+                    &state.activity_notification_events,
+                    delivered,
+                )
+                .await;
+            }
+        }
+
         Ok(Json(LikedResponse { liked: true }))
     }
 }

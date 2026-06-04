@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ActivityNotificationInboxProvider } from "@/hooks/useActivityNotificationInbox";
 import { NotificationInboxProvider } from "@/hooks/useNotificationInbox";
 import { LanguageProvider } from "@/hooks/useLanguage";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <LanguageProvider>
           <AuthProvider>
             <NotificationInboxProvider>
+            <ActivityNotificationInboxProvider>
             <FeedExplorationProvider>
               <CommentsDrawerProvider>
               <TooltipProvider>
@@ -30,6 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </TooltipProvider>
               </CommentsDrawerProvider>
             </FeedExplorationProvider>
+            </ActivityNotificationInboxProvider>
             </NotificationInboxProvider>
           </AuthProvider>
         </LanguageProvider>

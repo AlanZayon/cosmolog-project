@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::auth::{AuthUser, OptionalAuth};
 use crate::domain::limits::MAX_SEARCH_QUERY_LEN;
+use crate::domain::activity_notifications::{self, deliver_optional};
 use crate::domain::library::{
     self, present::build_library_story_items, CreateCollectionInput, LibraryCollection,
     LibraryCollectionSaveStatus, LibraryCollectionSummary, LibraryStatus, LibraryStoryItem,
@@ -163,12 +164,35 @@ pub async fn save_collection(
     user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    library::save_collection(&state.pool, id, user.user_id)
+    let collection = library::find_by_id(&state.pool, id)
+        .await
+        .map_err(AppError::from_db)?
+        .ok_or(AppError::NotFound)?;
+
+    let newly_saved = library::save_collection(&state.pool, id, user.user_id)
         .await
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => AppError::NotFound,
             other => AppError::from_db(other),
         })?;
+
+    if newly_saved {
+        let delivered = activity_notifications::insert_collection_saved(
+            &state.pool,
+            collection.user_id,
+            user.user_id,
+            id,
+        )
+        .await
+        .map_err(AppError::from_db)?;
+        deliver_optional(
+            &state.pool,
+            &state.activity_notification_events,
+            delivered,
+        )
+        .await;
+    }
+
     Ok(StatusCode::NO_CONTENT)
 }
 

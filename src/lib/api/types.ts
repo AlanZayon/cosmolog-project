@@ -129,3 +129,52 @@ export type ApiConsumeNotificationResponse = {
   clicked_at: string;
   subscription_unconsumed_count: number;
 };
+
+export type ActivityNotificationKind =
+  | 'comment_mention'
+  | 'story_comment'
+  | 'comment_reply'
+  | 'comment_liked'
+  | 'profile_alert_activated'
+  | 'universe_alert_activated'
+  | 'collection_saved';
+
+export type ApiActivityNotificationListItem = {
+  id: string;
+  kind: ActivityNotificationKind;
+  read_at: string | null;
+  clicked_at: string | null;
+  created_at: string;
+  actor_id: string;
+  actor_username: string;
+  actor_avatar_url: string | null;
+  story_id: string | null;
+  story_title: string | null;
+  comment_id: string | null;
+  universe_id: string | null;
+  universe_title: string | null;
+  collection_id: string | null;
+  collection_name: string | null;
+};
+
+export type ApiActivityNotificationListResponse = {
+  items: ApiActivityNotificationListItem[];
+};
+
+export type ApiActivityNotificationUnreadCount = {
+  count: number;
+};
+
+export type ApiMarkActivityNotificationReadResponse = {
+  id: string;
+  read_at: string;
+  clicked_at: string;
+};
+
+export type ApiMarkAllActivityNotificationsReadResponse = {
+  marked_count: number;
+};
+
+export type ApiMarkAllNotificationsReadResponse = {
+  marked_count: number;
+};

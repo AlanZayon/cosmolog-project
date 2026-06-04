@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import CharacterMeter from '@/components/CharacterMeter';
+import { parseLeadingMention } from '@/lib/commentMentions';
 import { cn } from '@/lib/utils';
 import {
   groupCommentsByThread,
@@ -58,12 +59,18 @@ function CommentAvatar({ name, size = 'md' }: { name: string; size?: 'md' | 'sm'
   );
 }
 
-function CommentContent({ content }: { content: string }) {
-  const match = content.match(/^@(\S+)(?:\s+([\s\S]*))?$/);
-  if (!match) {
+function CommentContent({
+  content,
+  knownUsernames,
+}: {
+  content: string;
+  knownUsernames: string[];
+}) {
+  const parsed = parseLeadingMention(content, knownUsernames);
+  if (!parsed) {
     return <span className="text-foreground/90">{content}</span>;
   }
-  const [, mention, rest] = match;
+  const { mention, rest } = parsed;
   return (
     <>
       <span className="font-medium text-primary">@{mention}</span>
@@ -91,6 +98,8 @@ type CommentRowProps = {
   variant: 'drawer' | 'inline';
   isReply?: boolean;
   threadRootId: string;
+  highlighted?: boolean;
+  knownUsernames: string[];
   onReply: (target: ReplyTarget) => void;
   onLikeToggle: (commentId: string, liked: boolean, likesCount: number) => void;
 };
@@ -101,6 +110,8 @@ function CommentRow({
   variant,
   isReply = false,
   threadRootId,
+  highlighted = false,
+  knownUsernames,
   onReply,
   onLikeToggle,
 }: CommentRowProps) {
@@ -170,12 +181,19 @@ function CommentRow({
 
   if (variant === 'inline') {
     return (
-      <div className={cn('flex gap-3 py-1', isReply && 'pt-2')}>
+      <div
+        id={`comment-${comment.id}`}
+        className={cn(
+          'flex gap-3 scroll-mt-28 rounded-lg py-1 transition-colors',
+          isReply && 'pt-2',
+          highlighted && 'bg-primary/10 ring-2 ring-primary/40',
+        )}
+      >
         <CommentAvatar name={username} size={isReply ? 'sm' : 'md'} />
         <div className="min-w-0 flex-1">
           <p className="text-[15px] leading-relaxed text-foreground/90">
             <span className="mr-1.5 font-semibold text-foreground">{username}</span>
-            <CommentContent content={comment.content} />
+            <CommentContent content={comment.content} knownUsernames={knownUsernames} />
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             {when ? <span className="text-muted-foreground">{when}</span> : null}
@@ -188,14 +206,21 @@ function CommentRow({
   }
 
   return (
-    <div className={cn('flex gap-3 py-2', isReply && 'pl-8')}>
+    <div
+      id={`comment-${comment.id}`}
+      className={cn(
+        'flex scroll-mt-28 gap-3 rounded-lg py-2 transition-colors',
+        isReply && 'pl-8',
+        highlighted && 'bg-primary/10 ring-2 ring-primary/40',
+      )}
+    >
       <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
         {username.charAt(0).toUpperCase()}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm leading-snug">
           <span className="font-semibold text-foreground">{username}</span>{' '}
-          <CommentContent content={comment.content} />
+          <CommentContent content={comment.content} knownUsernames={knownUsernames} />
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {when ? <span>{when}</span> : null}
@@ -225,7 +250,9 @@ type CommentThreadBlockProps = {
   storyId: string;
   variant: 'drawer' | 'inline';
   visibleCount: number;
+  highlightCommentId?: string | null;
   onLoadMore: () => void;
+  knownUsernames: string[];
   onReply: (target: ReplyTarget) => void;
   onLikeToggle: (commentId: string, liked: boolean, likesCount: number) => void;
 };
@@ -270,6 +297,8 @@ function CommentThreadBlock({
   storyId,
   variant,
   visibleCount,
+  highlightCommentId,
+  knownUsernames,
   onLoadMore,
   onReply,
   onLikeToggle,
@@ -284,6 +313,8 @@ function CommentThreadBlock({
       variant={variant}
       threadRootId={rootComment.id}
       isReply
+      highlighted={highlightCommentId === reply.id}
+      knownUsernames={knownUsernames}
       onReply={onReply}
       onLikeToggle={onLikeToggle}
     />
@@ -313,6 +344,8 @@ function CommentThreadBlock({
           storyId={storyId}
           variant="inline"
           threadRootId={rootComment.id}
+          highlighted={highlightCommentId === rootComment.id}
+          knownUsernames={knownUsernames}
           onReply={onReply}
           onLikeToggle={onLikeToggle}
         />
@@ -328,6 +361,8 @@ function CommentThreadBlock({
         storyId={storyId}
         variant="drawer"
         threadRootId={rootComment.id}
+        highlighted={highlightCommentId === rootComment.id}
+        knownUsernames={knownUsernames}
         onReply={onReply}
         onLikeToggle={onLikeToggle}
       />
@@ -345,6 +380,8 @@ export type StoryCommentsPanelProps = {
   onCommentCreated?: () => void;
   /** Focus the composer when mounted (e.g. feed deep-link to comments). */
   autoFocusInput?: boolean;
+  /** Scroll to and highlight this comment (or reply) after load. */
+  highlightCommentId?: string | null;
 };
 
 export default function StoryCommentsPanel({
@@ -354,6 +391,7 @@ export default function StoryCommentsPanel({
   className,
   onCommentCreated,
   autoFocusInput = false,
+  highlightCommentId = null,
 }: StoryCommentsPanelProps) {
   const { user, loading: authLoading, profile } = useAuth();
   const { t, language } = useLanguage();
@@ -409,6 +447,40 @@ export default function StoryCommentsPanel({
     () => groupCommentsByThread(comments),
     [comments],
   );
+
+  const knownUsernames = useMemo(() => {
+    const names = new Set<string>();
+    for (const comment of comments) {
+      const name = comment.username?.trim();
+      if (name) names.add(name);
+    }
+    return [...names];
+  }, [comments]);
+
+  useEffect(() => {
+    if (!highlightCommentId || loading) return;
+
+    const target = comments.find((c) => c.id === highlightCommentId);
+    if (!target) return;
+
+    if (target.parent_id) {
+      const threadRootId = target.parent_id;
+      const replyCount = repliesByParent.get(threadRootId)?.length ?? 0;
+      if (replyCount > 0) {
+        setVisibleReplyCounts((prev) => ({
+          ...prev,
+          [threadRootId]: replyCount,
+        }));
+      }
+    }
+
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById(`comment-${highlightCommentId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightCommentId, loading, comments, repliesByParent]);
 
   const handleLikeToggle = useCallback(
     (commentId: string, liked: boolean, likesCount: number) => {
@@ -528,6 +600,8 @@ export default function StoryCommentsPanel({
             storyId={storyId}
             variant={layoutVariant}
             visibleCount={getThreadVisibleCount(comment.id, replies.length)}
+            highlightCommentId={highlightCommentId}
+            knownUsernames={knownUsernames}
             onLoadMore={() => loadMoreReplies(comment.id, replies.length)}
             onReply={handleReply}
             onLikeToggle={handleLikeToggle}

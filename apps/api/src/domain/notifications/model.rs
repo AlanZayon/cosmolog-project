@@ -189,6 +189,11 @@ pub struct UnreadCountResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct MarkAllNotificationsReadResponse {
+    pub marked_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct ConsumeNotificationResponse {
     pub id: Uuid,
     pub read_at: OffsetDateTime,

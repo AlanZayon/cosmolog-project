@@ -4,6 +4,7 @@ export * from '@/lib/api/arcs';
 export * from '@/lib/api/content';
 export * from '@/lib/api/feed';
 export * from '@/lib/api/library';
+export * from '@/lib/api/activityNotifications';
 export * from '@/lib/api/notifications';
 export * from '@/lib/api/profiles';
 export * from '@/lib/api/social';

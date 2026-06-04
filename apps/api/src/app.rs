@@ -11,7 +11,8 @@ use crate::config::Config;
 use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::middleware::{rate_limit, request_context, security_headers};
 use crate::routes::{
-    arcs, auth, db, feed, health, library, notifications, profiles, storage, stories,
+    activity_notifications, arcs, auth, db, feed, health, library, notifications, profiles,
+    storage, stories,
     story_content, universes,
 };
 use crate::state::AppState;
@@ -201,7 +202,25 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/notifications/unread-count",
             get(notifications::unread_count),
         )
-        .route("/notifications/{id}/consume", post(notifications::consume));
+        .route("/notifications/read-all", post(notifications::mark_all_read))
+        .route("/notifications/{id}/consume", post(notifications::consume))
+        .route(
+            "/activity-notifications/stream",
+            get(activity_notifications::stream),
+        )
+        .route("/activity-notifications", get(activity_notifications::list))
+        .route(
+            "/activity-notifications/unread-count",
+            get(activity_notifications::unread_count),
+        )
+        .route(
+            "/activity-notifications/read-all",
+            post(activity_notifications::mark_all_read),
+        )
+        .route(
+            "/activity-notifications/{id}/read",
+            post(activity_notifications::mark_read),
+        );
 
     if !is_production() {
         api = api.route("/db/ping", get(db::ping));

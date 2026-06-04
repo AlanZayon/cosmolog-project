@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   ApiError,
   createChapter,
@@ -75,7 +75,9 @@ export default function StoryPage({
   focusComments = false,
 }: StoryPageProps = {}) {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const id = (storyIdOverride ?? params?.id) as string | undefined;
+  const highlightCommentId = searchParams.get('comment');
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -118,12 +120,12 @@ export default function StoryPage({
   }, [embedExploration, id]);
 
   useEffect(() => {
-    if (!focusComments || !story) return;
+    if ((!focusComments && !highlightCommentId) || !story) return;
     const frame = requestAnimationFrame(() => {
       commentsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     return () => cancelAnimationFrame(frame);
-  }, [focusComments, story?.id]);
+  }, [focusComments, highlightCommentId, story?.id]);
 
   const fetchAll = async () => {
     if (!id) return;
@@ -683,6 +685,7 @@ export default function StoryPage({
               storyId={id}
               variant="inline"
               autoFocusInput={focusComments}
+              highlightCommentId={highlightCommentId}
               onCommentCreated={() =>
                 setStory((prev) =>
                   prev ? { ...prev, comments_count: prev.comments_count + 1 } : prev,

@@ -1,5 +1,6 @@
 //! Domain logic, models, and data access.
 
+pub mod activity_notifications;
 pub mod arcs;
 pub mod blocks;
 pub mod chapters;

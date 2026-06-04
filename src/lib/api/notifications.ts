@@ -6,6 +6,7 @@ import type {
   ApiNotificationSubscriptionListResponse,
   ApiNotificationSubscriptionStatus,
   ApiNotificationUnreadCount,
+  ApiMarkAllNotificationsReadResponse,
 } from '@/lib/api/types';
 
 export type {
@@ -150,4 +151,11 @@ export function consumeNotification(notificationId: string) {
       body: JSON.stringify({}),
     },
   );
+}
+
+export function markAllNotificationsRead() {
+  return apiFetch<ApiMarkAllNotificationsReadResponse>('/notifications/read-all', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }

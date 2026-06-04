@@ -364,7 +364,7 @@ pub async fn save_collection(
     pool: &PgPool,
     collection_id: Uuid,
     user_id: Uuid,
-) -> Result<(), sqlx::Error> {
+) -> Result<bool, sqlx::Error> {
     let collection = find_by_id(pool, collection_id).await?;
     let Some(collection) = collection else {
         return Err(sqlx::Error::RowNotFound);
@@ -376,7 +376,7 @@ pub async fn save_collection(
         return Err(sqlx::Error::RowNotFound);
     }
 
-    sqlx::query(
+    let result = sqlx::query(
         r#"
         INSERT INTO library_collection_saves (user_id, collection_id)
         VALUES ($1, $2)
@@ -387,7 +387,7 @@ pub async fn save_collection(
     .bind(collection_id)
     .execute(pool)
     .await?;
-    Ok(())
+    Ok(result.rows_affected() > 0)
 }
 
 pub async fn unsave_collection(

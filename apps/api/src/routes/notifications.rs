@@ -11,9 +11,10 @@ use uuid::Uuid;
 
 use crate::auth::AuthUser;
 use crate::domain::limits::MAX_NOTIFICATIONS_LIST_LIMIT;
+use crate::domain::activity_notifications::{self, deliver_optional};
 use crate::domain::notifications::{
-    self, ConsumeNotificationResponse, NotificationListResponse, SubscriptionListResponse,
-    SubscriptionStatus, UnreadCountResponse,
+    self, ConsumeNotificationResponse, MarkAllNotificationsReadResponse,
+    NotificationListResponse, SubscriptionListResponse, SubscriptionStatus, UnreadCountResponse,
 };
 use crate::domain::profiles;
 use crate::error::AppError;
@@ -89,6 +90,20 @@ pub async fn subscribe_profile(
             .await
             .map_err(AppError::from_db)?;
 
+    let delivered = activity_notifications::insert_profile_alert_activated(
+        &state.pool,
+        profile.user_id,
+        user.user_id,
+    )
+    .await
+    .map_err(AppError::from_db)?;
+    deliver_optional(
+        &state.pool,
+        &state.activity_notification_events,
+        delivered,
+    )
+    .await;
+
     Ok(Json(SubscriptionStatus::from_row(&row)))
 }
 
@@ -155,6 +170,21 @@ pub async fn subscribe_universe(
     let row = notifications::upsert_universe_subscription(&state.pool, user.user_id, owner_id, id)
         .await
         .map_err(AppError::from_db)?;
+
+    let delivered = activity_notifications::insert_universe_alert_activated(
+        &state.pool,
+        owner_id,
+        user.user_id,
+        id,
+    )
+    .await
+    .map_err(AppError::from_db)?;
+    deliver_optional(
+        &state.pool,
+        &state.activity_notification_events,
+        delivered,
+    )
+    .await;
 
     let mut status = SubscriptionStatus::from_row(&row);
     status.universe_id = Some(id);
@@ -278,6 +308,37 @@ pub async fn consume(
         .await
         .map_err(AppError::from_db)?
         .ok_or(AppError::NotFound)?;
+
+    Ok(Json(result))
+}
+
+/// Mark all story-alert notifications as read and reset subscription unconsumed counts.
+pub async fn mark_all_read(
+    State(state): State<AppState>,
+    user: AuthUser,
+) -> Result<Json<MarkAllNotificationsReadResponse>, AppError> {
+    let result = notifications::mark_all_read(&state.pool, user.user_id)
+        .await
+        .map_err(AppError::from_db)?;
+
+    if result.marked_count > 0 {
+        if let Err(err) = state
+            .notification_events
+            .publish(notifications::NotificationRealtimeEvent {
+                recipient_id: user.user_id,
+                notification_id: Uuid::nil(),
+                unread_count: 0,
+            })
+            .await
+        {
+            tracing::warn!(
+                event = "notifications.mark_all_read.publish_failed",
+                error = %err,
+                recipient_id = %user.user_id,
+                "failed to publish realtime event after mark all read"
+            );
+        }
+    }
 
     Ok(Json(result))
 }

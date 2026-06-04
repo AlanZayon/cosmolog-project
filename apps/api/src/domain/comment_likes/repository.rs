@@ -16,15 +16,15 @@ pub async fn insert_like(
     pool: &PgPool,
     comment_id: Uuid,
     user_id: Uuid,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
         "INSERT INTO comment_likes (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
     )
     .bind(comment_id)
     .bind(user_id)
     .execute(pool)
     .await?;
-    Ok(())
+    Ok(result.rows_affected() > 0)
 }
 
 pub async fn delete_like(

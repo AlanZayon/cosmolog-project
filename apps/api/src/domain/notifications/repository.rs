@@ -8,8 +8,9 @@ use crate::domain::limits::{
 };
 
 use super::model::{
-    ConsumeNotificationResponse, Notification, NotificationListItem, NotificationListRow,
-    NotificationSubscription, SubscriptionListItem, SubscriptionListRow, SubscriptionStatus,
+    ConsumeNotificationResponse, MarkAllNotificationsReadResponse, Notification,
+    NotificationListItem, NotificationListRow, NotificationSubscription, SubscriptionListItem,
+    SubscriptionListRow, SubscriptionStatus,
 };
 
 pub async fn count_stories_by_author(pool: &PgPool, author_id: Uuid) -> Result<i64, sqlx::Error> {
@@ -454,6 +455,47 @@ pub async fn consume(
         clicked_at: now,
         subscription_unconsumed_count: 0,
     }))
+}
+
+pub async fn mark_all_read(
+    pool: &PgPool,
+    recipient_id: Uuid,
+) -> Result<MarkAllNotificationsReadResponse, sqlx::Error> {
+    let now = OffsetDateTime::now_utc();
+    let mut tx = pool.begin().await?;
+
+    let result = sqlx::query(
+        r#"
+        UPDATE notifications
+        SET read_at = COALESCE(read_at, $2),
+            clicked_at = $2
+        WHERE recipient_id = $1 AND read_at IS NULL
+        "#,
+    )
+    .bind(recipient_id)
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE notification_subscriptions
+        SET unconsumed_count = 0,
+            last_consumed_at = $2,
+            updated_at = now()
+        WHERE subscriber_id = $1 AND unconsumed_count > 0
+        "#,
+    )
+    .bind(recipient_id)
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(MarkAllNotificationsReadResponse {
+        marked_count: result.rows_affected() as i64,
+    })
 }
 
 pub fn profile_threshold() -> i32 {

@@ -60,6 +60,10 @@ async fn apply_schema_patches(pool: &PgPool) {
         "ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS parent_id UUID",
         "ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE public.library_collections ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT 'folder'",
+        "ALTER TABLE public.activity_notifications DROP CONSTRAINT IF EXISTS activity_notifications_kind_refs",
+        "ALTER TABLE public.activity_notifications DROP CONSTRAINT IF EXISTS activity_notifications_kind_check",
+        "ALTER TABLE public.activity_notifications ADD CONSTRAINT activity_notifications_kind_check CHECK (kind IN ('comment_mention', 'story_comment', 'comment_reply', 'comment_liked', 'profile_alert_activated', 'universe_alert_activated', 'collection_saved'))",
+        "ALTER TABLE public.activity_notifications ADD CONSTRAINT activity_notifications_kind_refs CHECK ((kind IN ('comment_mention', 'story_comment', 'comment_reply', 'comment_liked') AND story_id IS NOT NULL AND comment_id IS NOT NULL) OR (kind = 'profile_alert_activated' AND story_id IS NULL AND comment_id IS NULL AND universe_id IS NULL AND collection_id IS NULL) OR (kind = 'universe_alert_activated' AND universe_id IS NOT NULL AND story_id IS NULL AND comment_id IS NULL AND collection_id IS NULL) OR (kind = 'collection_saved' AND collection_id IS NOT NULL AND story_id IS NULL AND comment_id IS NULL AND universe_id IS NULL))",
     ];
     for sql in patches {
         let _ = sqlx::query(sql).execute(pool).await;
@@ -83,6 +87,7 @@ async fn apply_schema(pool: &PgPool) {
 pub async fn truncate_all(pool: &PgPool) {
     sqlx::query(
         "TRUNCATE TABLE
+            activity_notifications,
             notifications,
             notification_subscriptions,
             illustrated_blocks,

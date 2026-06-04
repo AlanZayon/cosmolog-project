@@ -19,13 +19,18 @@ import NotificationLampIcon from "@/components/NotificationLampIcon";
 import { useState } from "react";
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS, type Language } from "@/i18n/translations";
 import CosmologLogo from "@/components/CosmologLogo";
+import { ActivityNotificationAvatarBadge } from "@/components/ActivityNotificationUnreadDot";
+import HeaderActivityNotificationCenter from "@/components/HeaderActivityNotificationCenter";
 import HeaderNotificationCenter from "@/components/HeaderNotificationCenter";
+import { useActivityNotificationInbox } from "@/hooks/useActivityNotificationInbox";
 import { COMMUNITY_FEED_ELEMENT_ID, HOME_FEED_PATH } from "@/lib/homeFeedNav";
 
 const LANGUAGES: Language[] = ["pt", "en", "ja", "es"];
 
 export default function Header() {
   const { user, profile, signOut } = useAuth();
+  const { unreadCount: activityUnreadCount } = useActivityNotificationInbox();
+  const hasActivityUnread = Boolean(user) && activityUnreadCount > 0;
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [search, setSearch] = useState("");
@@ -71,25 +76,30 @@ export default function Header() {
           <div className="mt-4 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-0.5 pb-4 scrollbar-none">
           <div className="flex flex-col gap-1">
             {user ? (
-              <SheetClose asChild>
-                <Link
-                  href="/profile"
-                  className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground hover:bg-accent"
-                  title={t("header.profile")}
-                  aria-label={`${t("header.profile")}: ${accountMenuLabel}`}
-                >
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt=""
-                      className="h-10 w-10 shrink-0 rounded-full object-cover border border-border"
-                    />
-                  ) : (
-                    <User className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  )}
-                  <span className="min-w-0 truncate">{accountMenuLabel}</span>
-                </Link>
-              </SheetClose>
+              <div className="flex min-w-0 items-center gap-1 rounded-lg px-1 py-1 hover:bg-accent/50">
+                <SheetClose asChild>
+                  <Link
+                    href="/profile"
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium text-foreground"
+                    title={t("header.profile")}
+                    aria-label={`${t("header.profile")}: ${accountMenuLabel}`}
+                  >
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded-full object-cover border border-border"
+                      />
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                        <User className="h-5 w-5 text-muted-foreground" aria-hidden />
+                      </span>
+                    )}
+                    <span className="min-w-0 truncate">{accountMenuLabel}</span>
+                  </Link>
+                </SheetClose>
+                <HeaderActivityNotificationCenter />
+              </div>
             ) : (
               <>
                 <SheetClose asChild>
@@ -295,20 +305,28 @@ export default function Header() {
                 size="icon"
                 onClick={() => setMenuOpen(true)}
                 title={t("header.openMenu")}
-                aria-label={t("header.openMenu")}
+                aria-label={
+                  hasActivityUnread
+                    ? `${t("header.openMenu")} (${activityUnreadCount} ${t("activityNotifications.title")})`
+                    : t("header.openMenu")
+                }
                 aria-expanded={menuOpen}
-                className="shrink-0 overflow-hidden"
+                className="relative shrink-0 overflow-visible"
               >
-                {profile?.avatar_url ? (
-                  <img
-                    key={profile.avatar_url}
-                    src={profile.avatar_url}
-                    alt=""
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="h-4 w-4" />
-                )}
+                <ActivityNotificationAvatarBadge hasUnread={hasActivityUnread && !menuOpen}>
+                  {profile?.avatar_url ? (
+                    <img
+                      key={profile.avatar_url}
+                      src={profile.avatar_url}
+                      alt=""
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                      <User className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    </span>
+                  )}
+                </ActivityNotificationAvatarBadge>
               </Button>
             </nav>
           </div>

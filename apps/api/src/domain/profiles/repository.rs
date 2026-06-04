@@ -74,6 +74,23 @@ pub async fn find_by_username(
     .await
 }
 
+/// Case-insensitive username lookup (for @mentions in comments).
+pub async fn find_by_username_ci(
+    pool: &PgPool,
+    username: &str,
+) -> Result<Option<Profile>, sqlx::Error> {
+    sqlx::query_as::<_, Profile>(
+        r#"
+        SELECT id, user_id, username, avatar_url, bio, created_at, updated_at
+        FROM profiles
+        WHERE lower(username) = lower($1)
+        "#,
+    )
+    .bind(username)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn update_by_user_id(
     pool: &PgPool,
     user_id: Uuid,
