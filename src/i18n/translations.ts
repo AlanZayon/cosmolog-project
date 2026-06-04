@@ -670,6 +670,60 @@ const translations = {
     ja: '{{username}} · {{universe}}',
     es: '{{username}} · {{universe}}',
   },
+  'notifications.alertsPageTitle': {
+    pt: 'Avisos ativos',
+    en: 'Active alerts',
+    ja: '有効なお知らせ',
+    es: 'Avisos activos',
+  },
+  'notifications.alertsPageSubtitle': {
+    pt: 'Perfis e universos para os quais você ativou notificações.',
+    en: 'Profiles and universes you turned notifications on for.',
+    ja: '通知をオンにしたプロフィールとユニバース。',
+    es: 'Perfiles y universos con notificaciones activadas.',
+  },
+  'notifications.tabProfiles': {
+    pt: 'Perfis',
+    en: 'Profiles',
+    ja: 'プロフィール',
+    es: 'Perfiles',
+  },
+  'notifications.tabUniverses': {
+    pt: 'Universos',
+    en: 'Universes',
+    ja: 'ユニバース',
+    es: 'Universos',
+  },
+  'notifications.alertsEmptyProfiles': {
+    pt: 'Nenhum perfil com avisos ativos.',
+    en: 'No profiles with active alerts.',
+    ja: '通知がオンなプロフィールはありません。',
+    es: 'Ningún perfil con avisos activos.',
+  },
+  'notifications.alertsEmptyUniverses': {
+    pt: 'Nenhum universo com avisos ativos.',
+    en: 'No universes with active alerts.',
+    ja: '通知がオンなユニバースはありません。',
+    es: 'Ningún universo con avisos activos.',
+  },
+  'notifications.profileAlertDesc': {
+    pt: 'Todas as novas histórias de @{{username}}',
+    en: 'All new stories from @{{username}}',
+    ja: '@{{username}} の新しいストーリーすべて',
+    es: 'Todas las historias nuevas de @{{username}}',
+  },
+  'notifications.universeAlertDesc': {
+    pt: 'Novas histórias em {{title}} · @{{username}}',
+    en: 'New stories in {{title}} · @{{username}}',
+    ja: '{{title}} の新しいストーリー · @{{username}}',
+    es: 'Nuevas historias en {{title}} · @{{username}}',
+  },
+  'notifications.viewActiveAlerts': {
+    pt: 'Ver avisos ativos',
+    en: 'View active alerts',
+    ja: '有効なお知らせを見る',
+    es: 'Ver avisos activos',
+  },
 
   'arc.storiesInArc': {
     pt: 'Histórias neste arco',

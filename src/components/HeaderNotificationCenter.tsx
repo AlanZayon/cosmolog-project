@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import NotificationLampIcon from '@/components/NotificationLampIcon';
@@ -228,6 +229,19 @@ export default function HeaderNotificationCenter() {
             </ul>
           </ScrollArea>
         )}
+        {!loadingList ? (
+          <div className="border-t border-border px-3 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-full text-xs font-medium"
+              asChild
+              onClick={() => setOpen(false)}
+            >
+              <Link href="/notifications">{t('notifications.viewActiveAlerts')}</Link>
+            </Button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

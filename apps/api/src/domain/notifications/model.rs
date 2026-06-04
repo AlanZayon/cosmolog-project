@@ -125,6 +125,59 @@ impl From<NotificationListRow> for NotificationListItem {
     }
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct SubscriptionListRow {
+    pub id: Uuid,
+    pub scope: String,
+    pub target_user_id: Uuid,
+    pub target_username: String,
+    pub target_avatar_url: Option<String>,
+    pub universe_id: Option<Uuid>,
+    pub universe_title: Option<String>,
+    pub universe_cover_image_url: Option<String>,
+    pub unconsumed_count: i32,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SubscriptionListItem {
+    pub id: Uuid,
+    pub scope: String,
+    pub target_user_id: Uuid,
+    pub target_username: String,
+    pub target_avatar_url: Option<String>,
+    pub universe_id: Option<Uuid>,
+    pub universe_title: Option<String>,
+    pub universe_cover_image_url: Option<String>,
+    pub unconsumed_count: i32,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
+}
+
+impl From<SubscriptionListRow> for SubscriptionListItem {
+    fn from(row: SubscriptionListRow) -> Self {
+        Self {
+            id: row.id,
+            scope: row.scope,
+            target_user_id: row.target_user_id,
+            target_username: row.target_username,
+            target_avatar_url: row.target_avatar_url,
+            universe_id: row.universe_id,
+            universe_title: row.universe_title,
+            universe_cover_image_url: row.universe_cover_image_url,
+            unconsumed_count: row.unconsumed_count,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SubscriptionListResponse {
+    pub items: Vec<SubscriptionListItem>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct NotificationListResponse {
     pub items: Vec<NotificationListItem>,

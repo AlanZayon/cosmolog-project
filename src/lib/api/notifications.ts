@@ -3,6 +3,7 @@ import { getProfileByUserId } from '@/lib/api/profiles';
 import type {
   ApiConsumeNotificationResponse,
   ApiNotificationListResponse,
+  ApiNotificationSubscriptionListResponse,
   ApiNotificationSubscriptionStatus,
   ApiNotificationUnreadCount,
 } from '@/lib/api/types';
@@ -11,6 +12,8 @@ export type {
   ApiConsumeNotificationResponse,
   ApiNotificationListItem,
   ApiNotificationListResponse,
+  ApiNotificationSubscriptionListItem,
+  ApiNotificationSubscriptionListResponse,
   ApiNotificationSubscriptionStatus,
   ApiNotificationUnreadCount,
   NotificationSubscriptionScope,
@@ -36,6 +39,13 @@ function universeSubscriptionPath(universeId: string) {
 async function resolveAuthorUsername(authorId: string): Promise<string> {
   const profile = await getProfileByUserId(authorId);
   return profile.username;
+}
+
+/** Lists active notification subscriptions (profiles and universes). */
+export function listNotificationSubscriptions() {
+  return apiFetch<ApiNotificationSubscriptionListResponse>(
+    '/notifications/subscriptions',
+  );
 }
 
 /** Lists the authenticated user's notifications (newest first). */

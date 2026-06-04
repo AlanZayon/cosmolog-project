@@ -178,6 +178,10 @@ pub fn router(state: AppState, config: &Config) -> Router {
         )
         .route("/arcs/{id}/stories", get(arcs::stories))
         .route("/notifications/stream", get(notifications::stream))
+        .route(
+            "/notifications/subscriptions",
+            get(notifications::list_subscriptions),
+        )
         .route("/notifications", get(notifications::list))
         .route(
             "/notifications/unread-count",

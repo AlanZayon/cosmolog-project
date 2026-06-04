@@ -12,8 +12,8 @@ use uuid::Uuid;
 use crate::auth::AuthUser;
 use crate::domain::limits::MAX_NOTIFICATIONS_LIST_LIMIT;
 use crate::domain::notifications::{
-    self, ConsumeNotificationResponse, NotificationListResponse, SubscriptionStatus,
-    UnreadCountResponse,
+    self, ConsumeNotificationResponse, NotificationListResponse, SubscriptionListResponse,
+    SubscriptionStatus, UnreadCountResponse,
 };
 use crate::domain::profiles;
 use crate::error::AppError;
@@ -223,6 +223,18 @@ pub async fn stream(
         .text("ping");
 
     Sse::new(events).keep_alive(keep_alive)
+}
+
+/// List active notification subscriptions for the authenticated user.
+pub async fn list_subscriptions(
+    State(state): State<AppState>,
+    user: AuthUser,
+) -> Result<Json<SubscriptionListResponse>, AppError> {
+    let items = notifications::list_active_for_subscriber(&state.pool, user.user_id)
+        .await
+        .map_err(AppError::from_db)?;
+
+    Ok(Json(SubscriptionListResponse { items }))
 }
 
 /// List notifications for the authenticated user.

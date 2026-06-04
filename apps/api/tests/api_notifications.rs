@@ -117,6 +117,83 @@ async fn subscribe_profile_without_stories_forbidden() {
 }
 
 #[tokio::test]
+async fn list_active_subscriptions() {
+    let Some(app) = setup_app().await else { return };
+    let author = seed_user(&app.pool, "list_sub_author").await;
+    let subscriber = seed_user(&app.pool, "list_subscriber").await;
+    let universe = seed_universe(&app.pool, author.user_id, "List Sub Uni").await;
+    seed_story(
+        &app.pool,
+        author.user_id,
+        "Profile Story",
+        "short_story",
+        None,
+        None,
+    )
+    .await;
+    seed_story(
+        &app.pool,
+        author.user_id,
+        "Uni Story",
+        "short_story",
+        Some(universe.id),
+        None,
+    )
+    .await;
+
+    let token = app.register_user(&subscriber);
+    let profile_sub = app
+        .post_json(
+            &profile_sub_path(&author.profile.username),
+            Some(&token),
+            json!({}),
+        )
+        .await;
+    assert_status(&profile_sub, StatusCode::OK);
+
+    let universe_sub = app
+        .post_json(&universe_sub_path(universe.id), Some(&token), json!({}))
+        .await;
+    assert_status(&universe_sub, StatusCode::OK);
+
+    let list = app.get("/notifications/subscriptions", Some(&token)).await;
+    assert_status(&list, StatusCode::OK);
+    let body = json(list).await;
+    let items = body["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2);
+
+    let scopes: Vec<_> = items
+        .iter()
+        .map(|item| item["scope"].as_str().unwrap().to_string())
+        .collect();
+    assert!(scopes.contains(&"profile".to_string()));
+    assert!(scopes.contains(&"universe".to_string()));
+
+    let profile_item = items
+        .iter()
+        .find(|item| item["scope"] == "profile")
+        .unwrap();
+    assert_eq!(
+        profile_item["target_username"],
+        author.profile.username
+    );
+
+    let universe_item = items
+        .iter()
+        .find(|item| item["scope"] == "universe")
+        .unwrap();
+    assert_eq!(universe_item["universe_id"], universe.id.to_string());
+    assert_eq!(universe_item["universe_title"], "List Sub Uni");
+}
+
+#[tokio::test]
+async fn list_subscriptions_requires_auth() {
+    let Some(app) = setup_app().await else { return };
+    let response = app.get("/notifications/subscriptions", None).await;
+    assert_status(&response, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn fanout_on_story_create() {
     let Some(app) = setup_app().await else { return };
     let author = seed_user(&app.pool, "fanout_author").await;

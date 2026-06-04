@@ -101,6 +101,24 @@ export type ApiNotificationListResponse = {
   items: ApiNotificationListItem[];
 };
 
+export type ApiNotificationSubscriptionListItem = {
+  id: string;
+  scope: NotificationSubscriptionScope;
+  target_user_id: string;
+  target_username: string;
+  target_avatar_url: string | null;
+  universe_id: string | null;
+  universe_title: string | null;
+  universe_cover_image_url: string | null;
+  unconsumed_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiNotificationSubscriptionListResponse = {
+  items: ApiNotificationSubscriptionListItem[];
+};
+
 export type ApiNotificationUnreadCount = {
   count: number;
 };

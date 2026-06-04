@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { PenTool, Search, User, LogOut, Globe, Sun, Moon, LogIn, UserPlus, Home, Library } from "lucide-react";
+import NotificationLampIcon from "@/components/NotificationLampIcon";
 import { useState } from "react";
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS, type Language } from "@/i18n/translations";
 import CosmologLogo from "@/components/CosmologLogo";
@@ -140,15 +141,26 @@ export default function Header() {
                 </Link>
               </SheetClose>
               {user ? (
-                <SheetClose asChild>
-                  <Link
-                    href="/library"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
-                  >
-                    <Library className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                    {t("header.library")}
-                  </Link>
-                </SheetClose>
+                <>
+                  <SheetClose asChild>
+                    <Link
+                      href="/library"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                    >
+                      <Library className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                      {t("header.library")}
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      href="/notifications"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                    >
+                      <NotificationLampIcon active size="sm" className="shrink-0 text-muted-foreground" />
+                      {t("notifications.alertsPageTitle")}
+                    </Link>
+                  </SheetClose>
+                </>
               ) : null}
               <SheetClose asChild>
                 <Link

@@ -9,7 +9,7 @@ use crate::domain::limits::{
 
 use super::model::{
     ConsumeNotificationResponse, Notification, NotificationListItem, NotificationListRow,
-    NotificationSubscription, SubscriptionStatus,
+    NotificationSubscription, SubscriptionListItem, SubscriptionListRow, SubscriptionStatus,
 };
 
 pub async fn count_stories_by_author(pool: &PgPool, author_id: Uuid) -> Result<i64, sqlx::Error> {
@@ -305,6 +305,38 @@ pub async fn deliver_notification(
         notification_id: inserted.0,
         recipient_id: subscription.subscriber_id,
     })
+}
+
+pub async fn list_active_for_subscriber(
+    pool: &PgPool,
+    subscriber_id: Uuid,
+) -> Result<Vec<SubscriptionListItem>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, SubscriptionListRow>(
+        r#"
+        SELECT
+            sub.id,
+            sub.scope,
+            sub.target_user_id,
+            p.username AS target_username,
+            p.avatar_url AS target_avatar_url,
+            sub.universe_id,
+            u.title AS universe_title,
+            u.cover_image_url AS universe_cover_image_url,
+            sub.unconsumed_count,
+            sub.created_at,
+            sub.updated_at
+        FROM notification_subscriptions sub
+        INNER JOIN profiles p ON p.user_id = sub.target_user_id
+        LEFT JOIN universes u ON u.id = sub.universe_id
+        WHERE sub.subscriber_id = $1 AND sub.active = true
+        ORDER BY sub.updated_at DESC
+        "#,
+    )
+    .bind(subscriber_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(SubscriptionListItem::from).collect())
 }
 
 pub async fn list_for_recipient(
