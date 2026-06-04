@@ -10,6 +10,7 @@ pub struct UpdateCollectionInput {
     pub name: Option<String>,
     pub description: Option<String>,
     pub icon: Option<String>,
+    pub visibility: Option<String>,
 }
 
 impl UpdateCollectionInput {
@@ -35,6 +36,9 @@ impl UpdateCollectionInput {
         if let Some(icon) = &self.icon {
             icons::validate_icon(icon.trim())?;
         }
+        if let Some(visibility) = &self.visibility {
+            super::visibility::validate_visibility(visibility.trim())?;
+        }
         Ok(())
     }
 }
@@ -50,6 +54,7 @@ mod tests {
             name: Some("Renamed".into()),
             description: None,
             icon: None,
+            visibility: None,
         };
         assert!(input.validate().is_ok());
     }
@@ -60,6 +65,7 @@ mod tests {
             name: Some(" ".into()),
             description: None,
             icon: None,
+            visibility: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
     }

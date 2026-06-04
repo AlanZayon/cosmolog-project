@@ -103,6 +103,68 @@ async fn liked_stories_returns_liked_only() {
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["id"].as_str().unwrap(), liked_story.id.to_string());
+    assert!(arr[0]["liked_at"].is_string());
+}
+
+#[tokio::test]
+async fn public_collection_readable_and_saveable_via_api() {
+    let Some(app) = setup_app().await else { return };
+    let owner = seed_user(&app.pool, "api_pub_owner").await;
+    let fan = seed_user(&app.pool, "api_pub_fan").await;
+    let owner_token = app.register_user(&owner);
+    let fan_token = app.register_user(&fan);
+
+    let create_resp = app
+        .post_json(
+            "/library/collections",
+            Some(&owner_token),
+            json!({ "name": "Open List", "visibility": "public" }),
+        )
+        .await;
+    assert_status(&create_resp, StatusCode::OK);
+    let collection_id = json(create_resp).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let read_resp = app
+        .get(
+            &format!("/library/collections/{collection_id}/stories"),
+            Some(&fan_token),
+        )
+        .await;
+    assert_status(&read_resp, StatusCode::OK);
+
+    let save_resp = app
+        .post_json(
+            &format!("/library/collections/{collection_id}/save"),
+            Some(&fan_token),
+            json!({}),
+        )
+        .await;
+    assert_status(&save_resp, StatusCode::NO_CONTENT);
+
+    let list_resp = app.get("/library/collections", Some(&fan_token)).await;
+    assert_status(&list_resp, StatusCode::OK);
+    let list_body = json(list_resp).await;
+    let saved = list_body
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["ownership"].as_str() == Some("saved"))
+        .expect("saved collection on shelf");
+    assert_eq!(saved["id"].as_str().unwrap(), collection_id);
+
+    let search_resp = app
+        .get("/library/collections/search?q=Open", Some(&fan_token))
+        .await;
+    assert_status(&search_resp, StatusCode::OK);
+    let search_body = json(search_resp).await;
+    assert_eq!(search_body.as_array().unwrap().len(), 1);
+    assert_eq!(
+        search_body[0]["is_saved_by_me"].as_bool(),
+        Some(true)
+    );
 }
 
 #[tokio::test]

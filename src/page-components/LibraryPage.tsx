@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
 import CollectionFormDialog, { type CollectionFormValues } from '@/components/library/CollectionFormDialog';
 import CollectionStoriesShelf from '@/components/library/CollectionStoriesShelf';
 import LibrarySearchInput from '@/components/library/LibrarySearchInput';
+import LibraryFiltersBar from '@/components/library/LibraryFiltersBar';
 import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,14 +19,28 @@ import {
   createLibraryCollection,
   deleteLibraryCollection,
   getCollectionStories,
+  getLibraryCollection,
   getLikedStories,
   getLibraryCollections,
   removeStoryFromCollection,
   reorderCollectionStories,
+  saveLibraryCollection,
+  unsaveLibraryCollection,
   updateLibraryCollection,
   type ApiLibraryCollectionSummary,
+  type ApiLibraryStoryItem,
 } from '@/lib/api/library';
-import type { ApiStoryWithProfile } from '@/lib/api/types';
+import {
+  DEFAULT_COLLECTION_LIST_FILTERS,
+  filterAndSortLibraryCollections,
+  type CollectionListFilters,
+} from '@/lib/libraryCollectionFilters';
+import {
+  collectStoryFilterOptions,
+  DEFAULT_STORY_LIST_FILTERS,
+  filterAndSortLibraryStories,
+  type StoryListFilters,
+} from '@/lib/libraryStoryFilters';
 import {
   LibraryCollectionIcon,
   resolveLibraryCollectionIconId,
@@ -51,7 +66,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
-function toStoryCardStory(story: ApiStoryWithProfile): Tables<'stories'> & {
+function toStoryCardStory(story: ApiLibraryStoryItem): Tables<'stories'> & {
   profiles?: { username: string; avatar_url: string | null } | null;
 } {
   return {
@@ -64,12 +79,26 @@ export default function LibraryPage() {
   const { user, loading: authLoading } = useAuth();
   const { t, tf } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [likedStories, setLikedStories] = useState<ApiStoryWithProfile[]>([]);
+  const [likedStories, setLikedStories] = useState<ApiLibraryStoryItem[]>([]);
   const [collections, setCollections] = useState<ApiLibraryCollectionSummary[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<ApiLibraryCollectionSummary | null>(null);
-  const [collectionStories, setCollectionStories] = useState<ApiStoryWithProfile[]>([]);
+  const [collectionStories, setCollectionStories] = useState<ApiLibraryStoryItem[]>([]);
+  const [collectionListFilters, setCollectionListFilters] = useState<CollectionListFilters>(
+    DEFAULT_COLLECTION_LIST_FILTERS,
+  );
+  const [likedStoryFilters, setLikedStoryFilters] = useState<StoryListFilters>(
+    DEFAULT_STORY_LIST_FILTERS,
+  );
+  const [collectionStoryFilters, setCollectionStoryFilters] = useState<StoryListFilters>(
+    DEFAULT_STORY_LIST_FILTERS,
+  );
+  const [unsavingFromShelf, setUnsavingFromShelf] = useState(false);
+  const [savingToShelf, setSavingToShelf] = useState(false);
+  const openedFromUrlRef = useRef<string | null>(null);
+  const prevCollectionIdFromUrlRef = useRef<string | null>(null);
   const [loadingLiked, setLoadingLiked] = useState(true);
   const [loadingCollections, setLoadingCollections] = useState(true);
   const [loadingCollectionStories, setLoadingCollectionStories] = useState(false);
@@ -87,20 +116,57 @@ export default function LibraryPage() {
   const [collectionsListSearchQuery, setCollectionsListSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'liked' | 'collections'>('liked');
 
+  const likedStoryFilterOptions = useMemo(
+    () => collectStoryFilterOptions(likedStories),
+    [likedStories],
+  );
+
+  const collectionStoryFilterOptions = useMemo(
+    () => collectStoryFilterOptions(collectionStories),
+    [collectionStories],
+  );
+
+  const sortedLikedStories = useMemo(
+    () => filterAndSortLibraryStories(likedStories, likedStoryFilters),
+    [likedStories, likedStoryFilters],
+  );
+
+  const sortedCollectionStories = useMemo(
+    () => filterAndSortLibraryStories(collectionStories, collectionStoryFilters),
+    [collectionStories, collectionStoryFilters],
+  );
+
   const filteredLikedStories = useMemo(
-    () => filterLibraryStories(likedStories, likedSearchQuery),
-    [likedStories, likedSearchQuery],
+    () => filterLibraryStories(sortedLikedStories, likedSearchQuery),
+    [sortedLikedStories, likedSearchQuery],
   );
 
   const filteredCollectionStories = useMemo(
-    () => filterLibraryStories(collectionStories, collectionSearchQuery),
-    [collectionStories, collectionSearchQuery],
+    () => filterLibraryStories(sortedCollectionStories, collectionSearchQuery),
+    [sortedCollectionStories, collectionSearchQuery],
+  );
+
+  const sortedCollections = useMemo(
+    () => filterAndSortLibraryCollections(collections, collectionListFilters),
+    [collections, collectionListFilters],
   );
 
   const filteredCollections = useMemo(
-    () => filterLibraryCollections(collections, collectionsListSearchQuery),
-    [collections, collectionsListSearchQuery],
+    () => filterLibraryCollections(sortedCollections, collectionsListSearchQuery),
+    [sortedCollections, collectionsListSearchQuery],
   );
+
+  const collectionIdFromUrl = searchParams.get('collection');
+  const returnToParam = searchParams.get('returnTo');
+  const safeReturnTo =
+    returnToParam?.startsWith('/') && !returnToParam.startsWith('//') ? returnToParam : null;
+
+  const isOwnedCollection = selectedCollection?.ownership === 'owned';
+  const isSavedCollection = selectedCollection?.ownership === 'saved';
+  const isPublicBrowse = selectedCollection?.ownership === 'public';
+
+  const pendingExternalCollection =
+    Boolean(collectionIdFromUrl) && selectedCollection?.id !== collectionIdFromUrl;
 
   const collectionSearchActive = collectionSearchQuery.trim().length > 0;
   const collectionsListSearchActive = collectionsListSearchQuery.trim().length > 0;
@@ -153,20 +219,84 @@ export default function LibraryPage() {
     setSelectedForRemoval(new Set());
   };
 
+  const clearCollectionDetail = () => {
+    setSelectedCollection(null);
+    setCollectionStories([]);
+    setCollectionSearchQuery('');
+    exitRemoveMode();
+  };
+
   const openCollection = async (collection: ApiLibraryCollectionSummary) => {
     setActiveTab('collections');
     setSelectedCollection(collection);
     exitRemoveMode();
     setCollectionSearchQuery('');
+    setCollectionStoryFilters(DEFAULT_STORY_LIST_FILTERS);
     await loadCollectionStories(collection.id);
   };
 
-  const backToCollectionsList = () => {
-    setSelectedCollection(null);
-    setCollectionStories([]);
-    setCollectionSearchQuery('');
+  useEffect(() => {
+    if (!collectionIdFromUrl) {
+      if (prevCollectionIdFromUrlRef.current != null) {
+        clearCollectionDetail();
+        setActiveTab('liked');
+      }
+      openedFromUrlRef.current = null;
+      prevCollectionIdFromUrlRef.current = null;
+      return;
+    }
+
+    prevCollectionIdFromUrlRef.current = collectionIdFromUrl;
+    if (
+      openedFromUrlRef.current &&
+      openedFromUrlRef.current !== collectionIdFromUrl
+    ) {
+      openedFromUrlRef.current = null;
+    }
+    if (authLoading || !user) return;
+    if (openedFromUrlRef.current === collectionIdFromUrl) return;
+    if (selectedCollection?.id === collectionIdFromUrl) {
+      openedFromUrlRef.current = collectionIdFromUrl;
+      return;
+    }
+
     setActiveTab('collections');
-    exitRemoveMode();
+    openedFromUrlRef.current = collectionIdFromUrl;
+
+    void (async () => {
+      const fromList = collections.find((c) => c.id === collectionIdFromUrl);
+      try {
+        if (fromList) {
+          await openCollection(fromList);
+        } else {
+          const summary = await getLibraryCollection(collectionIdFromUrl);
+          await openCollection(summary);
+        }
+      } catch {
+        openedFromUrlRef.current = null;
+        toast({ title: t('library.saveError'), variant: 'destructive' });
+        if (safeReturnTo) {
+          router.push(safeReturnTo);
+        }
+      }
+    })();
+  }, [collectionIdFromUrl, authLoading, user, selectedCollection?.id, collections, safeReturnTo, router, toast, t]);
+
+  const backToCollectionsList = () => {
+    openedFromUrlRef.current = null;
+    clearCollectionDetail();
+    setActiveTab('collections');
+    void fetchCollections();
+  };
+
+  const handleBackFromCollection = () => {
+    openedFromUrlRef.current = null;
+    clearCollectionDetail();
+    if (safeReturnTo) {
+      router.push(safeReturnTo);
+      return;
+    }
+    setActiveTab('collections');
     void fetchCollections();
   };
 
@@ -186,8 +316,19 @@ export default function LibraryPage() {
         name: values.name,
         description: values.description || null,
         icon: values.icon,
+        visibility: values.visibility,
       });
-      setCollections((prev) => [{ ...created, item_count: 0 }, ...prev]);
+      setCollections((prev) => [
+        {
+          ...created,
+          item_count: 0,
+          ownership: 'owned',
+          owner_username: null,
+          saved_at: null,
+          is_saved_by_me: false,
+        },
+        ...prev,
+      ]);
       setCreateDialogOpen(false);
       toast({ title: t('library.createCollection') });
     } catch {
@@ -206,6 +347,7 @@ export default function LibraryPage() {
         name: values.name,
         description: values.description || null,
         icon: values.icon,
+        visibility: values.visibility,
       });
       const next = { ...selectedCollection, ...updated, item_count: selectedCollection.item_count };
       setSelectedCollection(next);
@@ -279,7 +421,7 @@ export default function LibraryPage() {
     const prevStories = collectionStories;
     const nextStories = storyIds
       .map((id) => collectionStories.find((s) => s.id === id))
-      .filter((s): s is ApiStoryWithProfile => s != null);
+      .filter((s): s is ApiLibraryStoryItem => s != null);
 
     if (nextStories.length !== collectionStories.length) return;
 
@@ -293,6 +435,54 @@ export default function LibraryPage() {
       toast({ title: t('library.saveError'), variant: 'destructive' });
     } finally {
       setReorderingStories(false);
+    }
+  };
+
+  const handleSaveToShelf = async () => {
+    if (!selectedCollection) return;
+    setSavingToShelf(true);
+    try {
+      await saveLibraryCollection(selectedCollection.id);
+      const savedSummary: ApiLibraryCollectionSummary = {
+        ...selectedCollection,
+        ownership: 'saved',
+        is_saved_by_me: true,
+        saved_at: new Date().toISOString(),
+      };
+      setSelectedCollection(savedSummary);
+      setCollections((prev) => [
+        savedSummary,
+        ...prev.filter((c) => c.id !== savedSummary.id),
+      ]);
+      toast({ title: t('library.collectionSavedToShelf') });
+    } catch {
+      toast({ title: t('library.saveError'), variant: 'destructive' });
+    } finally {
+      setSavingToShelf(false);
+    }
+  };
+
+  const handleUnsaveFromShelf = async () => {
+    if (!selectedCollection) return;
+    setUnsavingFromShelf(true);
+    try {
+      await unsaveLibraryCollection(selectedCollection.id);
+      setCollections((prev) => prev.filter((c) => c.id !== selectedCollection.id));
+      if (safeReturnTo) {
+        setSelectedCollection({
+          ...selectedCollection,
+          ownership: 'public',
+          is_saved_by_me: false,
+          saved_at: null,
+        });
+      } else {
+        backToCollectionsList();
+      }
+      toast({ title: t('library.collectionUnsaved') });
+    } catch {
+      toast({ title: t('library.saveError'), variant: 'destructive' });
+    } finally {
+      setUnsavingFromShelf(false);
     }
   };
 
@@ -337,6 +527,14 @@ export default function LibraryPage() {
               </div>
             ) : (
               <>
+                <LibraryFiltersBar
+                  mode="stories"
+                  filters={likedStoryFilters}
+                  onChange={setLikedStoryFilters}
+                  tagOptions={likedStoryFilterOptions.tags}
+                  authorOptions={likedStoryFilterOptions.authors}
+                  universeOptions={likedStoryFilterOptions.universes}
+                />
                 <LibrarySearchInput
                   id="library-liked-story-search"
                   value={likedSearchQuery}
@@ -373,6 +571,10 @@ export default function LibraryPage() {
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
+            ) : pendingExternalCollection ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
             ) : selectedCollection ? (
               <>
                 <Button
@@ -380,10 +582,10 @@ export default function LibraryPage() {
                   variant="ghost"
                   size="sm"
                   className="mb-4 -ml-2"
-                  onClick={backToCollectionsList}
+                  onClick={handleBackFromCollection}
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" />
-                  {t('library.backToCollections')}
+                  {safeReturnTo ? t('common.back') : t('library.backToCollections')}
                 </Button>
 
                 <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -396,29 +598,73 @@ export default function LibraryPage() {
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-2xl font-bold font-serif">{selectedCollection.name}</h2>
+                      {selectedCollection.owner_username && !isOwnedCollection ? (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {tf('library.collectionByOwner', {
+                            username: selectedCollection.owner_username,
+                          })}
+                        </p>
+                      ) : null}
                       {selectedCollection.description ? (
                         <p className="mt-1 text-sm text-muted-foreground">{selectedCollection.description}</p>
+                      ) : null}
+                      {isSavedCollection || isPublicBrowse ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {t('library.readOnlyCollectionHint')}
+                        </p>
                       ) : null}
                       <p className="mt-2 text-sm text-muted-foreground">
                         {tf('library.storyCount', { n: collectionStories.length })}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-                      <Pencil className="h-4 w-4 mr-1" />
-                      {t('library.editCollection')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleteDialogOpen(true)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      {t('library.deleteCollection')}
-                    </Button>
+                  <div className="flex flex-wrap gap-2">
+                    {isOwnedCollection ? (
+                      <>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          {t('library.editCollection')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteDialogOpen(true)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          {t('library.deleteCollection')}
+                        </Button>
+                      </>
+                    ) : isSavedCollection ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={unsavingFromShelf}
+                        onClick={() => void handleUnsaveFromShelf()}
+                      >
+                        {unsavingFromShelf ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          t('library.removeFromShelf')
+                        )}
+                      </Button>
+                    ) : isPublicBrowse ? (
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        disabled={savingToShelf}
+                        onClick={() => void handleSaveToShelf()}
+                      >
+                        {savingToShelf ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          t('library.saveCollectionToShelf')
+                        )}
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -430,6 +676,14 @@ export default function LibraryPage() {
                   <p className="text-muted-foreground">{t('library.emptyCollectionsHint')}</p>
                 ) : (
                   <>
+                    <LibraryFiltersBar
+                      mode="stories"
+                      filters={collectionStoryFilters}
+                      onChange={setCollectionStoryFilters}
+                      tagOptions={collectionStoryFilterOptions.tags}
+                      authorOptions={collectionStoryFilterOptions.authors}
+                      universeOptions={collectionStoryFilterOptions.universes}
+                    />
                     <LibrarySearchInput
                       id="library-collection-story-search"
                       value={collectionSearchQuery}
@@ -447,10 +701,12 @@ export default function LibraryPage() {
                             ? t('library.removeStoriesHint')
                             : collectionSearchActive
                               ? t('library.searchActiveHint')
-                              : t('library.reorderHint')
+                              : isOwnedCollection
+                                ? t('library.reorderHint')
+                                : undefined
                         }
                         actions={
-                          removeMode ? (
+                          !isOwnedCollection ? null : removeMode ? (
                             <>
                               <Button
                                 type="button"
@@ -492,12 +748,12 @@ export default function LibraryPage() {
                       >
                         <CollectionStoriesShelf
                           stories={filteredCollectionStories}
-                          removeMode={removeMode}
+                          removeMode={removeMode && isOwnedCollection}
                           selectedIds={selectedForRemoval}
                           onToggleSelect={toggleStorySelection}
                           onReorder={(storyIds) => void handleReorderStories(storyIds)}
                           dragLabel={t('library.dragToReorder')}
-                          reorderEnabled={!collectionSearchActive}
+                          reorderEnabled={isOwnedCollection && !collectionSearchActive}
                         />
                       </BrowseContentRow>
                     )}
@@ -533,6 +789,11 @@ export default function LibraryPage() {
                   </div>
                 ) : (
                   <>
+                    <LibraryFiltersBar
+                      mode="collections"
+                      filters={collectionListFilters}
+                      onChange={setCollectionListFilters}
+                    />
                     <LibrarySearchInput
                       id="library-collections-search"
                       value={collectionsListSearchQuery}
@@ -559,6 +820,19 @@ export default function LibraryPage() {
                               />
                               <div className="min-w-0">
                                 <p className="font-semibold truncate">{collection.name}</p>
+                                {collection.ownership === 'saved' && collection.owner_username ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    {tf('library.collectionByOwner', {
+                                      username: collection.owner_username,
+                                    })}
+                                  </p>
+                                ) : collection.ownership === 'owned' ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    {collection.visibility === 'public'
+                                      ? t('library.visibilityPublic')
+                                      : t('library.visibilityPrivate')}
+                                  </p>
+                                ) : null}
                                 {collection.description ? (
                                   <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
                                     {collection.description}
@@ -609,6 +883,7 @@ export default function LibraryPage() {
               name: selectedCollection.name,
               description: selectedCollection.description ?? '',
               icon: resolveLibraryCollectionIconId(selectedCollection.icon),
+              visibility: selectedCollection.visibility,
             }}
             onSubmit={handleEditCollection}
           />

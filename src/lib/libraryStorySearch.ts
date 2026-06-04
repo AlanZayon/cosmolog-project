@@ -1,9 +1,9 @@
-import type { ApiStoryWithProfile } from '@/lib/api/types';
+import type { ApiLibraryStoryItem } from '@/lib/api/library';
 
 export function filterLibraryStories(
-  stories: ApiStoryWithProfile[],
+  stories: ApiLibraryStoryItem[],
   query: string,
-): ApiStoryWithProfile[] {
+): ApiLibraryStoryItem[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return stories;
 
@@ -12,6 +12,7 @@ export function filterLibraryStories(
       story.title,
       story.description ?? '',
       story.profiles?.username ?? '',
+      story.universe_title ?? '',
       ...(story.tags ?? []),
     ]
       .join(' ')

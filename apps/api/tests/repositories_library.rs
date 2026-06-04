@@ -1,7 +1,8 @@
 mod common;
 
 use cosmolog_api::domain::library::{
-    self, CreateCollectionInput, ReorderCollectionStoriesInput, UpdateCollectionInput,
+    self, visibility::VISIBILITY_PUBLIC, CreateCollectionInput, ReorderCollectionStoriesInput,
+    UpdateCollectionInput,
 };
 use cosmolog_api::domain::likes::{delete_like, insert_like};
 
@@ -9,6 +10,15 @@ use common::fixtures::{seed_story, seed_user};
 
 async fn pool() -> Option<sqlx::PgPool> {
     common::db::test_db().await
+}
+
+fn private_input(name: &str) -> CreateCollectionInput {
+    CreateCollectionInput {
+        name: name.into(),
+        description: None,
+        icon: None,
+        visibility: None,
+    }
 }
 
 #[tokio::test]
@@ -22,16 +32,18 @@ async fn collection_crud_and_items() {
         name: "To Read".into(),
         description: Some("Later".into()),
         icon: Some("bookmark".into()),
+        visibility: None,
     };
-    let collection = library::insert(&pool, owner.user_id, &input).await.unwrap();
+    let collection = library::insert(&pool, owner.user_id, &input, "private")
+        .await
+        .unwrap();
     assert_eq!(collection.name, "To Read");
     assert_eq!(collection.icon, "bookmark");
 
-    let list = library::list_by_user_id(&pool, owner.user_id)
-        .await
-        .unwrap();
+    let list = library::list_for_shelf(&pool, owner.user_id).await.unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].item_count, 0);
+    assert_eq!(list[0].ownership, "owned");
 
     library::insert_item(&pool, collection.id, story.id, owner.user_id)
         .await
@@ -40,16 +52,14 @@ async fn collection_crud_and_items() {
         .await
         .unwrap();
 
-    let list = library::list_by_user_id(&pool, owner.user_id)
-        .await
-        .unwrap();
+    let list = library::list_for_shelf(&pool, owner.user_id).await.unwrap();
     assert_eq!(list[0].item_count, 1);
 
     let stories = library::list_stories_in_collection(&pool, collection.id, owner.user_id)
         .await
         .unwrap();
     assert_eq!(stories.len(), 1);
-    assert_eq!(stories[0].id, story.id);
+    assert_eq!(stories[0].story.id, story.id);
 
     library::delete_item(&pool, collection.id, story.id, owner.user_id)
         .await
@@ -67,6 +77,7 @@ async fn collection_crud_and_items() {
             name: Some("Renamed".into()),
             description: None,
             icon: Some("star".into()),
+            visibility: None,
         },
     )
     .await
@@ -77,9 +88,7 @@ async fn collection_crud_and_items() {
     library::delete(&pool, collection.id, owner.user_id)
         .await
         .unwrap();
-    let list = library::list_by_user_id(&pool, owner.user_id)
-        .await
-        .unwrap();
+    let list = library::list_for_shelf(&pool, owner.user_id).await.unwrap();
     assert!(list.is_empty());
 }
 
@@ -98,14 +107,14 @@ async fn list_liked_stories_ordered_by_like_time() {
         .await
         .unwrap();
     assert_eq!(liked.len(), 2);
-    assert_eq!(liked[0].id, story_b.id);
+    assert_eq!(liked[0].story.id, story_b.id);
 
     delete_like(&pool, story_b.id, fan.user_id).await.unwrap();
     let liked = library::list_liked_stories(&pool, fan.user_id)
         .await
         .unwrap();
     assert_eq!(liked.len(), 1);
-    assert_eq!(liked[0].id, story_a.id);
+    assert_eq!(liked[0].story.id, story_a.id);
 }
 
 #[tokio::test]
@@ -115,17 +124,9 @@ async fn library_status_reports_liked_and_collections() {
     let author = seed_user(&pool, "status_author").await;
     let story = seed_story(&pool, author.user_id, "Status", "short_story", None, None).await;
 
-    let collection = library::insert(
-        &pool,
-        owner.user_id,
-        &CreateCollectionInput {
-            name: "Shelf".into(),
-            description: None,
-            icon: None,
-        },
-    )
-    .await
-    .unwrap();
+    let collection = library::insert(&pool, owner.user_id, &private_input("Shelf"), "private")
+        .await
+        .unwrap();
 
     insert_like(&pool, story.id, owner.user_id).await.unwrap();
     library::insert_item(&pool, collection.id, story.id, owner.user_id)
@@ -149,17 +150,9 @@ async fn reorder_collection_stories() {
     let story_b = seed_story(&pool, author.user_id, "B", "short_story", None, None).await;
     let story_c = seed_story(&pool, author.user_id, "C", "short_story", None, None).await;
 
-    let collection = library::insert(
-        &pool,
-        owner.user_id,
-        &CreateCollectionInput {
-            name: "Ordered".into(),
-            description: None,
-            icon: None,
-        },
-    )
-    .await
-    .unwrap();
+    let collection = library::insert(&pool, owner.user_id, &private_input("Ordered"), "private")
+        .await
+        .unwrap();
 
     library::insert_item(&pool, collection.id, story_a.id, owner.user_id)
         .await
@@ -186,31 +179,90 @@ async fn reorder_collection_stories() {
         .await
         .unwrap();
     assert_eq!(stories.len(), 3);
-    assert_eq!(stories[0].id, story_c.id);
-    assert_eq!(stories[1].id, story_a.id);
-    assert_eq!(stories[2].id, story_b.id);
+    assert_eq!(stories[0].story.id, story_c.id);
+    assert_eq!(stories[1].story.id, story_a.id);
+    assert_eq!(stories[2].story.id, story_b.id);
 }
 
 #[tokio::test]
-async fn foreign_user_cannot_access_collection() {
+async fn foreign_user_cannot_access_private_collection() {
     let Some(pool) = pool().await else { return };
     let owner = seed_user(&pool, "col_owner").await;
     let intruder = seed_user(&pool, "col_intruder").await;
 
-    let collection = library::insert(
-        &pool,
-        owner.user_id,
-        &CreateCollectionInput {
-            name: "Private".into(),
-            description: None,
-            icon: None,
-        },
-    )
-    .await
-    .unwrap();
+    let collection = library::insert(&pool, owner.user_id, &private_input("Private"), "private")
+        .await
+        .unwrap();
 
     let err = library::list_stories_in_collection(&pool, collection.id, intruder.user_id)
         .await
         .unwrap_err();
     assert!(matches!(err, sqlx::Error::RowNotFound));
+}
+
+#[tokio::test]
+async fn public_collection_readable_and_saveable() {
+    let Some(pool) = pool().await else { return };
+    let owner = seed_user(&pool, "pub_owner").await;
+    let fan = seed_user(&pool, "pub_fan").await;
+    let author = seed_user(&pool, "pub_author").await;
+    let story = seed_story(&pool, author.user_id, "In Pub", "short_story", None, None).await;
+
+    let collection = library::insert(
+        &pool,
+        owner.user_id,
+        &CreateCollectionInput {
+            name: "Public Shelf".into(),
+            description: None,
+            icon: None,
+            visibility: Some(VISIBILITY_PUBLIC.into()),
+        },
+        VISIBILITY_PUBLIC,
+    )
+    .await
+    .unwrap();
+
+    library::insert_item(&pool, collection.id, story.id, owner.user_id)
+        .await
+        .unwrap();
+
+    let stories = library::list_stories_in_collection(&pool, collection.id, fan.user_id)
+        .await
+        .unwrap();
+    assert_eq!(stories.len(), 1);
+
+    library::save_collection(&pool, collection.id, fan.user_id)
+        .await
+        .unwrap();
+    assert!(library::is_saved(&pool, collection.id, fan.user_id)
+        .await
+        .unwrap());
+
+    let shelf = library::list_for_shelf(&pool, fan.user_id).await.unwrap();
+    assert_eq!(shelf.len(), 1);
+    assert_eq!(shelf[0].ownership, "saved");
+    assert!(shelf[0].is_saved_by_me);
+
+    let found = library::search_public(&pool, "Public", Some(fan.user_id), 20)
+        .await
+        .unwrap();
+    assert_eq!(found.len(), 1);
+    assert!(found[0].is_saved_by_me);
+
+    library::update(
+        &pool,
+        collection.id,
+        owner.user_id,
+        &UpdateCollectionInput {
+            name: None,
+            description: None,
+            icon: None,
+            visibility: Some("private".into()),
+        },
+    )
+    .await
+    .unwrap();
+
+    let shelf_after = library::list_for_shelf(&pool, fan.user_id).await.unwrap();
+    assert!(shelf_after.is_empty());
 }

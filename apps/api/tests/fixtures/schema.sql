@@ -134,6 +134,16 @@ CREATE INDEX IF NOT EXISTS idx_library_collections_user_id ON public.library_col
 CREATE INDEX IF NOT EXISTS idx_library_collection_items_collection_id ON public.library_collection_items(collection_id, added_at DESC);
 CREATE INDEX IF NOT EXISTS idx_library_collection_items_story_id ON public.library_collection_items(story_id);
 
+CREATE TABLE IF NOT EXISTS public.library_collection_saves (
+  user_id UUID NOT NULL,
+  collection_id UUID NOT NULL REFERENCES public.library_collections(id) ON DELETE CASCADE,
+  saved_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, collection_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_library_collection_saves_user_saved_at
+  ON public.library_collection_saves(user_id, saved_at DESC);
+
 CREATE TABLE IF NOT EXISTS public.notification_subscriptions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   subscriber_id UUID NOT NULL,

@@ -25,12 +25,15 @@ import {
   type LibraryCollectionIconId,
 } from '@/lib/libraryIcons';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { CollectionVisibility } from '@/lib/api/library';
 import { Loader2, X } from 'lucide-react';
 
 export type CollectionFormValues = {
   name: string;
   description: string;
   icon: LibraryCollectionIconId;
+  visibility: CollectionVisibility;
 };
 
 interface CollectionFormDialogProps {
@@ -54,13 +57,21 @@ export default function CollectionFormDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState<LibraryCollectionIconId>(DEFAULT_LIBRARY_COLLECTION_ICON);
+  const [visibility, setVisibility] = useState<CollectionVisibility>('private');
 
   useEffect(() => {
     if (!open) return;
     setName(initialValues?.name ?? '');
     setDescription(initialValues?.description ?? '');
     setIcon(initialValues?.icon ?? DEFAULT_LIBRARY_COLLECTION_ICON);
-  }, [open, initialValues?.name, initialValues?.description, initialValues?.icon]);
+    setVisibility(initialValues?.visibility ?? 'private');
+  }, [
+    open,
+    initialValues?.name,
+    initialValues?.description,
+    initialValues?.icon,
+    initialValues?.visibility,
+  ]);
 
   const handleSubmit = async () => {
     const trimmedName = name.trim();
@@ -69,6 +80,7 @@ export default function CollectionFormDialog({
       name: trimmedName,
       description: description.trim(),
       icon,
+      visibility,
     });
   };
 
@@ -120,6 +132,29 @@ export default function CollectionFormDialog({
               <p className="text-xs text-muted-foreground text-right">
                 {tf('library.descriptionRemaining', { n: descriptionRemaining })}
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t('library.collectionVisibility')}</Label>
+              <RadioGroup
+                value={visibility}
+                onValueChange={(v) => setVisibility(v as CollectionVisibility)}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="private" id="collection-vis-private" />
+                  <Label htmlFor="collection-vis-private" className="font-normal cursor-pointer">
+                    {t('library.visibilityPrivate')}
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="public" id="collection-vis-public" />
+                  <Label htmlFor="collection-vis-public" className="font-normal cursor-pointer">
+                    {t('library.visibilityPublic')}
+                  </Label>
+                </div>
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">{t('library.visibilityHint')}</p>
             </div>
 
             <div className="space-y-2">

@@ -9,6 +9,7 @@ pub struct CreateCollectionInput {
     pub name: String,
     pub description: Option<String>,
     pub icon: Option<String>,
+    pub visibility: Option<String>,
 }
 
 impl CreateCollectionInput {
@@ -30,7 +31,12 @@ impl CreateCollectionInput {
             }
         }
         super::icons::resolved_icon(self.icon.as_deref())?;
+        super::visibility::resolved_visibility(self.visibility.as_deref())?;
         Ok(())
+    }
+
+    pub fn visibility(&self) -> Result<&'static str, AppError> {
+        super::visibility::resolved_visibility(self.visibility.as_deref())
     }
 
     pub fn name(&self) -> &str {
@@ -60,6 +66,7 @@ mod tests {
             name: "Favorites".into(),
             description: None,
             icon: None,
+            visibility: None,
         };
         assert!(input.validate().is_ok());
     }
@@ -70,6 +77,7 @@ mod tests {
             name: " ".into(),
             description: None,
             icon: None,
+            visibility: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
     }

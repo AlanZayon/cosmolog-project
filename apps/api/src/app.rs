@@ -130,12 +130,26 @@ pub fn router(state: AppState, config: &Config) -> Router {
         .route("/stories/{id}/library-status", get(library::library_status))
         .route("/library/liked-stories", get(library::liked_stories))
         .route(
+            "/library/collections/search",
+            get(library::search_collections),
+        )
+        .route(
             "/library/collections",
             get(library::list_collections).post(library::create_collection),
         )
         .route(
+            "/library/collections/{id}/save",
+            post(library::save_collection).delete(library::unsave_collection),
+        )
+        .route(
+            "/library/collections/{id}/save-status",
+            get(library::collection_save_status),
+        )
+        .route(
             "/library/collections/{id}",
-            patch(library::update_collection).delete(library::delete_collection),
+            get(library::get_collection)
+                .patch(library::update_collection)
+                .delete(library::delete_collection),
         )
         .route(
             "/library/collections/{id}/stories",

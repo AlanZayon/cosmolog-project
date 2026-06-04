@@ -188,6 +188,7 @@ export default function CollectionPickerDialog({
         name: values.name,
         description: values.description || null,
         icon: values.icon,
+        visibility: values.visibility,
       });
       await addStoryToCollection(created.id, storyId);
       onCollectionsChange([
