@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Globe, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
+import LibrarySearchInput from '@/components/library/LibrarySearchInput';
 import NotificationLampIcon from '@/components/NotificationLampIcon';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +19,10 @@ import {
   listNotificationSubscriptions,
 } from '@/lib/api';
 import type { ApiNotificationSubscriptionListItem } from '@/lib/api/types';
+import {
+  filterProfileAlerts,
+  filterUniverseAlerts,
+} from '@/lib/notificationAlertsSearch';
 import { cn } from '@/lib/utils';
 
 type AlertRowProps = {
@@ -90,6 +95,8 @@ export default function NotificationsAlertsPage() {
   const [items, setItems] = useState<ApiNotificationSubscriptionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'profiles' | 'universes'>('profiles');
+  const [profileSearchQuery, setProfileSearchQuery] = useState('');
+  const [universeSearchQuery, setUniverseSearchQuery] = useState('');
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const profileItems = useMemo(
@@ -100,6 +107,16 @@ export default function NotificationsAlertsPage() {
   const universeItems = useMemo(
     () => items.filter((item) => item.scope === 'universe'),
     [items],
+  );
+
+  const filteredProfileItems = useMemo(
+    () => filterProfileAlerts(profileItems, profileSearchQuery),
+    [profileItems, profileSearchQuery],
+  );
+
+  const filteredUniverseItems = useMemo(
+    () => filterUniverseAlerts(universeItems, universeSearchQuery),
+    [universeItems, universeSearchQuery],
   );
 
   const fetchSubscriptions = useCallback(async () => {
@@ -150,6 +167,7 @@ export default function NotificationsAlertsPage() {
 
   const renderList = (
     list: ApiNotificationSubscriptionListItem[],
+    allItems: ApiNotificationSubscriptionListItem[],
     emptyKey: 'notifications.alertsEmptyProfiles' | 'notifications.alertsEmptyUniverses',
     kind: 'profile' | 'universe',
   ) => {
@@ -162,12 +180,20 @@ export default function NotificationsAlertsPage() {
       );
     }
 
-    if (list.length === 0) {
+    if (allItems.length === 0) {
       return (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <NotificationLampIcon active={false} size="lg" className="text-muted-foreground/60" />
           <p className="text-sm text-muted-foreground">{t(emptyKey)}</p>
         </div>
+      );
+    }
+
+    if (list.length === 0) {
+      return (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          {t('notifications.alertsNoSearchResults')}
+        </p>
       );
     }
 
@@ -256,10 +282,40 @@ export default function NotificationsAlertsPage() {
           </TabsList>
 
           <TabsContent value="profiles" className="mt-0">
-            {renderList(profileItems, 'notifications.alertsEmptyProfiles', 'profile')}
+            {!loading && profileItems.length > 0 ? (
+              <LibrarySearchInput
+                id="notifications-profile-search"
+                value={profileSearchQuery}
+                onChange={setProfileSearchQuery}
+                label={t('notifications.searchProfiles')}
+                placeholder={t('notifications.searchProfilesPlaceholder')}
+                className="mb-4 w-full max-w-none"
+              />
+            ) : null}
+            {renderList(
+              filteredProfileItems,
+              profileItems,
+              'notifications.alertsEmptyProfiles',
+              'profile',
+            )}
           </TabsContent>
           <TabsContent value="universes" className="mt-0">
-            {renderList(universeItems, 'notifications.alertsEmptyUniverses', 'universe')}
+            {!loading && universeItems.length > 0 ? (
+              <LibrarySearchInput
+                id="notifications-universe-search"
+                value={universeSearchQuery}
+                onChange={setUniverseSearchQuery}
+                label={t('notifications.searchUniverses')}
+                placeholder={t('notifications.searchUniversesPlaceholder')}
+                className="mb-4 w-full max-w-none"
+              />
+            ) : null}
+            {renderList(
+              filteredUniverseItems,
+              universeItems,
+              'notifications.alertsEmptyUniverses',
+              'universe',
+            )}
           </TabsContent>
         </Tabs>
       </main>

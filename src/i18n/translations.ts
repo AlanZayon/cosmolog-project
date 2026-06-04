@@ -724,6 +724,36 @@ const translations = {
     ja: '有効なお知らせを見る',
     es: 'Ver avisos activos',
   },
+  'notifications.searchProfiles': {
+    pt: 'Buscar perfis',
+    en: 'Search profiles',
+    ja: 'プロフィールを検索',
+    es: 'Buscar perfiles',
+  },
+  'notifications.searchProfilesPlaceholder': {
+    pt: 'Buscar por @usuário…',
+    en: 'Search by @username…',
+    ja: '@ユーザー名で検索…',
+    es: 'Buscar por @usuario…',
+  },
+  'notifications.searchUniverses': {
+    pt: 'Buscar universos',
+    en: 'Search universes',
+    ja: 'ユニバースを検索',
+    es: 'Buscar universos',
+  },
+  'notifications.searchUniversesPlaceholder': {
+    pt: 'Buscar por título ou autor…',
+    en: 'Search by title or author…',
+    ja: 'タイトルまたは作者で検索…',
+    es: 'Buscar por título o autor…',
+  },
+  'notifications.alertsNoSearchResults': {
+    pt: 'Nenhum resultado para essa busca.',
+    en: 'No results for this search.',
+    ja: '検索結果がありません。',
+    es: 'Ningún resultado para esta búsqueda.',
+  },
 
   'arc.storiesInArc': {
     pt: 'Histórias neste arco',
