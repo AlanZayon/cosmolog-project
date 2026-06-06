@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
-    if: env.MIGRATE_DATABASE_URL != ''
+    if: secrets.MIGRATE_DATABASE_URL != ''
     defaults:
       run:
         working-directory: apps/api
