@@ -41,7 +41,7 @@ pub async fn update_me(
     let validated = body.validate()?;
     url_validation::validate_nullable_image_url_update(
         validated.avatar_url.as_ref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     let profile = profiles::update_by_user_id(&state.pool, user.user_id, &validated)
         .await

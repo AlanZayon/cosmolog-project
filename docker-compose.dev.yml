@@ -58,19 +58,28 @@ services:
   web:
     image: node:22-bookworm
     working_dir: /workspace
-    # Match the WSL host user so bind-mounted files stay owned by alanz (uid 1000).
-    user: "1000:1000"
+    # Start as root only to chown named volumes, then drop to node (uid 1000).
+    # Avoids EACCES when web_node_modules was previously created as root.
+    user: root
     ports:
       - "3000:3000"
     environment:
       API_INTERNAL_URL: http://api:8080
       WATCHPACK_POLLING: "true"
+      HOME: /home/node
+      npm_config_cache: /home/node/.npm
     volumes:
       - .:/workspace:cached
       - web_node_modules:/workspace/node_modules
       # Keep Docker's Turbopack cache off the host .next tree (avoids permission fights with local npm run dev).
       - web_next:/workspace/.next
-    command: bash -c "npm ci && npm run dev -- -H 0.0.0.0"
+    command:
+      - bash
+      - -c
+      - |
+        mkdir -p /workspace/node_modules /workspace/.next /home/node/.npm
+        chown -R 1000:1000 /workspace/node_modules /workspace/.next /home/node
+        exec runuser -u node -- bash -c 'npm ci && npm run dev -- -H 0.0.0.0'
     depends_on:
       - api
 

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { setAuthCookies, toPublicSession } from '@/lib/server/auth-cookies';
-import { rustFetch, type RustAuthSession } from '@/lib/server/rust-api';
+import { authErrorResponse } from '@/lib/server/auth-error-response';
+import { rustFetch, type RustSignUpResponse } from '@/lib/server/rust-api';
 
 export async function POST(request: Request) {
   try {
@@ -9,23 +10,28 @@ export async function POST(request: Request) {
       email?: string;
       password?: string;
       username?: string;
+      full_name?: string;
+      date_of_birth?: string;
     };
-    const session = await rustFetch<RustAuthSession>('/auth/sign-up', {
+    const result = await rustFetch<RustSignUpResponse>('/auth/sign-up', {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    const response = NextResponse.json(toPublicSession(session));
-    setAuthCookies(response, session);
+
+    if (result.status === 'pending_confirmation') {
+      return NextResponse.json({
+        pending_email_confirmation: true,
+        user: {
+          id: result.user_id,
+          email: result.email ?? null,
+        },
+      });
+    }
+
+    const response = NextResponse.json(toPublicSession(result));
+    setAuthCookies(response, result);
     return response;
   } catch (err) {
-    const status =
-      err && typeof err === 'object' && 'status' in err && typeof err.status === 'number'
-        ? err.status
-        : 502;
-    const message =
-      err && typeof err === 'object' && 'message' in err && typeof err.message === 'string'
-        ? err.message
-        : 'sign up failed';
-    return NextResponse.json({ error: message }, { status });
+    return authErrorResponse(err);
   }
 }

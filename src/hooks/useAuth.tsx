@@ -6,11 +6,15 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   fetchSession,
   signIn as apiSignIn,
   signOutSession,
   signUp as apiSignUp,
+  isPendingSignUp,
+  type SignUpPayload,
+  type SignUpResult,
 } from '@/lib/api/auth';
 import { getMyProfile } from '@/lib/api/profiles';
 import { clearLegacySessionStorage, type PublicSession } from '@/lib/auth/session';
@@ -28,7 +32,7 @@ interface AuthContextType {
   profile: Tables<'profiles'> | null;
   profileLoading: boolean;
   refreshProfile: () => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signUp: (payload: SignUpPayload) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -36,6 +40,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [session, setSession] = useState<PublicSession | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,9 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshProfile();
   }, [user?.id, refreshProfile]);
 
-  const signUp = async (email: string, password: string, username: string) => {
-    const data = await apiSignUp(email, password, username);
-    applySession(data);
+  const signUp = async (payload: SignUpPayload): Promise<SignUpResult> => {
+    const data = await apiSignUp(payload);
+    if (!isPendingSignUp(data)) {
+      applySession(data);
+    }
+    return data;
   };
 
   const signIn = async (email: string, password: string) => {
@@ -99,6 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       applySession(null);
       setProfile(null);
+      if (typeof window !== 'undefined') {
+        window.location.assign('/');
+        return;
+      }
+      router.replace('/');
+      router.refresh();
     }
   };
 

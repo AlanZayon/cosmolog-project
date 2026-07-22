@@ -1,0 +1,29 @@
+---
+description: Cosmolog domain hierarchy and notification/social invariants
+alwaysApply: true
+---
+
+# Domain invariants
+
+## Content hierarchy
+
+`Universe` → `Arc` → `Story` (`short_story` | `chapters` | `comic`) → chapters/blocks or `comic_pages`.
+
+- Story `universe_id` / `arc_id` must be owned by the caller (universe owner). Enforce in API domain (`scope`) + existing DB triggers.
+- `feed_display_mode`: `preview` | `cover`.
+
+## Do not merge these systems
+
+| System | Tables / routes | Purpose |
+|--------|-----------------|---------|
+| Avisos | `notification_subscriptions`, `notifications` | Subscribe to author/universe for new stories |
+| Activity | `activity_notifications` | Mentions, comments, likes, collection saves |
+| Follows | `universe_follows` | Feed personalization only |
+| Library | likes + `library_collections*` | Shelves / collections |
+
+Separate SSE streams, hooks (`useNotificationInbox` vs `useActivityNotificationInbox`), and UI copy.
+
+## Authz
+
+App-layer in Rust only. Public read / authenticated write per `apps/api/docs/AUTHZ.md` — verify against code if docs look stale.
+---

@@ -1,0 +1,38 @@
+---
+description: Rust Axum API layout, auth extractors, sqlx migrations, errors
+globs: apps/api/**/*
+alwaysApply: false
+---
+
+# Cosmolog API (Rust)
+
+## Layout
+
+```text
+routes/   # thin HTTP handlers
+domain/   # models, repositories, validation, presenters
+auth/     # AuthUser, OptionalAuth, JWT
+infra/    # db, migrate, aws, email, storage, logging
+error.rs  # AppError → JSON { "error": ... }
+```
+
+## Patterns
+
+1. Extract `AuthUser` or `OptionalAuth` → call domain → `Result<Json<T>, AppError>`.
+2. Ownership checks in domain/routes — privileged DB role; no RLS reliance.
+3. Image URLs: `domain/url_validation.rs`.
+4. Status: `401` unauthorized (often instead of 403), `404`, `400`, `409` unique.
+
+## Migrations
+
+```bash
+cd apps/api && sqlx migrate add describe_your_change
+# edit migrations/<ts>_describe_your_change.sql
+```
+
+Never write new SQL under `supabase/migrations/`.
+
+## Tests
+
+Add coverage in `apps/api/tests/` (`api_*.rs`, `repositories_*.rs`) using `tests/common/`. Run with `TEST_DATABASE_URL` + `docker-compose.test.yml`.
+---

@@ -7,6 +7,7 @@ import {
   setAuthCookies,
   toPublicSession,
 } from '@/lib/server/auth-cookies';
+import { clientIpFromRequest } from '@/lib/server/client-ip';
 import { rustFetch, type RustAuthSession, type RustMeResponse } from '@/lib/server/rust-api';
 
 export async function GET(request: NextRequest) {
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
     const session = await rustFetch<RustAuthSession>('/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refresh_token: refreshToken }),
+      clientIp: clientIpFromRequest(request),
     });
     const response = NextResponse.json(toPublicSession(session));
     setAuthCookies(response, session);

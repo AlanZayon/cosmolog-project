@@ -32,7 +32,7 @@ pub async fn create(
     body.validate()?;
     url_validation::validate_optional_stored_image_url(
         body.cover_image_url.as_deref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     validate_scope(&state.pool, user.user_id, body.universe_id, body.arc_id).await?;
     let story = stories::insert(&state.pool, user.user_id, &body)

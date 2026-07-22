@@ -6,10 +6,11 @@ use serde_json::json;
 use common::app::{assert_status, json, setup_app};
 use common::fixtures::{seed_arc, seed_story, seed_universe, seed_user};
 
-const SUPABASE: &str = "https://test-project.supabase.co";
+/// Matches `s3_public_base_url` in `common::test_config()`.
+const CDN: &str = "https://cdn.test.example";
 
 fn comics_url(path: &str) -> String {
-    format!("{SUPABASE}/storage/v1/object/public/comics/{path}")
+    format!("{CDN}/comics/{path}")
 }
 
 #[tokio::test]

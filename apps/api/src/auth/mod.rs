@@ -1,13 +1,11 @@
 mod claims;
 mod extractor;
-mod jwks;
 mod jwt;
 mod mock;
 mod optional;
 mod validator;
 
-pub use jwks::fetch_jwks;
-pub use jwt::{AuthUser, JwtValidator};
+pub use jwt::{AuthUser, JwtSigner, JWT_AUDIENCE, JWT_ISSUER};
 pub use mock::MockTokenValidator;
 pub use optional::OptionalAuth;
 pub use validator::TokenValidator;

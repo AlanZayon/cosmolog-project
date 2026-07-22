@@ -62,7 +62,7 @@ pub async fn update(
     body.validate()?;
     url_validation::validate_optional_stored_image_url(
         body.cover_image_url.as_deref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     let arc = arcs::find_by_id(&state.pool, id)
         .await
@@ -73,7 +73,7 @@ pub async fn update(
         .map_err(AppError::from_db)?
         .ok_or(AppError::NotFound)?;
     if universe.owner_id != user.user_id {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::unauthorized());
     }
     let updated = arcs::update(
         &state.pool,
@@ -102,7 +102,7 @@ pub async fn delete(
         .map_err(AppError::from_db)?
         .ok_or(AppError::NotFound)?;
     if universe.owner_id != user.user_id {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::unauthorized());
     }
     arcs::delete_by_id(&state.pool, id)
         .await
@@ -119,14 +119,14 @@ pub async fn create_for_universe(
     body.validate()?;
     url_validation::validate_optional_stored_image_url(
         body.cover_image_url.as_deref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     let universe = universes::find_by_id(&state.pool, universe_id)
         .await
         .map_err(AppError::from_db)?
         .ok_or(AppError::NotFound)?;
     if universe.owner_id != user.user_id {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::unauthorized());
     }
     let arc = arcs::insert(
         &state.pool,

@@ -47,6 +47,9 @@ next-env.d.ts
 # supabase cli local state (contains project refs)
 /supabase/.temp/
 
+# Cursor MCP with secrets (use .cursor/mcp.example.json as template)
+.cursor/mcp.json
+
 # rust (api)
 /apps/api/target/
 /apps/api/lcov.info

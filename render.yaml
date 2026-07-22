@@ -2,7 +2,8 @@
 #
 # First-time setup:
 #   1. Render Dashboard → New → Blueprint → connect this repo
-#   2. Set secret env vars when prompted (DATABASE_URL, SUPABASE_*, CORS_ALLOWED_ORIGIN)
+#   2. Set secret env vars when prompted (DATABASE_URL, AUTH_JWT_SECRET, AWS/SES/S3,
+#      GOOGLE_CLIENT_ID/SECRET, CORS_ALLOWED_ORIGIN, REDIS_URL)
 #   3. Optional: disable "Auto-Deploy" and use the GitHub deploy hook after CI passes
 #
 # Deploy hook (Settings → Deploy Hook): add RENDER_DEPLOY_HOOK_URL to GitHub Actions secrets.
@@ -25,17 +26,33 @@ services:
         value: 0.0.0.0
       - key: RUN_MIGRATIONS
         value: "false"
-      - key: SUPABASE_JWT_AUDIENCE
-        value: authenticated
       - key: RUST_LOG
         value: cosmolog_api=info,tower_http=info,sqlx=warn
       - key: APP_ENV
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: SUPABASE_URL
+      - key: AUTH_JWT_SECRET
         sync: false
-      - key: SUPABASE_ANON_KEY
+      - key: APP_PUBLIC_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: SES_FROM_EMAIL
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+      - key: LEGACY_SUPABASE_URL
         sync: false
       - key: CORS_ALLOWED_ORIGIN
         sync: false

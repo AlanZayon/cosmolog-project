@@ -46,7 +46,6 @@ impl TestApp {
                 user_id: user.user_id,
                 role: "authenticated".into(),
                 email: Some(format!("{}@example.com", user.profile.username)),
-                raw_token: None,
             },
         );
         token
@@ -60,7 +59,6 @@ impl TestApp {
                 user_id,
                 role: "authenticated".into(),
                 email: Some(format!("{username}@example.com")),
-                raw_token: None,
             },
         );
         token

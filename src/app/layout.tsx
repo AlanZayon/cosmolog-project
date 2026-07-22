@@ -20,13 +20,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  auth,
 }: Readonly<{
   children: React.ReactNode;
+  auth: React.ReactNode;
 }>) {
   return (
     <html lang="pt" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          {auth}
+        </Providers>
       </body>
     </html>
   );

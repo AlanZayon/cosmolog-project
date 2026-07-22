@@ -18,6 +18,14 @@ export type RustAuthSession = {
   };
 };
 
+export type RustSignUpResponse =
+  | ({ status: 'session' } & RustAuthSession)
+  | {
+      status: 'pending_confirmation';
+      user_id: string;
+      email?: string | null;
+    };
+
 export type RustMeResponse = {
   user_id: string;
   role: string;
@@ -26,13 +34,16 @@ export type RustMeResponse = {
 
 export async function rustFetch<T>(
   path: string,
-  init: RequestInit & { accessToken?: string } = {},
+  init: RequestInit & { accessToken?: string; clientIp?: string } = {},
 ): Promise<T> {
   const base = internalApiBaseUrl();
-  const { accessToken, headers: initHeaders, ...rest } = init;
+  const { accessToken, clientIp, headers: initHeaders, ...rest } = init;
   const headers = new Headers(initHeaders);
   if (accessToken) {
     headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+  if (clientIp) {
+    headers.set('X-Forwarded-For', clientIp);
   }
   if (rest.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');

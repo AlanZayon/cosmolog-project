@@ -1,0 +1,14 @@
+---
+description: Prevent regressing to Supabase Auth, client SDK, or localStorage JWT
+alwaysApply: true
+---
+
+# No Supabase regression
+
+- Do **not** add `@supabase/supabase-js`, GoTrue clients, or JWKS validation.
+- Do **not** write access/refresh tokens to `localStorage` / `sessionStorage`. Cookies are httpOnly only (`cosmolog_*`).
+- `src/integrations/supabase/types.ts` is a **types-only** remnant (`Tables<>`). Prefer `Api*` from `src/lib/api/types.ts` for new code.
+- `src/integrations/supabase/client.ts` is a stub — use `@/lib/api`.
+- `LEGACY_SUPABASE_URL` may accept old Storage image URLs during cutover; new uploads go to S3 (`S3_BUCKET` / `S3_PUBLIC_BASE_URL`).
+- Ignore outdated guidance in `docs/MIGRATION.md` that still describes Supabase Auth proxy; use `docs/MIGRATION_SUPABASE_TO_AWS.md`.
+---

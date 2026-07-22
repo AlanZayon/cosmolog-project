@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use axum::serve;
-use cosmolog_api::auth::{JwtValidator, TokenValidator};
+use cosmolog_api::auth::{JwtSigner, TokenValidator};
 use cosmolog_api::config::Config;
 use cosmolog_api::infra::db::create_pool;
 use cosmolog_api::infra::logging;
@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
         );
     }
 
-    let jwt: Arc<dyn TokenValidator> = JwtValidator::new(&config).await?;
+    let jwt: Arc<dyn TokenValidator> = Arc::new(JwtSigner::new(&config));
     let state = AppState::try_new(pool, jwt, &config).await?;
 
     let listener = TcpListener::bind(config.socket_addr()).await?;

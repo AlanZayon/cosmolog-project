@@ -22,7 +22,7 @@ pub async fn create(
     body.validate()?;
     url_validation::validate_optional_stored_image_url(
         body.cover_image_url.as_deref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     let universe = universes::insert(&state.pool, user.user_id, &body)
         .await
@@ -99,7 +99,7 @@ pub async fn update(
     body.validate()?;
     url_validation::validate_nullable_image_url_update(
         body.cover_image_url.as_ref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     let universe = universes::update(&state.pool, id, user.user_id, &body)
         .await

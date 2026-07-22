@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { uploadFile } from '@/lib/api/storage';
@@ -17,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
 import { BrowseContentRow, browseLandscapeTileClass, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
-import { useRouter } from "next/navigation";
 import { Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const { user, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [profile, setProfile] = useState<Tables<'profiles'> | null>(null);
   const [username, setUsername] = useState('');
@@ -35,6 +36,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const completeProfileHandled = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -45,6 +47,17 @@ export default function ProfilePage() {
     void fetchStories();
     void fetchUniverses();
   }, [user, router]);
+
+  useEffect(() => {
+    if (searchParams.get('complete') !== '1' || completeProfileHandled.current) return;
+    completeProfileHandled.current = true;
+    setEditing(true);
+    toast({
+      title: t('auth.completeProfile.title'),
+      description: t('auth.completeProfile.subtitle'),
+    });
+    router.replace('/profile');
+  }, [searchParams, router, t, toast]);
 
   const fetchProfile = async () => {
     try {

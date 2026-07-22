@@ -28,7 +28,7 @@ async fn auth_user_rejects_missing_authorization_header() {
     let err = AuthUser::from_request_parts(&mut parts, &state)
         .await
         .unwrap_err();
-    assert!(matches!(err, AppError::Unauthorized));
+    assert!(matches!(err, AppError::Unauthorized(_)));
 }
 
 #[tokio::test]
@@ -45,12 +45,12 @@ async fn auth_user_rejects_malformed_bearer() {
 
     assert!(matches!(
         AuthUser::from_request_parts(&mut parts, &state).await,
-        Err(AppError::Unauthorized)
+        Err(AppError::Unauthorized(_))
     ));
 }
 
 #[tokio::test]
-async fn auth_user_accepts_valid_bearer_and_sets_raw_token() {
+async fn auth_user_accepts_valid_bearer() {
     let user_id = Uuid::new_v4();
     let jwt = MockTokenValidator::accepting(user_id);
     let config = common::test_config();
@@ -66,7 +66,6 @@ async fn auth_user_accepts_valid_bearer_and_sets_raw_token() {
         .await
         .expect("authorized");
     assert_eq!(user.user_id, user_id);
-    assert_eq!(user.raw_token.as_deref(), Some("my-access-token"));
 }
 
 #[tokio::test]
@@ -83,7 +82,7 @@ async fn auth_user_rejects_invalid_token() {
 
     assert!(matches!(
         AuthUser::from_request_parts(&mut parts, &state).await,
-        Err(AppError::Unauthorized)
+        Err(AppError::Unauthorized(_))
     ));
 }
 

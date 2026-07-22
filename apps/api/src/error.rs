@@ -10,8 +10,8 @@ use thiserror::Error;
 pub enum AppError {
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
-    #[error("unauthorized")]
-    Unauthorized,
+    #[error("unauthorized: {0}")]
+    Unauthorized(String),
     #[error("not found")]
     NotFound,
     #[error("bad request: {0}")]
@@ -25,6 +25,10 @@ pub enum AppError {
 }
 
 impl AppError {
+    pub fn unauthorized() -> Self {
+        AppError::Unauthorized("unauthorized".into())
+    }
+
     pub fn from_db(err: sqlx::Error) -> Self {
         if let sqlx::Error::Database(db) = &err {
             if db.code().as_deref() == Some("23505") {
@@ -37,7 +41,7 @@ impl AppError {
     fn error_kind(&self) -> &'static str {
         match self {
             AppError::Database(_) => "database",
-            AppError::Unauthorized => "unauthorized",
+            AppError::Unauthorized(_) => "unauthorized",
             AppError::NotFound => "not_found",
             AppError::BadRequest(_) => "bad_request",
             AppError::Conflict(_) => "conflict",
@@ -63,13 +67,14 @@ impl IntoResponse for AppError {
                     "internal server error".to_string(),
                 )
             }
-            AppError::Unauthorized => {
+            AppError::Unauthorized(code) => {
                 tracing::warn!(
                     event = "error.unauthorized",
                     error_kind = kind,
+                    error_code = %code,
                     "unauthorized request"
                 );
-                (StatusCode::UNAUTHORIZED, self.to_string())
+                (StatusCode::UNAUTHORIZED, code.clone())
             }
             AppError::NotFound => {
                 tracing::warn!(
@@ -113,10 +118,15 @@ impl IntoResponse for AppError {
                     error = %msg,
                     "upstream request failed"
                 );
-                (
-                    StatusCode::BAD_GATEWAY,
-                    "upstream service unavailable".to_string(),
-                )
+                let public = if msg
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c == '_')
+                {
+                    msg.clone()
+                } else {
+                    "service_unavailable".to_string()
+                };
+                (StatusCode::BAD_GATEWAY, public)
             }
         };
 
@@ -144,7 +154,7 @@ mod tests {
 
     #[tokio::test]
     async fn unauthorized_returns_401() {
-        let (status, msg) = response_for(AppError::Unauthorized).await;
+        let (status, msg) = response_for(AppError::unauthorized()).await;
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(msg, "unauthorized");
     }
@@ -189,6 +199,10 @@ mod tests {
         let (status, msg) =
             response_for(AppError::Upstream("supabase internal detail".into())).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
-        assert_eq!(msg, "upstream service unavailable");
+        assert_eq!(msg, "service_unavailable");
+
+        let (status, msg) = response_for(AppError::Upstream("service_unavailable".into())).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        assert_eq!(msg, "service_unavailable");
     }
 }

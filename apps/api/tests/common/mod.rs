@@ -7,10 +7,12 @@ pub mod db;
 pub mod fixtures;
 pub mod jwt;
 
+/// Shared HS256 secret for tests (matches `jwt::sign_valid_token`).
+#[allow(dead_code)]
+pub const TEST_JWT_SECRET: &str = "test-jwt-secret-test-jwt-secret-0123456789";
+
 #[allow(dead_code)]
 pub fn test_config() -> Config {
-    let supabase_url = "https://test-project.supabase.co".to_string();
-    let supabase_jwt_issuer = format!("{supabase_url}/auth/v1");
     Config {
         app_env: "test".into(),
         host: "127.0.0.1".into(),
@@ -19,11 +21,14 @@ pub fn test_config() -> Config {
         migrate_database_url: "postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test".into(),
         cors_allowed_origin: "http://localhost:3000".into(),
         run_migrations: false,
-        supabase_url: supabase_url.clone(),
-        supabase_jwt_issuer: supabase_jwt_issuer.clone(),
-        supabase_jwks_url: format!("{supabase_jwt_issuer}/.well-known/jwks.json"),
-        supabase_jwt_audience: "authenticated".into(),
-        supabase_anon_key: "test-anon-key".into(),
+        auth_jwt_secret: TEST_JWT_SECRET.into(),
+        require_email_confirmation: false,
+        app_public_url: "http://localhost:3000".into(),
+        google: None,
+        ses_from_email: None,
+        s3_bucket: None,
+        s3_public_base_url: Some("https://cdn.test.example".into()),
+        legacy_supabase_url: None,
         redis_url: None,
     }
 }

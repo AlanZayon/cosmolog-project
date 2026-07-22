@@ -1,16 +1,14 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Supabase Auth JWT claims (access token).
-#[derive(Debug, Deserialize)]
-pub struct SupabaseClaims {
+/// Access-token claims issued and validated by this API (HS256).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccessClaims {
     pub sub: Uuid,
-    #[allow(dead_code)]
-    pub aud: serde_json::Value,
-    #[allow(dead_code)]
+    pub aud: String,
+    pub iss: String,
     pub exp: i64,
-    #[allow(dead_code)]
-    pub iat: Option<i64>,
-    pub role: Option<String>,
+    pub iat: i64,
+    pub role: String,
     pub email: Option<String>,
 }

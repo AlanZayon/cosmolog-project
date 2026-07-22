@@ -1,0 +1,14 @@
+---
+description: Cosmolog core stack, BFF auth, and doc sources of truth
+alwaysApply: true
+---
+
+# Cosmolog core
+
+- Monorepo: Next.js web at repo root (`src/`); Rust API in `apps/api/`.
+- Auth is **own JWT HS256** (`AUTH_JWT_SECRET`). Not Supabase GoTrue / JWKS.
+- Browser talks only to same-origin BFF: `/api/auth/*` (session cookies) and `/api/proxy/*` (forwards Bearer). Never `fetch` the Rust URL with tokens in client JS.
+- New DB migrations: **only** `apps/api/migrations/` via `sqlx migrate add`. Never add to `supabase/migrations/`.
+- Production stack: Postgres + AWS SES/S3 (+ Redis for multi-instance SSE). See `docs/MIGRATION_SUPABASE_TO_AWS.md`.
+- Before novel Next.js APIs: read `node_modules/next/dist/docs/` (Next 16 differs from training data).
+- Prefer existing patterns in `src/lib/api/` and `apps/api/src/domain/` over inventing parallel layers.

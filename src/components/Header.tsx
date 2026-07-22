@@ -224,7 +224,7 @@ export default function Header() {
                 className="justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => {
                   closeMenu();
-                  signOut();
+                  void signOut();
                 }}
               >
                 <LogOut className="h-4 w-4" />

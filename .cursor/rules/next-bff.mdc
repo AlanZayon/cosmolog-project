@@ -1,0 +1,30 @@
+---
+description: Next.js BFF, page-components, lib/api, and i18n conventions
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js BFF + UI
+
+## Data access
+
+- Browser: `apiFetch` / domain helpers in `src/lib/api/` → `/api/proxy`.
+- Auth UI: `authFetch('/api/auth/...')` — not `/api/proxy/auth/...`.
+- Server→Rust: `src/lib/server/rust-api.ts` (`API_INTERNAL_URL`).
+- Uploads: `FormData` via proxy storage; do not set `Content-Type` manually.
+
+## Structure
+
+- `src/app/**/page.tsx`: thin `"use client"` re-exports.
+- Real UI: `src/page-components/*.tsx` (+ feature components under `src/components/`).
+- Auth modals: parallel route `@auth`.
+- UI primitives: `src/components/ui/*` (Radix/shadcn). Match existing patterns; no new design system.
+
+## i18n
+
+Add every user-facing string to `src/i18n/translations.ts` for `pt|en|ja|es`. Use `useLanguage` / `TranslationWithParams`.
+
+## Data fetching
+
+Most pages use `useState`/`useEffect` + `lib/api`. Do not introduce React Query hooks unless the file already uses them (`QueryClient` only wraps the app).
+---

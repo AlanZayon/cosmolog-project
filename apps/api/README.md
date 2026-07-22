@@ -5,7 +5,7 @@ Backend HTTP service (Rust + Axum) for domain logic, auth, and data access.
 ## Prerequisites
 
 - [Rust](https://rustup.rs/) (stable toolchain)
-- PostgreSQL connection string from Supabase (see below)
+- PostgreSQL connection string (own/managed Postgres)
 - Redis (optional locally; required in production for multi-instance notification SSE)
 - [sqlx-cli](https://github.com/launchbadge/sqlx/tree/main/sqlx-cli) for creating migrations (optional if you only run the API)
 
@@ -21,9 +21,9 @@ cp .env.example .env
 # Edit .env and set DATABASE_URL (and other vars if needed)
 ```
 
-Get `DATABASE_URL` from Supabase: **Project Settings → Database → Connection string**. You can paste the **transaction pooler** URI (`:6543`); the API automatically rewrites it to the **session pooler** (`:5432`) because sqlx does not work with transaction-mode pgbouncer. Override with `RUNTIME_DATABASE_URL` if needed.
+Point `DATABASE_URL` at your PostgreSQL instance. Legacy Supabase **transaction pooler** URIs (`:6543`) are still auto-rewritten to the session pooler (`:5432`) during the transition period; override with `RUNTIME_DATABASE_URL`/`MIGRATE_DATABASE_URL` if needed.
 
-For **new DDL migrations** (CREATE TABLE, ALTER, etc.), use the **session pooler** (`:5432`) or **direct** connection (`db.<project-ref>.supabase.co`). The API auto-rewrites transaction pooler URLs (`:6543` → `:5432`) for migrations, or set `MIGRATE_DATABASE_URL` explicitly.
+See [docs/MIGRATION_SUPABASE_TO_AWS.md](../../docs/MIGRATION_SUPABASE_TO_AWS.md) for the Supabase → own Postgres + AWS migration runbook (users, passwords, image URLs).
 
 ## Run
 
@@ -47,10 +47,10 @@ curl -s http://127.0.0.1:8080/profiles/me -H "Authorization: Bearer YOUR_ACCESS_
 
 ```bash
 cd apps/api
-cargo test                    # unit + integration (no Supabase/network)
+cargo test                    # unit + integration (no network)
 ```
 
-Auth tests use a local RSA key pair (`tests/fixtures/auth/`) and [wiremock](https://docs.rs/wiremock) for JWKS — no credentials required.
+Auth tests sign HS256 tokens with the shared test secret (`tests/common/jwt.rs`) — no credentials required.
 
 ### Postgres (repository + HTTP API tests)
 
@@ -105,7 +105,7 @@ docker build -t cosmolog-api .
 docker run --rm -p 8080:8080 --env-file .env cosmolog-api
 ```
 
-Requires `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` (see `.env.example`).
+Requires `DATABASE_URL` and `AUTH_JWT_SECRET`; SES/S3/Google vars enable email, uploads and OAuth (see `.env.example`).
 
 ### Dev stack (with frontend)
 
@@ -116,7 +116,7 @@ cp apps/api/.env.docker.example apps/api/.env.docker
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-The API uses local Postgres and Redis from compose; auth/storage still call your Supabase project.
+The API uses local Postgres and Redis from compose; auth runs locally (emails are logged unless SES is configured, uploads need S3 vars).
 
 ## Deploy (Render)
 
@@ -128,9 +128,14 @@ The API is configured for [Render](https://render.com) via [`render.yaml`](../..
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | Supabase Postgres (session pooler `:5432` or direct) |
-| `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
-| `SUPABASE_ANON_KEY` | Supabase anon / publishable key |
+| `DATABASE_URL` | PostgreSQL URI |
+| `AUTH_JWT_SECRET` | HMAC secret for access tokens (>= 32 chars) |
+| `APP_PUBLIC_URL` | Public web app URL (links in auth emails) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Direct Google OAuth |
+| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | AWS credentials for SES + S3 |
+| `SES_FROM_EMAIL` | Verified SES sender for auth emails |
+| `S3_BUCKET` / `S3_PUBLIC_BASE_URL` | Image upload bucket + public base URL (CloudFront) |
+| `LEGACY_SUPABASE_URL` | Optional: keep accepting old Supabase image URLs |
 | `CORS_ALLOWED_ORIGIN` | Frontend URL (e.g. `https://your-app.vercel.app`) |
 | `REDIS_URL` | Redis URI for cross-instance notification SSE (e.g. `redis://...`). Required when `APP_ENV=production`. |
 
@@ -146,16 +151,16 @@ Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy
 
 Manual deploy: Render Dashboard → **Manual Deploy**, or `workflow_dispatch` on the deploy workflow.
 
-`/db/ping` requires a valid `DATABASE_URL` and network access to Supabase.
+`/db/ping` requires a valid `DATABASE_URL`.
 
-## Authentication (Supabase JWT)
+## Authentication (own JWT)
 
-The API validates Supabase access tokens via JWKS (`/auth/v1/.well-known/jwks.json`).
+The API issues and validates its own HS256 access tokens (signed with `AUTH_JWT_SECRET`). Refresh tokens are opaque, stored hashed in `auth_refresh_tokens` and rotated on every refresh. Passwords use Argon2.
 
 Protected routes expect:
 
 ```http
-Authorization: Bearer <supabase_access_token>
+Authorization: Bearer <access_token>
 ```
 
 ### Test `/profiles/me`
@@ -169,9 +174,8 @@ curl -s http://127.0.0.1:8080/profiles/me \
 
 ### Test `/auth/me`
 
-1. Log in on the Next.js app (or Supabase dashboard → Auth → Users).
-2. In the browser devtools, read the access token from the Supabase session storage, **or** call Supabase Auth from your client and copy `session.access_token`.
-3. Call the API:
+1. Sign in via `POST /auth/sign-in` (or through the Next.js app) and copy `access_token` from the response.
+2. Call the API:
 
 ```bash
 curl -s http://127.0.0.1:8080/auth/me \
@@ -193,11 +197,16 @@ Without a token or with an invalid token → `401` with `{ "error": "unauthorize
 | GET | `/health` | — | Healthcheck |
 | GET | `/db/ping` | — | Database ping |
 | POST | `/auth/sign-in` | — | Email/password → session JSON |
-| POST | `/auth/sign-up` | — | Register (username in metadata) |
-| POST | `/auth/refresh` | — | Refresh token → new session |
+| POST | `/auth/sign-up` | — | Register (creates user + profile) |
+| POST | `/auth/refresh` | — | Refresh token → new session (rotation) |
+| POST | `/auth/sign-out` | — | Revoke a refresh token |
+| POST | `/auth/oauth/exchange` | — | Google OAuth code → session |
+| POST | `/auth/confirm-email` | — | Confirm email with one-time token |
+| POST | `/auth/forgot-password` | — | Send password reset email (SES) |
+| POST | `/auth/reset-password` | — | Set new password → session |
 | GET | `/auth/me` | JWT | Claims from token |
-| GET | `/feed` | optional JWT | Home feed (`get_feed` RPC proxy) |
-| POST | `/storage/upload` | JWT | Multipart upload to Supabase Storage |
+| GET | `/feed` | optional JWT | Home feed (`get_feed` SQL function) |
+| POST | `/storage/upload` | JWT | Multipart upload to Amazon S3 |
 | GET | `/profiles/me` | JWT | Own profile |
 | PATCH | `/profiles/me` | JWT | Update username, bio, avatar_url |
 | GET | `/profiles/{username}` | — | Public profile by username |
@@ -296,8 +305,15 @@ Use this in production if you prefer a deploy step (`sqlx migrate run`) instead 
 | `MIGRATE_DATABASE_URL` | No | session pooler derived from `DATABASE_URL` | Override migrations connection |
 | `CORS_ALLOWED_ORIGIN` | No | `http://localhost:3000` | Allowed browser origin |
 | `RUN_MIGRATIONS` | No | `true` (local dev) | Apply sqlx migrations on startup. **Production (Render): `false`** — run migrations in CI/deploy via `MIGRATE_DATABASE_URL` secret. |
-| `SUPABASE_URL` | Yes | — | Project URL (same as `NEXT_PUBLIC_SUPABASE_URL`) |
-| `SUPABASE_JWT_AUDIENCE` | No | `authenticated` | Expected JWT `aud` claim |
+| `AUTH_JWT_SECRET` | Prod | dev fallback | HMAC secret for HS256 access tokens (>= 32 chars) |
+| `REQUIRE_EMAIL_CONFIRMATION` | No | `true` in prod | Require email confirmation before sign-in |
+| `APP_PUBLIC_URL` | No | `CORS_ALLOWED_ORIGIN` | Public web URL used in email links |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | — | Direct Google OAuth (set both) |
+| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | With SES/S3 | — | AWS credentials (SigV4) |
+| `SES_FROM_EMAIL` | No | — | SES sender; unset = auth emails only logged |
+| `S3_BUCKET` | Prod | — | S3 bucket for image uploads |
+| `S3_PUBLIC_BASE_URL` | Prod | — | Public base URL for uploaded images (CloudFront/S3) |
+| `LEGACY_SUPABASE_URL` | No | — | Accept old Supabase Storage image URLs (transition) |
 | `RUST_LOG` | No | `cosmolog_api=info,sqlx=warn` | Log filter (see [Structured logging](#structured-logging)) |
 | `LOG_FORMAT` | No | `pretty` (dev) / `json` (prod) | Log output format: `json` or `pretty` |
 | `APP_ENV` | No | `development` | Environment label included in logs (`development`, `production`, …). When `production`, `REDIS_URL` is required. |

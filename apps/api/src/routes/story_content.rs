@@ -27,7 +27,7 @@ async fn require_author(
         .map_err(AppError::from_db)?
         .ok_or(AppError::NotFound)?;
     if story.author_id != user_id {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::unauthorized());
     }
     Ok(story)
 }
@@ -41,7 +41,7 @@ pub async fn update_story(
     body.validate()?;
     url_validation::validate_nullable_image_url_update(
         body.cover_image_url.as_ref(),
-        &state.supabase.url,
+        &state.storage_settings.allowed_image_prefixes,
     )?;
     let existing = stories::find_by_id(&state.pool, id)
         .await
@@ -119,7 +119,7 @@ pub async fn replace_blocks(
             "image" => {
                 url_validation::validate_stored_image_url(
                     block.content.trim(),
-                    &state.supabase.url,
+                    &state.storage_settings.allowed_image_prefixes,
                 )?;
             }
             _ => {
@@ -242,12 +242,12 @@ pub async fn replace_comic_pages(
     Json(body): Json<ReplaceComicPagesBody>,
 ) -> Result<Json<Vec<ComicPage>>, AppError> {
     let _ = require_author(&state.pool, id, user.user_id).await?;
-    let supabase_url = &state.supabase.url;
+    let allowed_prefixes = &state.storage_settings.allowed_image_prefixes;
     let pages: Vec<(String, i32)> = body
         .pages
         .into_iter()
         .map(|p| {
-            url_validation::validate_stored_image_url(&p.image_url, supabase_url)?;
+            url_validation::validate_stored_image_url(&p.image_url, allowed_prefixes)?;
             Ok((p.image_url, p.page_order))
         })
         .collect::<Result<Vec<_>, AppError>>()?;
@@ -264,7 +264,10 @@ pub async fn insert_comic_page(
     Json(body): Json<ComicPageInput>,
 ) -> Result<Json<Vec<ComicPage>>, AppError> {
     let _ = require_author(&state.pool, id, user.user_id).await?;
-    url_validation::validate_stored_image_url(&body.image_url, &state.supabase.url)?;
+    url_validation::validate_stored_image_url(
+        &body.image_url,
+        &state.storage_settings.allowed_image_prefixes,
+    )?;
     let existing = comic_pages::list_by_story_id(&state.pool, id)
         .await
         .map_err(AppError::from_db)?;

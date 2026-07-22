@@ -2,6 +2,7 @@
 
 pub mod activity_notifications;
 pub mod arcs;
+pub mod auth;
 pub mod blocks;
 pub mod chapters;
 pub mod comic_pages;

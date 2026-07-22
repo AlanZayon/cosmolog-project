@@ -21,7 +21,6 @@ impl MockTokenValidator {
                 user_id,
                 role: "authenticated".into(),
                 email: Some("test@example.com".into()),
-                raw_token: None,
             }),
         })
     }
@@ -81,7 +80,6 @@ mod tests {
                 user_id: id,
                 role: "authenticated".into(),
                 email: None,
-                raw_token: None,
             },
         );
         let user = validator.validate("secret").await.unwrap();

@@ -23,7 +23,7 @@ pub async fn validate_scope(
                 .map_err(AppError::from_db)?
                 .ok_or(AppError::NotFound)?;
             if universe.owner_id != user_id {
-                return Err(AppError::Unauthorized);
+                return Err(AppError::unauthorized());
             }
             if let Some(expected) = universe_id {
                 if expected != arc.universe_id {
@@ -40,7 +40,7 @@ pub async fn validate_scope(
                 .map_err(AppError::from_db)?
                 .ok_or(AppError::NotFound)?;
             if universe.owner_id != user_id {
-                return Err(AppError::Unauthorized);
+                return Err(AppError::unauthorized());
             }
             Some(universe_id)
         }

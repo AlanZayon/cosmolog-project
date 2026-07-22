@@ -51,11 +51,16 @@ pub fn router(state: AppState, config: &Config) -> Router {
         .route("/auth/sign-in", post(auth::sign_in))
         .route("/auth/sign-up", post(auth::sign_up))
         .route("/auth/refresh", post(auth::refresh))
+        .route("/auth/oauth/exchange", post(auth::oauth_exchange))
+        .route("/auth/confirm-email", post(auth::confirm_email))
+        .route("/auth/forgot-password", post(auth::forgot_password))
+        .route("/auth/reset-password", post(auth::reset_password))
         .layer(middleware::from_fn(rate_limit::auth_rate_limit));
 
     let mut api = Router::new()
         .route("/health", get(health::health))
         .merge(auth_routes)
+        .route("/auth/sign-out", post(auth::sign_out))
         .route("/auth/me", get(auth::me))
         .route("/feed", get(feed::list))
         .route(

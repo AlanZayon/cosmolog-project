@@ -2,4 +2,6 @@
 
 import SignupPage from "@/page-components/SignupPage";
 
-export default SignupPage;
+export default function Page() {
+  return <SignupPage />;
+}

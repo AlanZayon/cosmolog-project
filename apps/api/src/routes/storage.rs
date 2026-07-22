@@ -2,12 +2,12 @@ use axum::{
     extract::{Multipart, State},
     Json,
 };
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
 use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::error::AppError;
-use crate::infra::supabase::StorageUploadResponse;
 use crate::state::AppState;
 
 const ALLOWED_BUCKETS: &[&str] = &[
@@ -20,7 +20,13 @@ const ALLOWED_BUCKETS: &[&str] = &[
 
 const ALLOWED_IMAGE_TYPES: &[&str] = &["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-/// Upload a file to Supabase Storage (proxied with the user's JWT).
+#[derive(Debug, Serialize)]
+pub struct StorageUploadResponse {
+    pub path: String,
+    pub public_url: String,
+}
+
+/// Upload a file to Amazon S3 under `{bucket}/{user_id}/{filename}`.
 pub async fn upload(
     State(state): State<AppState>,
     user: AuthUser,
@@ -86,12 +92,18 @@ pub async fn upload(
         return Err(AppError::BadRequest("unsupported file content type".into()));
     }
 
-    let path = storage_path(user.user_id, path)?;
-    let token = user.raw_token.as_deref().ok_or(AppError::Unauthorized)?;
+    let public_base = state
+        .storage_settings
+        .public_base_url
+        .clone()
+        .ok_or_else(|| AppError::Upstream("storage_not_configured".into()))?;
 
-    let response = state
-        .supabase
-        .upload_object(token, &bucket, &path, bytes, &content_type)
+    let path = storage_path(user.user_id, path)?;
+    let key = format!("{bucket}/{path}");
+
+    state
+        .storage
+        .put_object(&key, bytes, &content_type)
         .await
         .map_err(AppError::Upstream)?;
 
@@ -104,7 +116,10 @@ pub async fn upload(
         "file uploaded to storage"
     );
 
-    Ok(Json(response))
+    Ok(Json(StorageUploadResponse {
+        public_url: format!("{public_base}/{key}"),
+        path,
+    }))
 }
 
 fn storage_path(user_id: Uuid, client_path: Option<String>) -> Result<String, AppError> {

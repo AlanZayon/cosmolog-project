@@ -48,7 +48,7 @@ impl FromRequestParts<AppState> for OptionalAuth {
                 error = %err,
                 "JWT validation failed"
             );
-            AppError::Unauthorized
+            AppError::unauthorized()
         })?;
         record_user_id(user.user_id);
         Ok(OptionalAuth {

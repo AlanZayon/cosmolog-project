@@ -51,6 +51,17 @@ pub async fn ensure_schema(pool: &PgPool) {
     // Idempotent (CREATE IF NOT EXISTS): safe on fresh DBs and when new tables are added.
     apply_schema(pool).await;
     apply_schema_patches(pool).await;
+    apply_feed_function(pool).await;
+}
+
+/// `get_feed` lives in a separate file because plpgsql bodies contain `;`
+/// (the naive splitter in `apply_schema` would break them).
+async fn apply_feed_function(pool: &PgPool) {
+    let sql = include_str!("../fixtures/feed_function.sql");
+    sqlx::raw_sql(sql)
+        .execute(pool)
+        .await
+        .expect("apply get_feed function");
 }
 
 /// ALTERs for databases created before newer columns/tables (CREATE IF NOT EXISTS skips existing tables).
@@ -102,7 +113,11 @@ pub async fn truncate_all(pool: &PgPool) {
             stories,
             arcs,
             universes,
-            profiles
+            profiles,
+            oauth_accounts,
+            auth_email_tokens,
+            auth_refresh_tokens,
+            users
         CASCADE",
     )
     .execute(pool)
