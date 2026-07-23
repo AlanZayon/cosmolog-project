@@ -5,10 +5,17 @@ pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 3600;
 /// Refresh-token TTL in days (matches the BFF refresh cookie).
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
 
+const DEFAULT_GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
+const DEFAULT_GOOGLE_ISSUERS: &[&str] = &["https://accounts.google.com", "accounts.google.com"];
+
 #[derive(Debug, Clone)]
 pub struct GoogleOAuthConfig {
     pub client_id: String,
     pub client_secret: String,
+    /// Token endpoint (Google or local Fake IdP).
+    pub token_url: String,
+    /// Accepted `iss` values on the ID token.
+    pub issuers: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -29,11 +36,15 @@ pub struct Config {
     pub app_public_url: String,
     /// Google OAuth client (direct, no Supabase provider).
     pub google: Option<GoogleOAuthConfig>,
-    /// Amazon SES sender address. When unset, emails are logged instead.
+    /// SMTP URL for local/dev mail (e.g. `smtp://mailpit:1025`). Takes priority over SES.
+    pub smtp_url: Option<String>,
+    /// Amazon SES sender address. When unset (and no SMTP), emails are logged instead.
     pub ses_from_email: Option<String>,
-    /// Amazon S3 bucket for image uploads.
+    /// Amazon S3 / MinIO bucket for image uploads.
     pub s3_bucket: Option<String>,
-    /// Public base URL serving uploaded objects (S3 website/CloudFront).
+    /// Optional custom S3 API endpoint (MinIO path-style). When unset, uses AWS virtual-host.
+    pub s3_endpoint: Option<String>,
+    /// Public base URL serving uploaded objects (S3 website/CloudFront/MinIO).
     pub s3_public_base_url: Option<String>,
     /// Legacy Supabase project URL: keeps previously stored image URLs valid.
     pub legacy_supabase_url: Option<String>,
@@ -89,6 +100,16 @@ impl Config {
             .trim_end_matches('/')
             .to_string();
 
+        let oauth_token_url = non_empty_env("OAUTH_TOKEN_URL")
+            .unwrap_or_else(|| DEFAULT_GOOGLE_TOKEN_URL.to_string());
+        let oauth_issuers = match non_empty_env("OAUTH_ISSUER") {
+            Some(issuer) => vec![issuer],
+            None => DEFAULT_GOOGLE_ISSUERS
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+        };
+
         let google = match (
             non_empty_env("GOOGLE_CLIENT_ID"),
             non_empty_env("GOOGLE_CLIENT_SECRET"),
@@ -96,13 +117,18 @@ impl Config {
             (Some(client_id), Some(client_secret)) => Some(GoogleOAuthConfig {
                 client_id,
                 client_secret,
+                token_url: oauth_token_url,
+                issuers: oauth_issuers,
             }),
             (None, None) => None,
             _ => anyhow::bail!("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together"),
         };
 
+        let smtp_url = non_empty_env("SMTP_URL");
         let ses_from_email = non_empty_env("SES_FROM_EMAIL");
         let s3_bucket = non_empty_env("S3_BUCKET");
+        let s3_endpoint =
+            non_empty_env("S3_ENDPOINT").map(|url| url.trim_end_matches('/').to_string());
         let s3_public_base_url =
             non_empty_env("S3_PUBLIC_BASE_URL").map(|url| url.trim_end_matches('/').to_string());
         let legacy_supabase_url =
@@ -119,9 +145,9 @@ impl Config {
                     "S3_BUCKET and S3_PUBLIC_BASE_URL are required when APP_ENV=production"
                 );
             }
-            if require_email_confirmation && ses_from_email.is_none() {
+            if require_email_confirmation && ses_from_email.is_none() && smtp_url.is_none() {
                 anyhow::bail!(
-                    "SES_FROM_EMAIL is required in production when REQUIRE_EMAIL_CONFIRMATION is enabled"
+                    "SES_FROM_EMAIL or SMTP_URL is required in production when REQUIRE_EMAIL_CONFIRMATION is enabled"
                 );
             }
         }
@@ -138,8 +164,10 @@ impl Config {
             require_email_confirmation,
             app_public_url,
             google,
+            smtp_url,
             ses_from_email,
             s3_bucket,
+            s3_endpoint,
             s3_public_base_url,
             legacy_supabase_url,
             redis_url,
@@ -178,8 +206,10 @@ impl Config {
             require_email_confirmation: false,
             app_public_url: "http://localhost:3000".into(),
             google: None,
+            smtp_url: None,
             ses_from_email: None,
             s3_bucket: None,
+            s3_endpoint: None,
             s3_public_base_url: Some("https://cdn.test.example".into()),
             legacy_supabase_url: None,
             redis_url: None,

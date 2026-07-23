@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { publicRequestOrigin } from '@/lib/server/app-origin';
 import { rustFetch } from '@/lib/server/rust-api';
 
 /** Email confirmation link target: validates the token and redirects to login. */
 export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+  const origin = publicRequestOrigin(request);
   const token = request.nextUrl.searchParams.get('token');
 
   if (!token) {

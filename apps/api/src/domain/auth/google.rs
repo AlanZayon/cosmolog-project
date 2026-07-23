@@ -3,9 +3,6 @@ use serde::Deserialize;
 
 use crate::config::GoogleOAuthConfig;
 
-const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-const GOOGLE_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
-
 #[derive(Debug, Deserialize)]
 pub struct GoogleIdClaims {
     pub sub: String,
@@ -20,8 +17,8 @@ struct GoogleTokenResponse {
     id_token: String,
 }
 
-/// Exchanges an authorization code (PKCE) directly with Google and returns the
-/// verified identity claims from the ID token.
+/// Exchanges an authorization code (PKCE) with the configured token endpoint
+/// (Google or local Fake IdP) and returns identity claims from the ID token.
 pub async fn exchange_code(
     http: &reqwest::Client,
     config: &GoogleOAuthConfig,
@@ -39,41 +36,46 @@ pub async fn exchange_code(
     ];
 
     let res = http
-        .post(GOOGLE_TOKEN_URL)
+        .post(&config.token_url)
         .form(&params)
         .send()
         .await
-        .map_err(|e| format!("google token request failed: {e}"))?;
+        .map_err(|e| format!("oauth token request failed: {e}"))?;
 
     let status = res.status();
     let body = res
         .text()
         .await
-        .map_err(|e| format!("google token response read failed: {e}"))?;
+        .map_err(|e| format!("oauth token response read failed: {e}"))?;
     if !status.is_success() {
-        // Body may contain user-supplied code; log only the status.
-        return Err(format!("google token exchange failed (status {status})"));
+        return Err(format!("oauth token exchange failed (status {status})"));
     }
 
     let token: GoogleTokenResponse =
-        serde_json::from_str(&body).map_err(|e| format!("invalid google token response: {e}"))?;
+        serde_json::from_str(&body).map_err(|e| format!("invalid oauth token response: {e}"))?;
 
-    parse_id_token(&token.id_token, &config.client_id)
+    parse_id_token(&token.id_token, &config.client_id, &config.issuers)
 }
 
-/// Parses the ID token received directly from Google over TLS.
-/// The signature is not re-verified (the token came from the token endpoint
-/// itself); audience, issuer and expiry are still validated.
-pub fn parse_id_token(id_token: &str, client_id: &str) -> Result<GoogleIdClaims, String> {
+/// Parses the ID token received from the token endpoint over TLS (or local HTTP in
+/// Docker). The signature is not re-verified; audience, issuer and expiry are validated.
+pub fn parse_id_token(
+    id_token: &str,
+    client_id: &str,
+    issuers: &[String],
+) -> Result<GoogleIdClaims, String> {
     let mut validation = Validation::new(Algorithm::RS256);
+    // Google uses RS256; unit tests may mint HS256. Signature is not verified either way.
+    validation.algorithms = vec![Algorithm::RS256, Algorithm::HS256];
     validation.insecure_disable_signature_validation();
     validation.set_audience(&[client_id]);
-    validation.set_issuer(&GOOGLE_ISSUERS);
+    let issuer_refs: Vec<&str> = issuers.iter().map(String::as_str).collect();
+    validation.set_issuer(&issuer_refs);
     validation.validate_exp = true;
 
     decode::<GoogleIdClaims>(id_token, &DecodingKey::from_secret(&[]), &validation)
         .map(|data| data.claims)
-        .map_err(|e| format!("invalid google id_token: {e}"))
+        .map_err(|e| format!("invalid oauth id_token: {e}"))
 }
 
 #[cfg(test)]
@@ -113,30 +115,45 @@ mod tests {
         .unwrap()
     }
 
+    fn google_issuers() -> Vec<String> {
+        vec![
+            "https://accounts.google.com".into(),
+            "accounts.google.com".into(),
+        ]
+    }
+
     #[test]
     fn parses_valid_id_token() {
         let token = make_token("my-client", "https://accounts.google.com", 3600);
-        let claims = parse_id_token(&token, "my-client").expect("claims");
+        let claims = parse_id_token(&token, "my-client", &google_issuers()).expect("claims");
         assert_eq!(claims.sub, "google-sub-123");
         assert_eq!(claims.email.as_deref(), Some("user@gmail.com"));
         assert!(claims.email_verified);
     }
 
     #[test]
+    fn parses_local_issuer() {
+        let token = make_token("cosmolog-local", "http://localhost:9090", 3600);
+        let issuers = vec!["http://localhost:9090".into()];
+        let claims = parse_id_token(&token, "cosmolog-local", &issuers).expect("claims");
+        assert_eq!(claims.sub, "google-sub-123");
+    }
+
+    #[test]
     fn rejects_wrong_audience() {
         let token = make_token("other-client", "https://accounts.google.com", 3600);
-        assert!(parse_id_token(&token, "my-client").is_err());
+        assert!(parse_id_token(&token, "my-client", &google_issuers()).is_err());
     }
 
     #[test]
     fn rejects_wrong_issuer() {
         let token = make_token("my-client", "https://evil.example", 3600);
-        assert!(parse_id_token(&token, "my-client").is_err());
+        assert!(parse_id_token(&token, "my-client", &google_issuers()).is_err());
     }
 
     #[test]
     fn rejects_expired_token() {
         let token = make_token("my-client", "https://accounts.google.com", -3600);
-        assert!(parse_id_token(&token, "my-client").is_err());
+        assert!(parse_id_token(&token, "my-client", &google_issuers()).is_err());
     }
 }

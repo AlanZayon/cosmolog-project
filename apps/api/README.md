@@ -116,7 +116,7 @@ cp apps/api/.env.docker.example apps/api/.env.docker
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-The API uses local Postgres and Redis from compose; auth runs locally (emails are logged unless SES is configured, uploads need S3 vars).
+The API uses local Postgres, Redis, Mailpit (SMTP), MinIO (S3), and Fake IdP (OAuth) from compose when running the full dev stack.
 
 ## Deploy (Render)
 
@@ -308,11 +308,15 @@ Use this in production if you prefer a deploy step (`sqlx migrate run`) instead 
 | `AUTH_JWT_SECRET` | Prod | dev fallback | HMAC secret for HS256 access tokens (>= 32 chars) |
 | `REQUIRE_EMAIL_CONFIRMATION` | No | `true` in prod | Require email confirmation before sign-in |
 | `APP_PUBLIC_URL` | No | `CORS_ALLOWED_ORIGIN` | Public web URL used in email links |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | — | Direct Google OAuth (set both) |
-| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | With SES/S3 | — | AWS credentials (SigV4) |
-| `SES_FROM_EMAIL` | No | — | SES sender; unset = auth emails only logged |
-| `S3_BUCKET` | Prod | — | S3 bucket for image uploads |
-| `S3_PUBLIC_BASE_URL` | Prod | — | Public base URL for uploaded images (CloudFront/S3) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | — | Google or Fake IdP OAuth (set both) |
+| `OAUTH_TOKEN_URL` | No | Google token URL | Token endpoint (use Fake IdP URL locally) |
+| `OAUTH_ISSUER` | No | Google issuers | Expected `iss` on ID token |
+| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | With SES/S3 | — | AWS credentials (SigV4); also used for MinIO |
+| `SMTP_URL` | No | — | SMTP relay (e.g. `smtp://mailpit:1025`); takes priority over SES |
+| `SES_FROM_EMAIL` | No | — | From address (SES or SMTP); unset + no SMTP = emails only logged |
+| `S3_BUCKET` | Prod | — | S3/MinIO bucket for image uploads |
+| `S3_ENDPOINT` | No | — | Custom S3 API endpoint (MinIO path-style). When unset, AWS virtual-host |
+| `S3_PUBLIC_BASE_URL` | Prod | — | Public base URL for uploaded images (CloudFront/S3/MinIO) |
 | `LEGACY_SUPABASE_URL` | No | — | Accept old Supabase Storage image URLs (transition) |
 | `RUST_LOG` | No | `cosmolog_api=info,sqlx=warn` | Log filter (see [Structured logging](#structured-logging)) |
 | `LOG_FORMAT` | No | `pretty` (dev) / `json` (prod) | Log output format: `json` or `pretty` |

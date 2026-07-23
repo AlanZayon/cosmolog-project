@@ -33,8 +33,10 @@ pub fn validate_stored_image_url(url: &str, allowed_prefixes: &[String]) -> Resu
     if lower.starts_with("javascript:") || lower.starts_with("data:") {
         return Err(AppError::BadRequest("invalid image URL scheme".into()));
     }
-    if !trimmed.starts_with("https://") {
-        return Err(AppError::BadRequest("image URL must use https".into()));
+    if !trimmed.starts_with("https://") && !trimmed.starts_with("http://") {
+        return Err(AppError::BadRequest(
+            "image URL must use http or https".into(),
+        ));
     }
     if trimmed.contains("..") {
         return Err(AppError::BadRequest("invalid image URL path".into()));
@@ -111,12 +113,19 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_https() {
+    fn rejects_http_when_only_https_prefix_configured() {
         let url = valid_url("covers").replace("https://", "http://");
         assert!(matches!(
             validate_stored_image_url(&url, &prefixes()),
             Err(AppError::BadRequest(_))
         ));
+    }
+
+    #[test]
+    fn accepts_http_when_http_prefix_configured() {
+        let prefixes = vec!["http://localhost:9000/cosmolog/".to_string()];
+        let url = "http://localhost:9000/cosmolog/avatars/user-id/file.png";
+        assert!(validate_stored_image_url(url, &prefixes).is_ok());
     }
 
     #[test]

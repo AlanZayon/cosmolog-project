@@ -13,7 +13,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 | Web (BFF) | repo root `src/` | Next.js 16, React 19, Tailwind, Radix/shadcn |
 | API | `apps/api/` | Rust, Axum 0.8, sqlx, Postgres |
 | Auth | own JWT HS256 | `AUTH_JWT_SECRET` — not Supabase GoTrue |
-| Storage / email | AWS | S3 uploads, SES auth emails |
+| Storage / email | AWS SES/S3 in prod; Docker dev: Mailpit + MinIO |
+| OAuth | Google in prod; Docker dev: Fake IdP (`apps/fake-idp`) |
 | SSE fan-out | Redis | required when `APP_ENV=production` |
 
 ## Request path (do not bypass)

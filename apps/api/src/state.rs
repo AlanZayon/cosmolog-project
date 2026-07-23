@@ -8,7 +8,7 @@ use crate::config::{Config, GoogleOAuthConfig};
 use crate::domain::activity_notifications::ActivityNotificationEventBus;
 use crate::domain::notifications::NotificationEventBus;
 use crate::infra::aws::AwsCredentials;
-use crate::infra::email::{EmailSender, LogEmailSender, SesEmailSender};
+use crate::infra::email::{EmailSender, LogEmailSender, SesEmailSender, SmtpEmailSender};
 use crate::infra::http_client::build_http_client;
 use crate::infra::storage::{DisabledStorage, ObjectStorage, S3Storage};
 
@@ -119,33 +119,59 @@ impl AppState {
 
         let aws_credentials = AwsCredentials::from_env();
 
-        let email: Arc<dyn EmailSender> = match (config.ses_from_email.clone(), &aws_credentials) {
-            (Some(from), Some(credentials)) => {
-                tracing::info!(event = "email.ses_enabled", "auth emails via Amazon SES");
-                Arc::new(SesEmailSender::new(credentials.clone(), from))
-            }
-            (Some(_), None) => {
-                anyhow::bail!(
-                    "SES_FROM_EMAIL is set but AWS credentials are missing (AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)"
-                );
-            }
-            (None, _) => {
-                tracing::warn!(
-                    event = "email.log_only",
-                    "SES_FROM_EMAIL not set; auth emails will only be logged"
-                );
-                Arc::new(LogEmailSender)
+        let email: Arc<dyn EmailSender> = if let Some(smtp_url) = &config.smtp_url {
+            let from = config
+                .ses_from_email
+                .clone()
+                .unwrap_or_else(|| "noreply@localhost".into());
+            tracing::info!(event = "email.smtp_enabled", "auth emails via SMTP");
+            Arc::new(
+                SmtpEmailSender::from_url(smtp_url, &from)
+                    .map_err(|e| anyhow::anyhow!("SMTP_URL config error: {e}"))?,
+            )
+        } else {
+            match (config.ses_from_email.clone(), &aws_credentials) {
+                (Some(from), Some(credentials)) => {
+                    tracing::info!(event = "email.ses_enabled", "auth emails via Amazon SES");
+                    Arc::new(SesEmailSender::new(credentials.clone(), from))
+                }
+                (Some(_), None) => {
+                    anyhow::bail!(
+                        "SES_FROM_EMAIL is set but AWS credentials are missing (AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)"
+                    );
+                }
+                (None, _) => {
+                    tracing::warn!(
+                        event = "email.log_only",
+                        "SES_FROM_EMAIL/SMTP_URL not set; auth emails will only be logged"
+                    );
+                    Arc::new(LogEmailSender)
+                }
             }
         };
 
         let storage: Arc<dyn ObjectStorage> = match (config.s3_bucket.clone(), &aws_credentials) {
             (Some(bucket), Some(credentials)) => {
-                tracing::info!(
-                    event = "storage.s3_enabled",
-                    bucket = %bucket,
-                    "image uploads via Amazon S3"
-                );
-                Arc::new(S3Storage::new(credentials.clone(), bucket))
+                if let Some(endpoint) = &config.s3_endpoint {
+                    tracing::info!(
+                        event = "storage.s3_enabled",
+                        bucket = %bucket,
+                        endpoint = %endpoint,
+                        "image uploads via S3-compatible endpoint"
+                    );
+                    Arc::new(S3Storage::with_endpoint(
+                        credentials.clone(),
+                        bucket,
+                        endpoint.clone(),
+                    ))
+                } else {
+                    tracing::info!(
+                        event = "storage.s3_enabled",
+                        bucket = %bucket,
+                        "image uploads via Amazon S3"
+                    );
+                    Arc::new(S3Storage::new(credentials.clone(), bucket))
+                }
             }
             (Some(_), None) => {
                 anyhow::bail!(

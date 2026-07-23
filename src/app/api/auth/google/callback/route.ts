@@ -10,13 +10,14 @@ import {
   setAuthCookies,
 } from '@/lib/server/auth-cookies';
 import { rustFetch, type RustAuthSession } from '@/lib/server/rust-api';
+import { publicRequestOrigin } from '@/lib/server/app-origin';
 
 type RustProfile = {
   username: string;
 };
 
 export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+  const origin = publicRequestOrigin(request);
   const code = request.nextUrl.searchParams.get('code');
   const oauthError = request.nextUrl.searchParams.get('error_description')
     ?? request.nextUrl.searchParams.get('error');

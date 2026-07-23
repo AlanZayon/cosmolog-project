@@ -1,0 +1,13 @@
+{
+  "name": "cosmolog-fake-idp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local OAuth PKCE IdP for Cosmolog Docker dev (replaces Google)",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

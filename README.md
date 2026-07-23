@@ -25,22 +25,29 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Docker (full dev stack)
+## Docker (full local stack)
 
-Local Postgres + API + Next.js:
+Postgres + Redis + Mailpit + MinIO + Fake IdP + API + Next.js — **no AWS/Google required**:
 
 ```bash
 cp apps/api/.env.docker.example apps/api/.env.docker
-# Edit apps/api/.env.docker — Supabase URL + anon key (auth still uses Supabase)
+# optional: copy .env.example → .env.local (compose injects GOOGLE_* for web)
 
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-| Service  | URL |
-|----------|-----|
+| Service | URL |
+|---------|-----|
 | Frontend | http://localhost:3000 |
-| API      | http://localhost:8080 |
-| Postgres | `localhost:5434` (user/pass/db: `cosmolog` / `cosmolog` / `cosmolog_dev`) |
+| API | http://localhost:8080 |
+| Postgres | `localhost:5434` (`cosmolog` / `cosmolog` / `cosmolog_dev`) |
+| Redis | `localhost:6379` |
+| Mailpit UI | http://localhost:8025 (SMTP `1025`) |
+| MinIO API / console | http://localhost:9000 / http://localhost:9001 (`minioadmin` / `minioadmin`) |
+| Fake IdP (OAuth) | http://localhost:9090/authorize |
+
+Sign-up emails appear in Mailpit. “Continue with Google” uses the Fake IdP. Uploads go to MinIO (`http://localhost:9000/cosmolog/...`).
+
 
 ## Dev Container
 

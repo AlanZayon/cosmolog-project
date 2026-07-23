@@ -11,13 +11,15 @@ import {
   generateOAuthState,
   generatePkcePair,
 } from '@/lib/server/oauth';
+import { publicRequestOrigin } from '@/lib/server/app-origin';
 
 const OAUTH_COOKIE_MAX_AGE = 60 * 10;
 
 export async function GET(request: NextRequest) {
+  const origin = publicRequestOrigin(request);
   try {
     const redirect = sanitizeRedirectPath(request.nextUrl.searchParams.get('redirect'));
-    const callbackUrl = new URL('/api/auth/google/callback', request.nextUrl.origin).toString();
+    const callbackUrl = new URL('/api/auth/google/callback', origin).toString();
     const { verifier, challenge } = generatePkcePair();
     const state = generateOAuthState();
     const authorizeUrl = buildGoogleAuthorizeUrl(callbackUrl, challenge, state);
@@ -35,6 +37,6 @@ export async function GET(request: NextRequest) {
     response.cookies.set(OAUTH_STATE_COOKIE, state, cookieOptions);
     return response;
   } catch {
-    return NextResponse.redirect(new URL('/login?error=oauth_start_failed', request.nextUrl.origin));
+    return NextResponse.redirect(new URL('/login?error=oauth_start_failed', origin));
   }
 }

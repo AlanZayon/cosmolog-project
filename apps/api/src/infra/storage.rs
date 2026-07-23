@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use crate::infra::aws::{sign_request, AwsCredentials};
 use crate::infra::http_client::build_http_client;
 
-/// Stores uploaded image objects (production: Amazon S3).
+/// Stores uploaded image objects (production: Amazon S3; local: MinIO).
 #[async_trait]
 pub trait ObjectStorage: Send + Sync {
     async fn put_object(
@@ -15,13 +15,18 @@ pub trait ObjectStorage: Send + Sync {
     ) -> Result<(), String>;
 }
 
-/// Amazon S3 storage via the REST API (SigV4, virtual-hosted style).
-/// Public reads should be served by the bucket policy or CloudFront
-/// (`S3_PUBLIC_BASE_URL`).
+/// Amazon S3 / MinIO storage via the REST API (SigV4).
+///
+/// Without `endpoint`, uses AWS virtual-hosted style
+/// (`{bucket}.s3.{region}.amazonaws.com/{key}`).
+/// With `endpoint` (MinIO), uses path-style
+/// (`{endpoint}/{bucket}/{key}`).
 pub struct S3Storage {
     http: reqwest::Client,
     credentials: AwsCredentials,
     bucket: String,
+    /// Custom endpoint base URL without trailing slash (e.g. `http://minio:9000`).
+    endpoint: Option<String>,
 }
 
 impl S3Storage {
@@ -30,10 +35,24 @@ impl S3Storage {
             http: build_http_client(),
             credentials,
             bucket,
+            endpoint: None,
         }
     }
 
-    fn host(&self) -> String {
+    pub fn with_endpoint(
+        credentials: AwsCredentials,
+        bucket: String,
+        endpoint: String,
+    ) -> Self {
+        Self {
+            http: build_http_client(),
+            credentials,
+            bucket,
+            endpoint: Some(endpoint.trim_end_matches('/').to_string()),
+        }
+    }
+
+    fn aws_host(&self) -> String {
         format!("{}.s3.{}.amazonaws.com", self.bucket, self.credentials.region)
     }
 }
@@ -46,8 +65,27 @@ impl ObjectStorage for S3Storage {
         bytes: Vec<u8>,
         content_type: &str,
     ) -> Result<(), String> {
-        let host = self.host();
-        let path = format!("/{key}");
+        let (url, host, path) = if let Some(endpoint) = &self.endpoint {
+            let endpoint_url = reqwest::Url::parse(endpoint)
+                .map_err(|e| format!("invalid S3_ENDPOINT: {e}"))?;
+            let host = endpoint_url
+                .host_str()
+                .ok_or_else(|| "S3_ENDPOINT missing host".to_string())?
+                .to_string();
+            let host_with_port = match endpoint_url.port() {
+                Some(port) => format!("{host}:{port}"),
+                None => host,
+            };
+            let path = format!("/{}/{}", self.bucket, key.trim_start_matches('/'));
+            let url = format!("{endpoint}{path}");
+            (url, host_with_port, path)
+        } else {
+            let host = self.aws_host();
+            let path = format!("/{key}");
+            let url = format!("https://{host}{path}");
+            (url, host, path)
+        };
+
         let signed = sign_request(
             &self.credentials,
             "s3",
@@ -60,7 +98,7 @@ impl ObjectStorage for S3Storage {
 
         let mut request = self
             .http
-            .put(format!("https://{host}{path}"))
+            .put(&url)
             .header("content-type", content_type)
             .header("cache-control", "public, max-age=31536000, immutable");
         for (name, value) in signed.headers {
@@ -75,10 +113,11 @@ impl ObjectStorage for S3Storage {
 
         let status = response.status();
         if !status.is_success() {
-            // S3 error bodies are XML without secrets, but keep logs terse.
+            let body = response.text().await.unwrap_or_default();
             tracing::warn!(
                 event = "storage.s3_error",
                 status = %status,
+                body = %body.chars().take(500).collect::<String>(),
                 "s3 put_object failed"
             );
             return Err(format!("s3 put_object failed (status {status})"));

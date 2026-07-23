@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'crypto';
 
-const GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const DEFAULT_GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 
 export function googleClientId(): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -8,6 +8,10 @@ export function googleClientId(): string {
     throw new Error('GOOGLE_CLIENT_ID is not configured');
   }
   return clientId;
+}
+
+export function googleAuthorizeUrl(): string {
+  return process.env.GOOGLE_AUTHORIZE_URL?.trim() || DEFAULT_GOOGLE_AUTHORIZE_URL;
 }
 
 export function generatePkcePair(): { verifier: string; challenge: string } {
@@ -20,7 +24,7 @@ export function generateOAuthState(): string {
   return randomBytes(24).toString('base64url');
 }
 
-/** Direct Google OAuth authorization URL (PKCE + state, no Supabase). */
+/** OAuth authorization URL (Google or local Fake IdP). PKCE + state. */
 export function buildGoogleAuthorizeUrl(
   callbackUrl: string,
   codeChallenge: string,
@@ -36,5 +40,5 @@ export function buildGoogleAuthorizeUrl(
     state,
     prompt: 'select_account',
   });
-  return `${GOOGLE_AUTHORIZE_URL}?${params.toString()}`;
+  return `${googleAuthorizeUrl()}?${params.toString()}`;
 }
