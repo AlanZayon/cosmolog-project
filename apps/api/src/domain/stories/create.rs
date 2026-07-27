@@ -4,6 +4,7 @@ use crate::error::AppError;
 
 const ALLOWED_TYPES: &[&str] = &["short_story", "chapters", "comic"];
 const ALLOWED_FEED_DISPLAY_MODES: &[&str] = &["preview", "cover"];
+const ALLOWED_READING_MODES: &[&str] = &["vertical", "horizontal", "both"];
 
 #[derive(Debug, Deserialize)]
 pub struct CreateStoryInput {
@@ -15,6 +16,7 @@ pub struct CreateStoryInput {
     pub arc_id: Option<uuid::Uuid>,
     pub cover_image_url: Option<String>,
     pub feed_display_mode: Option<String>,
+    pub reading_mode: Option<String>,
     pub content: Option<String>,
 }
 
@@ -44,6 +46,11 @@ impl CreateStoryInput {
                 return Err(AppError::BadRequest("invalid feed display mode".into()));
             }
         }
+        if let Some(mode) = &self.reading_mode {
+            if !ALLOWED_READING_MODES.contains(&mode.as_str()) {
+                return Err(AppError::BadRequest("invalid reading mode".into()));
+            }
+        }
         Ok(())
     }
 
@@ -52,6 +59,17 @@ impl CreateStoryInput {
             .as_deref()
             .filter(|m| ALLOWED_FEED_DISPLAY_MODES.contains(m))
             .unwrap_or("preview")
+    }
+
+    /// Comics only; non-comics always store `vertical`.
+    pub fn reading_mode(&self) -> &str {
+        if self.r#type != "comic" {
+            return "vertical";
+        }
+        self.reading_mode
+            .as_deref()
+            .filter(|m| ALLOWED_READING_MODES.contains(m))
+            .unwrap_or("vertical")
     }
 
     pub fn title(&self) -> &str {
@@ -81,6 +99,7 @@ mod tests {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         }
     }
@@ -128,5 +147,32 @@ mod tests {
     fn title_trims_whitespace() {
         let input = sample_input("  Hello  ", "short_story");
         assert_eq!(input.title(), "Hello");
+    }
+
+    #[test]
+    fn reading_mode_defaults_vertical_for_comics() {
+        assert_eq!(sample_input("T", "comic").reading_mode(), "vertical");
+    }
+
+    #[test]
+    fn reading_mode_accepted_for_comics() {
+        let mut input = sample_input("T", "comic");
+        input.reading_mode = Some("horizontal".into());
+        assert!(input.validate().is_ok());
+        assert_eq!(input.reading_mode(), "horizontal");
+    }
+
+    #[test]
+    fn reading_mode_forced_vertical_for_non_comic() {
+        let mut input = sample_input("T", "short_story");
+        input.reading_mode = Some("horizontal".into());
+        assert_eq!(input.reading_mode(), "vertical");
+    }
+
+    #[test]
+    fn rejects_invalid_reading_mode() {
+        let mut input = sample_input("T", "comic");
+        input.reading_mode = Some("diagonal".into());
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
     }
 }

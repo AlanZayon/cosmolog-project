@@ -28,6 +28,7 @@ export type CreateStoryPayload = {
   arc_id?: string | null;
   cover_image_url?: string | null;
   feed_display_mode?: 'preview' | 'cover';
+  reading_mode?: 'vertical' | 'horizontal' | 'both';
   content?: string | null;
 };
 

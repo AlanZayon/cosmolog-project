@@ -68,6 +68,7 @@ async fn apply_feed_function(pool: &PgPool) {
 async fn apply_schema_patches(pool: &PgPool) {
     let patches = [
         "ALTER TABLE public.stories ADD COLUMN IF NOT EXISTS feed_display_mode TEXT NOT NULL DEFAULT 'preview'",
+        "ALTER TABLE public.stories ADD COLUMN IF NOT EXISTS reading_mode TEXT NOT NULL DEFAULT 'vertical'",
         "ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS parent_id UUID",
         "ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE public.library_collections ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT 'folder'",

@@ -17,6 +17,7 @@ export type ApiStory = {
   description: string | null;
   cover_image_url: string | null;
   feed_display_mode: 'preview' | 'cover';
+  reading_mode: 'vertical' | 'horizontal' | 'both';
   content: string | null;
   type: string;
   universe_id: string | null;

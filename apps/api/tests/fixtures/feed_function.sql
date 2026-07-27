@@ -2,6 +2,7 @@
 -- and calls the function directly over sqlx (no PostgREST).
 
 DROP FUNCTION IF EXISTS public.get_feed(INTEGER);
+DROP FUNCTION IF EXISTS public.get_feed(INTEGER, UUID);
 
 CREATE OR REPLACE FUNCTION public.get_feed(limit_count INTEGER DEFAULT 30, viewer_id UUID DEFAULT NULL)
 RETURNS TABLE (
@@ -40,6 +41,20 @@ BEGIN
           'storyType', s.type,
           'coverImageUrl', s.cover_image_url,
           'feedDisplayMode', s.feed_display_mode,
+          'readingMode', s.reading_mode,
+          'previewImageUrls', CASE
+            WHEN s.type = 'comic' THEN COALESCE((
+              SELECT jsonb_agg(cp.image_url ORDER BY cp.page_order ASC)
+              FROM (
+                SELECT image_url, page_order
+                FROM public.comic_pages
+                WHERE story_id = s.id
+                ORDER BY page_order ASC
+                LIMIT 3
+              ) cp
+            ), '[]'::jsonb)
+            ELSE '[]'::jsonb
+          END,
           'author', jsonb_build_object(
             'id', p.user_id,
             'username', p.username,

@@ -4,6 +4,7 @@ use crate::error::AppError;
 
 const ALLOWED_TYPES: &[&str] = &["short_story", "chapters", "comic"];
 const ALLOWED_FEED_DISPLAY_MODES: &[&str] = &["preview", "cover"];
+const ALLOWED_READING_MODES: &[&str] = &["vertical", "horizontal", "both"];
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateStoryInput {
@@ -15,6 +16,7 @@ pub struct UpdateStoryInput {
     pub arc_id: Option<Option<uuid::Uuid>>,
     pub cover_image_url: Option<Option<String>>,
     pub feed_display_mode: Option<String>,
+    pub reading_mode: Option<String>,
     pub content: Option<Option<String>>,
 }
 
@@ -48,6 +50,11 @@ impl UpdateStoryInput {
                 return Err(AppError::BadRequest("invalid feed display mode".into()));
             }
         }
+        if let Some(mode) = &self.reading_mode {
+            if !ALLOWED_READING_MODES.contains(&mode.as_str()) {
+                return Err(AppError::BadRequest("invalid reading mode".into()));
+            }
+        }
         Ok(())
     }
 }
@@ -68,6 +75,7 @@ mod tests {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         };
         assert!(input.validate().is_ok());
@@ -84,6 +92,7 @@ mod tests {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
@@ -100,6 +109,7 @@ mod tests {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
@@ -116,8 +126,43 @@ mod tests {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn rejects_invalid_reading_mode() {
+        let input = UpdateStoryInput {
+            title: None,
+            description: None,
+            tags: None,
+            r#type: None,
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            feed_display_mode: None,
+            reading_mode: Some("sideways".into()),
+            content: None,
+        };
+        assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
+    }
+
+    #[test]
+    fn accepts_reading_mode_both() {
+        let input = UpdateStoryInput {
+            title: None,
+            description: None,
+            tags: None,
+            r#type: None,
+            universe_id: None,
+            arc_id: None,
+            cover_image_url: None,
+            feed_display_mode: None,
+            reading_mode: Some("both".into()),
+            content: None,
+        };
+        assert!(input.validate().is_ok());
     }
 }

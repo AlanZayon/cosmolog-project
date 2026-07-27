@@ -52,6 +52,8 @@ import StoryCommentsPanel from '@/components/comments/StoryCommentsPanel';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDisplayModeField';
+import ReadingModeField, { type ReadingMode } from '@/components/ReadingModeField';
+import ComicReader from '@/components/ComicReader';
 import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
 
@@ -107,6 +109,7 @@ export default function StoryPage({
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editArcId, setEditArcId] = useState('');
   const [editFeedDisplayMode, setEditFeedDisplayMode] = useState<FeedDisplayMode>('preview');
+  const [editReadingMode, setEditReadingMode] = useState<ReadingMode>('vertical');
   const [saving, setSaving] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const commentsSectionRef = useRef<HTMLElement>(null);
@@ -211,6 +214,10 @@ export default function StoryPage({
     setEditFeedDisplayMode(
       (story as ApiStory).feed_display_mode === 'cover' ? 'cover' : 'preview',
     );
+    const rm = (story as ApiStory).reading_mode;
+    setEditReadingMode(
+      rm === 'horizontal' || rm === 'both' || rm === 'vertical' ? rm : 'vertical',
+    );
     setEditing(true);
   };
 
@@ -280,6 +287,9 @@ export default function StoryPage({
         tags: editTags,
         arc_id: editArcId || null,
         feed_display_mode: editFeedDisplayMode,
+        ...(normalizeStoryType((story as any).type) === 'comic'
+          ? { reading_mode: editReadingMode }
+          : {}),
       });
       toast({ title: t('story.updated') });
       setEditing(false);
@@ -433,6 +443,9 @@ export default function StoryPage({
                 )}
               </div>
               <FeedDisplayModeField value={editFeedDisplayMode} onChange={setEditFeedDisplayMode} />
+              {normalizeStoryType((story as any).type) === 'comic' && (
+                <ReadingModeField value={editReadingMode} onChange={setEditReadingMode} />
+              )}
               <div>
                 <label className="text-sm font-medium text-foreground">{t('story.title')}</label>
                 <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
@@ -652,16 +665,10 @@ export default function StoryPage({
             ) : comicPages.length === 0 ? (
               <p className="text-muted-foreground text-sm">{t('story.noPages')}</p>
             ) : (
-              <div className="space-y-4">
-                {comicPages.map((page: any, i: number) => (
-                  <div key={page.id || i} className="rounded-lg overflow-hidden border border-border">
-                    <img src={page.image_url} alt={`${t('story.page')} ${i + 1}`} className="w-full object-contain" loading="lazy" />
-                    <div className="text-center text-xs text-muted-foreground py-1 bg-muted/30">
-                      {t('story.page')} {page.page_order}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ComicReader
+                pages={comicPages}
+                readingMode={(story as ApiStory).reading_mode}
+              />
             )}
           </section>
         )}

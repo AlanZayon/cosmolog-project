@@ -34,6 +34,7 @@ import {
 } from '@/lib/contentLimits';
 import { blockHasContent, saveBlocks } from '@/lib/storyBlocks';
 import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDisplayModeField';
+import ReadingModeField, { type ReadingMode } from '@/components/ReadingModeField';
 import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
 
 type StoryType = 'short_story' | 'chapters' | 'comic';
@@ -67,6 +68,7 @@ export default function CreateStoryPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [feedDisplayMode, setFeedDisplayMode] = useState<FeedDisplayMode>('preview');
+  const [readingMode, setReadingMode] = useState<ReadingMode>('vertical');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [shortStoryBlocks, setShortStoryBlocks] = useState<IllustratedBlockItem[]>([]);
@@ -227,6 +229,7 @@ export default function CreateStoryPage() {
         arc_id: selectedArcId || null,
         cover_image_url,
         feed_display_mode: feedDisplayMode,
+        ...(storyType === 'comic' ? { reading_mode: readingMode } : {}),
       });
 
       const storyId = data.id;
@@ -391,6 +394,10 @@ export default function CreateStoryPage() {
           </div>
 
           <FeedDisplayModeField value={feedDisplayMode} onChange={setFeedDisplayMode} />
+
+          {storyType === 'comic' && (
+            <ReadingModeField value={readingMode} onChange={setReadingMode} />
+          )}
 
           <div>
             <label className="text-sm font-medium text-foreground">{t('story.title')}</label>

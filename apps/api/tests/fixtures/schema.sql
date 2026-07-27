@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS public.stories (
   description TEXT,
   cover_image_url TEXT,
   feed_display_mode TEXT NOT NULL DEFAULT 'preview' CHECK (feed_display_mode IN ('preview', 'cover')),
+  reading_mode TEXT NOT NULL DEFAULT 'vertical' CHECK (reading_mode IN ('vertical', 'horizontal', 'both')),
   content TEXT,
   type TEXT NOT NULL DEFAULT 'short_story',
   universe_id UUID REFERENCES public.universes(id) ON DELETE CASCADE,

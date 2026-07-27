@@ -19,6 +19,8 @@ import { PEEK_ILLUSTRATED_BLOCKS } from '@/lib/storyPreviewPeek';
 import { loadBlocks, normalizeStoryType, type StoryBlockRow } from '@/lib/storyBlocks';
 import StoryBlocksView from '@/components/StoryBlocksView';
 import StoryLibraryActions from '@/components/library/StoryLibraryActions';
+import ComicReader from '@/components/ComicReader';
+import type { ApiStory } from '@/lib/api/types';
 
 export type StoryWithProfile = Tables<'stories'> & {
   profiles: { username: string } | null;
@@ -331,23 +333,19 @@ export default function StoryFeedPreview({
           ))}
 
         {storyType === 'comic' && peek && (
-          <div className="space-y-4">
-            {comicPages.map((page) => (
-              <div key={page.id} className="overflow-hidden rounded-xl border border-border">
-                <img src={page.image_url} alt={`${t('story.page')} ${page.page_order}`} className="w-full object-contain" />
-              </div>
-            ))}
-          </div>
+          <ComicReader
+            pages={comicPages}
+            readingMode={(story as ApiStory).reading_mode}
+            pageClassName="rounded-xl"
+          />
         )}
 
         {storyType === 'comic' && !peek && (
-          <div className="space-y-6">
-            {comicPages.map((page) => (
-              <div key={page.id} className="overflow-hidden rounded-xl border border-border">
-                <img src={page.image_url} alt={`${t('story.page')} ${page.page_order}`} className="w-full object-contain" />
-              </div>
-            ))}
-          </div>
+          <ComicReader
+            pages={comicPages}
+            readingMode={(story as ApiStory).reading_mode}
+            pageClassName="rounded-xl"
+          />
         )}
 
         {exploreSection}

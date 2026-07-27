@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { feedCardArticleClasses } from '@/components/feed/feedCardArticleClasses';
 import { FeedClampScope, FeedClampToggle } from '@/components/feed/FeedClampedDescription';
+import FeedHeroSlideshow from '@/components/feed/FeedHeroSlideshow';
 import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 import { useFeedExploration } from '@/components/feed/FeedExplorationContext';
 import { useCommentsDrawer } from '@/components/comments/CommentsDrawerProvider';
@@ -64,14 +65,26 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
   const openStory = () => pushStory(story.id);
   const openCommentsDrawer = () => openComments(story.id, story.title);
 
+  const isComic = story.storyType === 'comic';
   const useCoverInFeed = story.feedDisplayMode === 'cover' && !!story.coverImageUrl;
+  const useComicPreviewSlideshow =
+    !useCoverInFeed &&
+    isComic &&
+    (story.feedDisplayMode === 'preview' || !story.feedDisplayMode);
+
+  const previewUrls = (story.previewImageUrls ?? []).filter(Boolean).slice(0, 3);
+  const comicRestUrl =
+    story.coverImageUrl || previewUrls[0] || story.preview.imageUrl || null;
+
   const heroImageUrl = useCoverInFeed
     ? story.coverImageUrl
-    : story.preview.kind === 'image'
-      ? story.preview.imageUrl
-      : null;
+    : useComicPreviewSlideshow
+      ? comicRestUrl
+      : story.preview.kind === 'image'
+        ? story.preview.imageUrl
+        : null;
 
-  const clampText = useCoverInFeed
+  const clampText = useCoverInFeed || useComicPreviewSlideshow
     ? story.description || t('common.noContent')
     : story.preview.kind === 'text'
       ? story.preview.text || story.description || t('common.noContent')
@@ -126,7 +139,14 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
 
   return (
     <article className={feedCardArticleClasses}>
-      {heroImageUrl ? (
+      {useComicPreviewSlideshow && comicRestUrl ? (
+        <FeedHeroSlideshow
+          restUrl={comicRestUrl}
+          previewUrls={previewUrls}
+          enabled={previewUrls.length > 0}
+          onActivate={openStory}
+        />
+      ) : heroImageUrl ? (
         <div {...openStoryProps}>
           <div className="aspect-[16/10] overflow-hidden border-b border-border bg-muted">
             <img src={heroImageUrl} alt="" className="h-full w-full object-cover" />
@@ -158,11 +178,11 @@ export default function StoryFeedCard({ story, compact = false }: StoryFeedCardP
             text={clampText}
             className="mt-0"
             textClassName={
-              useCoverInFeed || story.preview.kind === 'text'
+              useCoverInFeed || useComicPreviewSlideshow || story.preview.kind === 'text'
                 ? 'text-base leading-relaxed text-foreground/90'
                 : 'text-base leading-relaxed text-foreground/80'
             }
-            preWrap={!useCoverInFeed && story.preview.kind === 'text'}
+            preWrap={!useCoverInFeed && !useComicPreviewSlideshow && story.preview.kind === 'text'}
             onTextActivate={openStory}
           >
             <StoryFeedStatRow

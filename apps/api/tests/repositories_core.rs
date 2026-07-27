@@ -152,6 +152,7 @@ async fn stories_insert_list_search_and_author_guard() {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         },
     )
@@ -172,6 +173,7 @@ async fn stories_insert_list_search_and_author_guard() {
             arc_id: None,
             cover_image_url: None,
             feed_display_mode: None,
+            reading_mode: None,
             content: None,
         },
     )

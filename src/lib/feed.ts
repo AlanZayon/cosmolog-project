@@ -4,6 +4,8 @@ export type FeedItemType = 'story' | 'arc' | 'universe';
 
 export type FeedDisplayMode = 'preview' | 'cover';
 
+export type ReadingMode = 'vertical' | 'horizontal' | 'both';
+
 export interface FeedStoryPreview {
   kind: 'text' | 'image';
   text: string | null;
@@ -17,6 +19,8 @@ export interface FeedStoryPayload {
   storyType: string;
   coverImageUrl: string | null;
   feedDisplayMode?: FeedDisplayMode;
+  readingMode?: ReadingMode;
+  previewImageUrls?: string[];
   author: {
     id: string;
     username: string;

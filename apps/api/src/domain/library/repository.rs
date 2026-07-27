@@ -46,7 +46,7 @@ pub async fn list_liked_stories(pool: &PgPool, user_id: Uuid) -> Result<Vec<Like
     let rows = sqlx::query_as::<_, LikedStoryRow>(
         r#"
         SELECT s.id, s.author_id, s.title, s.description, s.cover_image_url,
-               s.feed_display_mode, s.content, s.type, s.universe_id, s.arc_id,
+               s.feed_display_mode, s.reading_mode, s.content, s.type, s.universe_id, s.arc_id,
                s.tags, s.likes_count, s.comments_count, s.created_at, s.updated_at,
                l.created_at AS liked_at,
                u.title AS universe_title
@@ -335,7 +335,7 @@ pub async fn list_stories_in_collection(
     let rows = sqlx::query_as::<_, CollectionStoryRow>(
         r#"
         SELECT s.id, s.author_id, s.title, s.description, s.cover_image_url,
-               s.feed_display_mode, s.content, s.type, s.universe_id, s.arc_id,
+               s.feed_display_mode, s.reading_mode, s.content, s.type, s.universe_id, s.arc_id,
                s.tags, s.likes_count, s.comments_count, s.created_at, s.updated_at,
                i.added_at AS library_added_at,
                u.title AS universe_title
