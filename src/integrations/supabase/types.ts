@@ -263,6 +263,7 @@ export type Database = {
           content: string | null
           cover_image_url: string | null
           feed_display_mode: string
+          reading_mode: string
           created_at: string
           description: string | null
           id: string
@@ -280,6 +281,7 @@ export type Database = {
           content?: string | null
           cover_image_url?: string | null
           feed_display_mode?: string
+          reading_mode?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -297,6 +299,7 @@ export type Database = {
           content?: string | null
           cover_image_url?: string | null
           feed_display_mode?: string
+          reading_mode?: string
           created_at?: string
           description?: string | null
           id?: string

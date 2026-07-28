@@ -22,7 +22,7 @@ import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 import ComicReader from '@/components/ComicReader';
 import type { ApiStory } from '@/lib/api/types';
 
-export type StoryWithProfile = Tables<'stories'> & {
+export type StoryWithProfile = ApiStory & {
   profiles: { username: string } | null;
   universe?: { id: string; title: string } | null;
   arc?: { id: string; name: string } | null;
@@ -118,7 +118,7 @@ export default function StoryFeedPreview({
         profiles: profile ? { username: profile.username } : null,
         universe: universe ? { id: universe.id, title: universe.title } : null,
         arc: arc ? { id: arc.id, name: arc.name } : null,
-      } as StoryWithProfile);
+      });
 
       const normalizedType = normalizeStoryType(storyData.type);
 
@@ -335,7 +335,7 @@ export default function StoryFeedPreview({
         {storyType === 'comic' && peek && (
           <ComicReader
             pages={comicPages}
-            readingMode={(story as ApiStory).reading_mode}
+            readingMode={story.reading_mode}
             pageClassName="rounded-xl"
           />
         )}
@@ -343,7 +343,7 @@ export default function StoryFeedPreview({
         {storyType === 'comic' && !peek && (
           <ComicReader
             pages={comicPages}
-            readingMode={(story as ApiStory).reading_mode}
+            readingMode={story.reading_mode}
             pageClassName="rounded-xl"
           />
         )}

@@ -57,7 +57,7 @@ import ComicReader from '@/components/ComicReader';
 import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
 
-type StoryWithProfile = Tables<'stories'> & { profiles: { username: string } | null };
+type StoryWithProfile = ApiStory & { profiles: { username: string } | null };
 type Arc = Tables<'arcs'>;
 
 export type StoryPageProps = {
@@ -138,7 +138,7 @@ export default function StoryPage({
       setStory({
         ...storyData,
         profiles: authorProfile ? { username: authorProfile.username } : null,
-      } as StoryWithProfile);
+      });
 
       if (storyData.universe_id) {
         const arcsData = await getUniverseArcs(storyData.universe_id);
@@ -212,9 +212,9 @@ export default function StoryPage({
     setEditTags((story as any).tags || []);
     setEditArcId(story.arc_id || '');
     setEditFeedDisplayMode(
-      (story as ApiStory).feed_display_mode === 'cover' ? 'cover' : 'preview',
+      story.feed_display_mode === 'cover' ? 'cover' : 'preview',
     );
-    const rm = (story as ApiStory).reading_mode;
+    const rm = story.reading_mode;
     setEditReadingMode(
       rm === 'horizontal' || rm === 'both' || rm === 'vertical' ? rm : 'vertical',
     );
@@ -667,7 +667,7 @@ export default function StoryPage({
             ) : (
               <ComicReader
                 pages={comicPages}
-                readingMode={(story as ApiStory).reading_mode}
+                readingMode={story.reading_mode}
               />
             )}
           </section>
