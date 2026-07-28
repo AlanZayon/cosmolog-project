@@ -22,17 +22,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install sqlx-cli
-        if: secrets.MIGRATE_DATABASE_URL != ''
+        if: env.MIGRATE_DATABASE_URL != ''
         uses: taiki-e/install-action@v2
         with:
           tool: sqlx-cli
 
       - name: Run migrations
-        if: secrets.MIGRATE_DATABASE_URL != ''
+        if: env.MIGRATE_DATABASE_URL != ''
         run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
 
       - name: Skip migrations (missing secret)
-        if: secrets.MIGRATE_DATABASE_URL == ''
+        if: env.MIGRATE_DATABASE_URL == ''
         run: |
           echo "::warning::MIGRATE_DATABASE_URL secret is not set — skipping migrations."
 
