@@ -1,0 +1,28 @@
+---
+description: Feed Platform phase gate — never skip phases; verify before advancing. Apply when implementing feed engine, outbox, candidates, ranking, materializer, or RFC feed work.
+alwaysApply: false
+globs: apps/feed-*/**/*,docs/feed-platform/**/*,docs/FEED_ENGINE*.md,apps/api/src/routes/feed.rs
+---
+
+# Feed Platform — phase discipline
+
+Canonical workflow: skill `cosmolog-feed-platform`. Gate subagent: `feed-phase-gate`.
+Status file: `docs/feed-platform/PHASE_STATUS.md`.
+
+## Hard rules
+
+1. Read `PHASE_STATUS.md` before any Feed Platform work. Implement **only** the current phase.
+2. **Never** mark a phase `done` or start the next phase without a `PASS` from `feed-phase-gate`.
+3. Until Phase C canary: **`GET /feed` behavior must stay SQL `get_feed`** (Gateway may exist as pass-through).
+4. Do **not** add Redpanda/Kafka, Graph Platform, ANN/Milvus, Feast, or per-source microservices unless `PHASE_STATUS` is `D` and the user explicitly asked.
+5. Prefer modules + contracts over new deployables. Event bus only behind `EventBus` port (NATS or RabbitMQ in A–C).
+6. Keep domain splits: follows ≠ avisos ≠ activity ≠ library.
+7. New SQL only in `apps/api/migrations/`. No Supabase runtime.
+
+## On "build the plan" / continue Feed Platform
+
+1. Load skill `cosmolog-feed-platform`.
+2. Work the current phase checklist only.
+3. Run verification (skill + `cosmolog-qa` as required).
+4. Invoke subagent `feed-phase-gate`.
+5. Advance phase in `PHASE_STATUS.md` **only** if gate returns `PASS`.

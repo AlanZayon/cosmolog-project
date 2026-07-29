@@ -25,6 +25,7 @@ Copy and track:
 - Do not merge avisos vs activity notifications; follows ≠ alert subscriptions.
 - Prefer skill `cosmolog-api-rust` / `cosmolog-ui-next` for deep work in one layer.
 - Finish with skill `cosmolog-qa` checks.
+- Feed Platform / feed-engine / outbox ranking work: use skill `cosmolog-feed-platform` and never advance phases without subagent `feed-phase-gate` PASS (`docs/feed-platform/PHASE_STATUS.md`).
 
 ## Key paths
 

@@ -88,3 +88,16 @@ cargo test
 | MCP | `.cursor/mcp.json` (gitignored). Postgres loads `DATABASE_URL` from `apps/api/.env` via `.cursor/scripts/mcp-postgres.sh`. Template: `.cursor/mcp.example.json` |
 
 When implementing features, follow skill `cosmolog-fullstack`. For schema/auth cutover, use subagent `migration-guardian`.
+
+## Feed Platform (phased)
+
+| Kind | Path |
+|------|------|
+| Status | `docs/feed-platform/PHASE_STATUS.md` |
+| RFC gate | `docs/FEED_ENGINE_RFC_V3.md` |
+| Skill | `.cursor/skills/cosmolog-feed-platform/SKILL.md` |
+| Checklists | `.cursor/skills/cosmolog-feed-platform/phases.md` |
+| Gate subagent | `.cursor/agents/feed-phase-gate.md` |
+| Rule | `.cursor/rules/feed-platform-phases.mdc` |
+
+**Loop:** implement only `current_phase` → verify → `feed-phase-gate` must **PASS** before advancing. Do not skip to ranking/materializer or add Redpanda/Graph/ANN until the status file and user allow it.
