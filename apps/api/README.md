@@ -57,16 +57,20 @@ Auth tests sign HS256 tokens with the shared test secret (`tests/common/jwt.rs`)
 ```bash
 docker compose -f docker-compose.test.yml up -d
 export TEST_DATABASE_URL=postgres://cosmolog:cosmolog@127.0.0.1:5433/cosmolog_test
-cargo test
+# On WSL2 / low RAM (~8GB), keep parallelism low to avoid the distro OOM-crashing:
+CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 cargo test
 ```
 
 Without Postgres, unit/auth tests still run; repository and API tests skip with a message.
+
+If Ubuntu/WSL dies when Docker + `cargo test` run together, set `%UserProfile%\.wslconfig` (`memory=5GB`, `swap=4GB`, `processors=4`), then `wsl --shutdown` from Windows PowerShell. Stop `docker-compose.dev.yml` before tests; only the Postgres service in `docker-compose.test.yml` is needed (capped at 256MB).
 
 ### CI parity (local)
 
 ```bash
 cd apps/api
 ./scripts/ci-test.sh          # cargo test + coverage gate (needs Postgres + llvm-tools)
+                              # defaults CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2
 ```
 
 Requires [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) and the `llvm-tools-preview` Rust component:
