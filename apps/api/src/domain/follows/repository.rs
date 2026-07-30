@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{Executor, PgPool, Postgres};
 use uuid::Uuid;
 
 pub async fn has_follow(
@@ -16,30 +16,36 @@ pub async fn has_follow(
     Ok(count > 0)
 }
 
-pub async fn insert_follow(
-    pool: &PgPool,
+pub async fn insert_follow<'e, E>(
+    executor: E,
     universe_id: Uuid,
     user_id: Uuid,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query(
         "INSERT INTO universe_follows (universe_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
     )
     .bind(universe_id)
     .bind(user_id)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
-pub async fn delete_follow(
-    pool: &PgPool,
+pub async fn delete_follow<'e, E>(
+    executor: E,
     universe_id: Uuid,
     user_id: Uuid,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query("DELETE FROM universe_follows WHERE universe_id = $1 AND user_id = $2")
         .bind(universe_id)
         .bind(user_id)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }

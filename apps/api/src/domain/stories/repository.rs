@@ -1,4 +1,5 @@
 use sqlx::PgPool;
+use sqlx::{Executor, Postgres};
 use uuid::Uuid;
 
 use super::create::CreateStoryInput;
@@ -11,11 +12,14 @@ const STORY_COLUMNS: &str = r#"
     created_at, updated_at
 "#;
 
-pub async fn insert(
-    pool: &PgPool,
+pub async fn insert<'e, E>(
+    executor: E,
     author_id: Uuid,
     input: &CreateStoryInput,
-) -> Result<Story, sqlx::Error> {
+) -> Result<Story, sqlx::Error>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query_as::<_, Story>(
         r#"
         INSERT INTO stories (
@@ -40,7 +44,7 @@ pub async fn insert(
     .bind(input.cover_image_url.as_deref())
     .bind(input.feed_display_mode())
     .bind(input.reading_mode())
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await
 }
 

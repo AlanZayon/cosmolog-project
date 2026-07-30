@@ -50,6 +50,8 @@ pub struct Config {
     pub legacy_supabase_url: Option<String>,
     /// Redis URL for cross-instance notification SSE fan-out (`redis://host:6379`).
     pub redis_url: Option<String>,
+    /// Feed Gateway mode: `sql` | `shadow` | `canary` | `engine` (`FEATURE_FEED_SOURCE`).
+    pub feed_source_mode: String,
 }
 
 impl Config {
@@ -135,6 +137,8 @@ impl Config {
             non_empty_env("LEGACY_SUPABASE_URL").map(|url| url.trim_end_matches('/').to_string());
 
         let redis_url = non_empty_env("REDIS_URL");
+        let feed_source_mode =
+            non_empty_env("FEATURE_FEED_SOURCE").unwrap_or_else(|| "sql".to_string());
 
         if is_production {
             if redis_url.is_none() {
@@ -171,6 +175,7 @@ impl Config {
             s3_public_base_url,
             legacy_supabase_url,
             redis_url,
+            feed_source_mode,
         })
     }
 
@@ -213,6 +218,7 @@ impl Config {
             s3_public_base_url: Some("https://cdn.test.example".into()),
             legacy_supabase_url: None,
             redis_url: None,
+            feed_source_mode: "sql".into(),
         }
     }
 }

@@ -445,20 +445,41 @@ pub async fn toggle_like(
     user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<LikedResponse>, AppError> {
+    use feed_contracts::events::{EventEnvelope, EventType, StoryLikedPayload};
+    use serde_json::json;
+
     let liked = likes::has_like(&state.pool, id, user.user_id)
         .await
         .map_err(AppError::from_db)?;
-    if liked {
-        likes::delete_like(&state.pool, id, user.user_id)
+    let mut tx = state.pool.begin().await.map_err(AppError::from_db)?;
+    let now_liked = if liked {
+        likes::delete_like(&mut *tx, id, user.user_id)
             .await
             .map_err(AppError::from_db)?;
-        Ok(Json(LikedResponse { liked: false }))
+        false
     } else {
-        likes::insert_like(&state.pool, id, user.user_id)
+        likes::insert_like(&mut *tx, id, user.user_id)
             .await
             .map_err(AppError::from_db)?;
-        Ok(Json(LikedResponse { liked: true }))
-    }
+        true
+    };
+    let envelope = EventEnvelope::new(
+        if now_liked {
+            EventType::StoryLiked
+        } else {
+            EventType::StoryUnliked
+        },
+        json!(StoryLikedPayload {
+            story_id: id,
+            user_id: user.user_id,
+            liked: now_liked,
+        }),
+    );
+    crate::domain::outbox::enqueue(&mut *tx, &envelope)
+        .await
+        .map_err(AppError::from_db)?;
+    tx.commit().await.map_err(AppError::from_db)?;
+    Ok(Json(LikedResponse { liked: now_liked }))
 }
 
 pub async fn chapter_count(

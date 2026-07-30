@@ -13,6 +13,7 @@ pub mod library;
 pub mod likes;
 pub mod limits;
 pub mod notifications;
+pub mod outbox;
 pub mod profiles;
 pub mod stories;
 pub mod universes;

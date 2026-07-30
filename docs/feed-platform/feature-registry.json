@@ -1,0 +1,28 @@
+{
+  "features": [
+    {
+      "name": "story.age_hours",
+      "entity": "story",
+      "value_type": "float",
+      "owner": "feed-features",
+      "doc": "Hours since story.created_at",
+      "version": 1
+    },
+    {
+      "name": "story.likes_count",
+      "entity": "story",
+      "value_type": "int",
+      "owner": "feed-features",
+      "doc": "Denormalized likes counter",
+      "version": 1
+    },
+    {
+      "name": "user.follow_count",
+      "entity": "user",
+      "value_type": "int",
+      "owner": "feed-features",
+      "doc": "Number of universes the user follows",
+      "version": 1
+    }
+  ]
+}

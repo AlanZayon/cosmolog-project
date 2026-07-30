@@ -76,6 +76,33 @@ async fn apply_schema_patches(pool: &PgPool) {
         "ALTER TABLE public.activity_notifications DROP CONSTRAINT IF EXISTS activity_notifications_kind_check",
         "ALTER TABLE public.activity_notifications ADD CONSTRAINT activity_notifications_kind_check CHECK (kind IN ('comment_mention', 'story_comment', 'comment_reply', 'comment_liked', 'profile_alert_activated', 'universe_alert_activated', 'collection_saved'))",
         "ALTER TABLE public.activity_notifications ADD CONSTRAINT activity_notifications_kind_refs CHECK ((kind IN ('comment_mention', 'story_comment', 'comment_reply', 'comment_liked') AND story_id IS NOT NULL AND comment_id IS NOT NULL) OR (kind = 'profile_alert_activated' AND story_id IS NULL AND comment_id IS NULL AND universe_id IS NULL AND collection_id IS NULL) OR (kind = 'universe_alert_activated' AND universe_id IS NOT NULL AND story_id IS NULL AND comment_id IS NULL AND collection_id IS NULL) OR (kind = 'collection_saved' AND collection_id IS NOT NULL AND story_id IS NULL AND comment_id IS NULL AND universe_id IS NULL))",
+        r#"CREATE TABLE IF NOT EXISTS public.event_outbox (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            event_id UUID NOT NULL UNIQUE,
+            event_type TEXT NOT NULL,
+            payload JSONB NOT NULL,
+            schema_version INTEGER NOT NULL DEFAULT 1,
+            producer TEXT NOT NULL DEFAULT 'api',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            published_at TIMESTAMPTZ,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT
+        )"#,
+        "CREATE INDEX IF NOT EXISTS idx_event_outbox_unpublished ON public.event_outbox (created_at ASC) WHERE published_at IS NULL",
+        r#"CREATE TABLE IF NOT EXISTS public.processed_events (
+            event_id UUID PRIMARY KEY,
+            event_type TEXT NOT NULL,
+            processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )"#,
+        r#"CREATE TABLE IF NOT EXISTS public.feed_metadata (
+            key TEXT PRIMARY KEY,
+            value JSONB NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )"#,
+        r#"INSERT INTO public.feed_metadata (key, value, version)
+           VALUES ('weights.global', '{"recency": 1.0, "popularity": 0.6, "following": 2.0, "max_candidates": 500}'::jsonb, 1)
+           ON CONFLICT (key) DO NOTHING"#,
     ];
     for sql in patches {
         let _ = sqlx::query(sql).execute(pool).await;
@@ -99,6 +126,9 @@ async fn apply_schema(pool: &PgPool) {
 pub async fn truncate_all(pool: &PgPool) {
     sqlx::query(
         "TRUNCATE TABLE
+            processed_events,
+            feed_metadata,
+            event_outbox,
             activity_notifications,
             notifications,
             notification_subscriptions,

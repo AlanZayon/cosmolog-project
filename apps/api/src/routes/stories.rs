@@ -1,11 +1,14 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use feed_contracts::events::{EventEnvelope, EventType, StoryCreatedPayload};
 use serde::Deserialize;
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
 use crate::domain::limits::MAX_SEARCH_QUERY_LEN;
 use crate::domain::notifications;
+use crate::domain::outbox;
 use crate::domain::stories::{
     self, attach_profiles, validate_scope, CreateStoryInput, Story, StoryWithProfile,
 };
@@ -35,9 +38,29 @@ pub async fn create(
         &state.storage_settings.allowed_image_prefixes,
     )?;
     validate_scope(&state.pool, user.user_id, body.universe_id, body.arc_id).await?;
-    let story = stories::insert(&state.pool, user.user_id, &body)
+
+    let mut tx = state.pool.begin().await.map_err(AppError::from_db)?;
+    let story = stories::insert(&mut *tx, user.user_id, &body)
         .await
         .map_err(AppError::from_db)?;
+
+    let envelope = EventEnvelope::new(
+        EventType::StoryCreated,
+        json!(StoryCreatedPayload {
+            story_id: story.id,
+            author_id: user.user_id,
+            universe_id: story.universe_id,
+            arc_id: story.arc_id,
+            story_type: story.r#type.clone(),
+            tags: story.tags.clone(),
+            created_at: story.created_at,
+        }),
+    );
+    outbox::enqueue(&mut *tx, &envelope)
+        .await
+        .map_err(AppError::from_db)?;
+    tx.commit().await.map_err(AppError::from_db)?;
+
     notifications::fanout_new_story(&state.pool, &state.notification_events, &story)
         .await
         .map_err(AppError::from_db)?;
@@ -84,7 +107,6 @@ pub async fn search(
     let with_profiles = attach_profiles(&state.pool, stories)
         .await
         .map_err(AppError::from_db)?;
-
     Ok(Json(with_profiles))
 }
 
@@ -100,3 +122,4 @@ pub async fn by_id(
 
     Ok(Json(story))
 }
+

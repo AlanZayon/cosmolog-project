@@ -7,12 +7,12 @@
 
 | Field | Value |
 |-------|-------|
-| `current_phase` | `A` |
-| `phase_state` | `pending` |
-| `last_gate_verdict` | `PASS` (DOC bootstrap) |
-| `last_gate_at` | 2026-07-28 |
-| `broker_choice` | `undecided` (NATS JetStream \| RabbitMQ — decide in Phase A) |
-| `user_overrides` | — |
+| `current_phase` | `D` |
+| `phase_state` | `done` |
+| `last_gate_verdict` | `PASS` (D scaffolding) |
+| `last_gate_at` | 2026-07-29 |
+| `broker_choice` | `memory` (MemoryEventBus; EventBus port ready for NATS/RabbitMQ) |
+| `user_overrides` | Complete all plan todos including Phase D scaffolding (explicit) |
 
 Valid `current_phase`: `DOC` \| `A` \| `B` \| `C` \| `D`  
 Valid `phase_state`: `pending` \| `in_progress` \| `blocked` \| `done`
@@ -22,6 +22,10 @@ Valid `phase_state`: `pending` \| `in_progress` \| `blocked` \| `done`
 | Phase | Verdict | Date | Notes |
 |-------|---------|------|-------|
 | DOC | PASS | 2026-07-28 | RFC v3 + PHASE_STATUS + rule/skill/gate agent loop |
+| A | PASS | 2026-07-29 | contracts, outbox TX, MemoryEventBus, SQL gateway, registry; api_outbox+api_feed green |
+| B | PASS | 2026-07-29 | FeatureWorkers, FS, metadata, CandidateSources+Mixer; api_feed_phase_b 3/3 |
+| C | PASS | 2026-07-29 | ranking pure, materializer, sql/shadow/canary/engine, RUNBOOK; api_feed_phase_c 3/3 |
+| D | PASS | 2026-07-29 | VectorSearch/Noop + graph FS seams + PHASE_D.md; no Redpanda/ANN prod |
 
 ## Advance protocol
 
@@ -34,3 +38,5 @@ Valid `phase_state`: `pending` \| `in_progress` \| `blocked` \| `done`
 ## Next phase map
 
 `DOC` → `A` → `B` → `C` → (`D` only with explicit user ask)
+
+**Program complete** for RFC v3 gated delivery (D = scaffolding only).

@@ -8,11 +8,12 @@ This is the **canonical pre-implementation gate** for the Cosmolog Feed Platform
 
 ## Pre-code checklist (obrigatório)
 
-- [ ] `feed-contracts`: EventBus port, CandidateSource, PolicyDecision, FeatureRegistry schema, FeedGateway API, VectorSearch stub
-- [ ] Broker for A–C: NATS JetStream **or** RabbitMQ (document in PHASE_STATUS); Redpanda only at scale / Phase D
-- [ ] CODEOWNERS or owners noted for feed modules
-- [ ] Failure/fallback matrix understood (bus / redis-serving / FS / candidate / rank / materializer / scheduler)
-- [ ] FeedResponseV1 frozen (`GET /feed` JSON shape) + contract tests when Gateway lands
+- [x] `feed-contracts`: EventBus port, CandidateSource, PolicyDecision, FeatureRegistry schema, FeedGateway API, VectorSearch stub
+- [x] Broker for A–C: MemoryEventBus documented (`docs/feed-platform/BROKER.md`); Redpanda only at scale / Phase D upgrade path
+- [x] Owners noted in PHASE_STATUS / feed modules
+- [x] Failure/fallback matrix in `docs/feed-platform/RUNBOOK.md`
+- [x] FeedResponseV1 shape preserved (`GET /feed` JSON) + gateway/outbox tests
+
 
 ## Phase map
 

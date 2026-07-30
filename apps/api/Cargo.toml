@@ -12,6 +12,7 @@ name = "cosmolog_api"
 path = "src/main.rs"
 
 [dependencies]
+feed-contracts = { path = "../../crates/feed-contracts" }
 anyhow = "1.0"
 argon2 = "0.5"
 async-trait = "0.1"

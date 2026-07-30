@@ -50,7 +50,8 @@ next-env.d.ts
 # Cursor MCP with secrets (use .cursor/mcp.example.json as template)
 .cursor/mcp.json
 
-# rust (api)
+# rust (workspace + api)
+/target/
 /apps/api/target/
 /apps/api/lcov.info
 /apps/api/coverage/

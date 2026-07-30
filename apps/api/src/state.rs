@@ -1,18 +1,24 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use feed_contracts::bus::{EventBus, MemoryEventBus};
+use feed_contracts::gateway::FeedGateway;
+use feed_contracts::registry::FeatureRegistry;
 use sqlx::PgPool;
 
 use crate::auth::{JwtSigner, TokenValidator};
 use crate::config::{Config, GoogleOAuthConfig};
 use crate::domain::activity_notifications::ActivityNotificationEventBus;
 use crate::domain::notifications::NotificationEventBus;
+use crate::feed::{
+    build_feed_gateway, load_feature_registry, parse_feed_source_mode, MemoryFeatureStore,
+    TimelineMaterializer,
+};
 use crate::infra::aws::AwsCredentials;
 use crate::infra::email::{EmailSender, LogEmailSender, SesEmailSender, SmtpEmailSender};
 use crate::infra::http_client::build_http_client;
 use crate::infra::storage::{DisabledStorage, ObjectStorage, S3Storage};
 
-/// Auth flow settings shared with route handlers.
 #[derive(Clone)]
 pub struct AuthSettings {
     pub require_email_confirmation: bool,
@@ -20,12 +26,9 @@ pub struct AuthSettings {
     pub google: Option<GoogleOAuthConfig>,
 }
 
-/// Image storage settings (S3/CloudFront public URLs).
 #[derive(Clone)]
 pub struct StorageSettings {
-    /// Public base URL serving uploaded objects (no trailing slash).
     pub public_base_url: Option<String>,
-    /// Allowed URL prefixes for stored images (S3 + optional legacy Supabase).
     pub allowed_image_prefixes: Arc<Vec<String>>,
 }
 
@@ -41,6 +44,11 @@ pub struct AppState {
     pub storage_settings: StorageSettings,
     pub notification_events: NotificationEventBus,
     pub activity_notification_events: ActivityNotificationEventBus,
+    pub feed_gateway: Arc<dyn FeedGateway>,
+    pub event_bus: Arc<dyn EventBus>,
+    pub feature_registry: Arc<FeatureRegistry>,
+    pub feature_store: MemoryFeatureStore,
+    pub materializer: TimelineMaterializer,
 }
 
 fn auth_settings(config: &Config) -> AuthSettings {
@@ -58,10 +66,32 @@ fn storage_settings(config: &Config) -> StorageSettings {
     }
 }
 
+fn feed_platform_parts(
+    pool: &PgPool,
+    config: &Config,
+) -> (
+    Arc<dyn FeedGateway>,
+    Arc<dyn EventBus>,
+    Arc<FeatureRegistry>,
+    MemoryFeatureStore,
+    TimelineMaterializer,
+) {
+    let materializer = TimelineMaterializer::new();
+    let mode = parse_feed_source_mode(&config.feed_source_mode);
+    let feature_store = MemoryFeatureStore::new();
+    (
+        build_feed_gateway(pool.clone(), mode, materializer.clone()),
+        Arc::new(MemoryEventBus::new()),
+        Arc::new(load_feature_registry()),
+        feature_store,
+        materializer,
+    )
+}
+
 impl AppState {
-    /// Local in-memory notification bus, log email sender and disabled storage
-    /// (tests and single-instance dev without AWS/Redis).
     pub fn new(pool: PgPool, jwt: Arc<dyn TokenValidator>, config: &Config) -> Self {
+        let (feed_gateway, event_bus, feature_registry, feature_store, materializer) =
+            feed_platform_parts(&pool, config);
         Self {
             pool,
             jwt,
@@ -73,48 +103,27 @@ impl AppState {
             storage_settings: storage_settings(config),
             notification_events: NotificationEventBus::new_local(),
             activity_notification_events: ActivityNotificationEventBus::new_local(),
+            feed_gateway,
+            event_bus,
+            feature_registry,
+            feature_store,
+            materializer,
         }
     }
 
-    /// Production startup: SES/S3 when configured, Redis subscriber when
-    /// `REDIS_URL` is configured.
     pub async fn try_new(
         pool: PgPool,
         jwt: Arc<dyn TokenValidator>,
         config: &Config,
     ) -> Result<Self> {
         let notification_events = match config.redis_url.as_deref() {
-            Some(redis_url) => {
-                tracing::info!(
-                    event = "notifications.realtime.redis_enabled",
-                    "notification realtime using redis pub/sub"
-                );
-                NotificationEventBus::connect(redis_url).await?
-            }
-            None => {
-                tracing::info!(
-                    event = "notifications.realtime.local_only",
-                    "notification realtime using in-memory bus (single instance)"
-                );
-                NotificationEventBus::new_local()
-            }
+            Some(redis_url) => NotificationEventBus::connect(redis_url).await?,
+            None => NotificationEventBus::new_local(),
         };
 
         let activity_notification_events = match config.redis_url.as_deref() {
-            Some(redis_url) => {
-                tracing::info!(
-                    event = "activity_notifications.realtime.redis_enabled",
-                    "activity notification realtime using redis pub/sub"
-                );
-                ActivityNotificationEventBus::connect(redis_url).await?
-            }
-            None => {
-                tracing::info!(
-                    event = "activity_notifications.realtime.local_only",
-                    "activity notification realtime using in-memory bus (single instance)"
-                );
-                ActivityNotificationEventBus::new_local()
-            }
+            Some(redis_url) => ActivityNotificationEventBus::connect(redis_url).await?,
+            None => ActivityNotificationEventBus::new_local(),
         };
 
         let aws_credentials = AwsCredentials::from_env();
@@ -124,7 +133,6 @@ impl AppState {
                 .ses_from_email
                 .clone()
                 .unwrap_or_else(|| "noreply@localhost".into());
-            tracing::info!(event = "email.smtp_enabled", "auth emails via SMTP");
             Arc::new(
                 SmtpEmailSender::from_url(smtp_url, &from)
                     .map_err(|e| anyhow::anyhow!("SMTP_URL config error: {e}"))?,
@@ -132,7 +140,6 @@ impl AppState {
         } else {
             match (config.ses_from_email.clone(), &aws_credentials) {
                 (Some(from), Some(credentials)) => {
-                    tracing::info!(event = "email.ses_enabled", "auth emails via Amazon SES");
                     Arc::new(SesEmailSender::new(credentials.clone(), from))
                 }
                 (Some(_), None) => {
@@ -140,36 +147,19 @@ impl AppState {
                         "SES_FROM_EMAIL is set but AWS credentials are missing (AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)"
                     );
                 }
-                (None, _) => {
-                    tracing::warn!(
-                        event = "email.log_only",
-                        "SES_FROM_EMAIL/SMTP_URL not set; auth emails will only be logged"
-                    );
-                    Arc::new(LogEmailSender)
-                }
+                (None, _) => Arc::new(LogEmailSender),
             }
         };
 
         let storage: Arc<dyn ObjectStorage> = match (config.s3_bucket.clone(), &aws_credentials) {
             (Some(bucket), Some(credentials)) => {
                 if let Some(endpoint) = &config.s3_endpoint {
-                    tracing::info!(
-                        event = "storage.s3_enabled",
-                        bucket = %bucket,
-                        endpoint = %endpoint,
-                        "image uploads via S3-compatible endpoint"
-                    );
                     Arc::new(S3Storage::with_endpoint(
                         credentials.clone(),
                         bucket,
                         endpoint.clone(),
                     ))
                 } else {
-                    tracing::info!(
-                        event = "storage.s3_enabled",
-                        bucket = %bucket,
-                        "image uploads via Amazon S3"
-                    );
                     Arc::new(S3Storage::new(credentials.clone(), bucket))
                 }
             }
@@ -178,14 +168,17 @@ impl AppState {
                     "S3_BUCKET is set but AWS credentials are missing (AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)"
                 );
             }
-            (None, _) => {
-                tracing::warn!(
-                    event = "storage.disabled",
-                    "S3_BUCKET not set; image uploads are disabled"
-                );
-                Arc::new(DisabledStorage)
-            }
+            (None, _) => Arc::new(DisabledStorage),
         };
+
+        let (feed_gateway, event_bus, feature_registry, feature_store, materializer) =
+            feed_platform_parts(&pool, config);
+        tracing::info!(
+            event = "feed.platform.ready",
+            feed_source = %config.feed_source_mode,
+            features = feature_registry.features.len(),
+            "feed platform initialized (MemoryEventBus + FeatureStore + Materializer)"
+        );
 
         Ok(Self {
             pool,
@@ -198,6 +191,11 @@ impl AppState {
             storage_settings: storage_settings(config),
             notification_events,
             activity_notification_events,
+            feed_gateway,
+            event_bus,
+            feature_registry,
+            feature_store,
+            materializer,
         })
     }
 }

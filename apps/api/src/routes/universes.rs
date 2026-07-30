@@ -131,9 +131,25 @@ pub async fn follow(
     user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    follows::insert_follow(&state.pool, id, user.user_id)
+    use feed_contracts::events::{EventEnvelope, EventType, UniverseFollowedPayload};
+    use serde_json::json;
+
+    let mut tx = state.pool.begin().await.map_err(AppError::from_db)?;
+    follows::insert_follow(&mut *tx, id, user.user_id)
         .await
         .map_err(AppError::from_db)?;
+    let envelope = EventEnvelope::new(
+        EventType::UniverseFollowed,
+        json!(UniverseFollowedPayload {
+            universe_id: id,
+            user_id: user.user_id,
+            following: true,
+        }),
+    );
+    crate::domain::outbox::enqueue(&mut *tx, &envelope)
+        .await
+        .map_err(AppError::from_db)?;
+    tx.commit().await.map_err(AppError::from_db)?;
     Ok(())
 }
 
@@ -142,8 +158,24 @@ pub async fn unfollow(
     user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    follows::delete_follow(&state.pool, id, user.user_id)
+    use feed_contracts::events::{EventEnvelope, EventType, UniverseFollowedPayload};
+    use serde_json::json;
+
+    let mut tx = state.pool.begin().await.map_err(AppError::from_db)?;
+    follows::delete_follow(&mut *tx, id, user.user_id)
         .await
         .map_err(AppError::from_db)?;
+    let envelope = EventEnvelope::new(
+        EventType::UniverseUnfollowed,
+        json!(UniverseFollowedPayload {
+            universe_id: id,
+            user_id: user.user_id,
+            following: false,
+        }),
+    );
+    crate::domain::outbox::enqueue(&mut *tx, &envelope)
+        .await
+        .map_err(AppError::from_db)?;
+    tx.commit().await.map_err(AppError::from_db)?;
     Ok(())
 }
