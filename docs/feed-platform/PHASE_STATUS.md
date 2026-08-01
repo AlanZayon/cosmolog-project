@@ -15,6 +15,8 @@
 | `broker_choice` | `rabbitmq` |
 | `user_overrides` | Phase E Runtime Wiring MVP — Redis timelines, separate bins, engine on Home |
 
+> **Production note:** Phase E is **dev-only**. Render runs `FEATURE_FEED_SOURCE=sql` with no feed workers / RabbitMQ / Redis DB1–DB2. See `RUNBOOK.md` § Production. Phase fields above are unchanged — this is not a phase advance.
+
 Valid `current_phase`: `DOC` \| `A` \| `B` \| `C` \| `D` \| `E`  
 Valid `subphase` (when E): `E0` \| `E1` \| `E2` \| `E3` \| `E4` \| `E5`  
 Valid `phase_state`: `pending` \| `in_progress` \| `blocked` \| `done`

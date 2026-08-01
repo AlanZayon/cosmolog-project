@@ -1,5 +1,7 @@
 //! RabbitMQ EventBus adapter.
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use feed_contracts::bus::{EventBus, EventPublishError};
 use feed_contracts::events::EventEnvelope;
@@ -8,7 +10,7 @@ use lapin::BasicProperties;
 use lapin::Channel;
 use serde_json::Value;
 
-use crate::topology::{connect, declare_topology, FEED_EXCHANGE};
+use crate::topology::{connect, connect_with_retry, declare_topology, FEED_EXCHANGE};
 
 pub struct RabbitMqEventBus {
     channel: Channel,
@@ -17,6 +19,16 @@ pub struct RabbitMqEventBus {
 impl RabbitMqEventBus {
     pub async fn connect(amqp_url: &str) -> anyhow::Result<Self> {
         let conn = connect(amqp_url).await?;
+        let channel = conn.create_channel().await?;
+        declare_topology(&channel).await?;
+        Ok(Self { channel })
+    }
+
+    pub async fn connect_with_retry(
+        amqp_url: &str,
+        max_backoff: Duration,
+    ) -> anyhow::Result<Self> {
+        let conn = connect_with_retry(amqp_url, max_backoff).await?;
         let channel = conn.create_channel().await?;
         declare_topology(&channel).await?;
         Ok(Self { channel })

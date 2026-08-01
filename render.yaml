@@ -4,7 +4,12 @@
 #   1. Render Dashboard → New → Blueprint → connect this repo
 #   2. Set secret env vars when prompted (DATABASE_URL, AUTH_JWT_SECRET, AWS/SES/S3,
 #      GOOGLE_CLIENT_ID/SECRET, CORS_ALLOWED_ORIGIN, REDIS_URL)
-#   3. Optional: disable "Auto-Deploy" and use the GitHub deploy hook after CI passes
+#   3. Provision a free Render Key Value instance and set REDIS_URL to its internal URL
+#      (required when APP_ENV=production for SSE fan-out; single-instance pub/sub is fine)
+#   4. Optional: disable "Auto-Deploy" and use the GitHub deploy hook after CI passes
+#
+# Feed engine is OFF in production (FEATURE_FEED_SOURCE=sql). Workers / RabbitMQ /
+# Redis DB1–DB2 stay in docker-compose.dev.yml until the SQL feed becomes a bottleneck.
 #
 # Deploy hook (Settings → Deploy Hook): add RENDER_DEPLOY_HOOK_URL to GitHub Actions secrets.
 
@@ -14,13 +19,19 @@ services:
     runtime: docker
     region: oregon
     plan: free
-    rootDir: apps/api
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
     buildFilter:
       paths:
         - apps/api/**
+        - apps/feed-relay/**
+        - apps/feed-features/**
+        - apps/feed-rank/**
+        - crates/**
+        - Cargo.toml
+        - Cargo.lock
+        - render.yaml
     envVars:
       - key: API_HOST
         value: 0.0.0.0
@@ -30,6 +41,8 @@ services:
         value: cosmolog_api=info,tower_http=info,sqlx=warn
       - key: APP_ENV
         value: production
+      - key: FEATURE_FEED_SOURCE
+        value: sql
       - key: DATABASE_URL
         sync: false
       - key: AUTH_JWT_SECRET

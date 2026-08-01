@@ -141,6 +141,7 @@ services:
     build:
       context: .
       dockerfile: apps/feed-relay/Dockerfile.dev
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
       AMQP_URL: amqp://guest:guest@rabbitmq:5672
@@ -163,6 +164,7 @@ services:
     build:
       context: .
       dockerfile: apps/feed-features/Dockerfile.dev
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
       AMQP_URL: amqp://guest:guest@rabbitmq:5672
@@ -187,6 +189,7 @@ services:
     build:
       context: .
       dockerfile: apps/feed-rank/Dockerfile.dev
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
       AMQP_URL: amqp://guest:guest@rabbitmq:5672

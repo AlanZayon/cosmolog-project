@@ -124,9 +124,13 @@ The API uses local Postgres, Redis, Mailpit (SMTP), MinIO (S3), and Fake IdP (OA
 
 ## Deploy (Render)
 
-The API is configured for [Render](https://render.com) via [`render.yaml`](../../render.yaml) (Docker web service in `apps/api/`).
+The API is configured for [Render](https://render.com) via [`render.yaml`](../../render.yaml). The Docker build context is the **repo root** (`dockerfilePath: ./apps/api/Dockerfile`, `dockerContext: .`) so path dependencies under `crates/` and sibling feed crates resolve.
 
-**If you already have a Render service:** sync env vars from `render.yaml` in the dashboard, or connect the Blueprint to this repo.
+**If you already have a Render service:** sync env vars from `render.yaml` in the dashboard, or reconnect the Blueprint so the new context / `FEATURE_FEED_SOURCE` apply. After the workspace Dockerfile change, trigger a **Manual Deploy** (Clear build cache) once.
+
+**Feed in production:** `FEATURE_FEED_SOURCE=sql` is set in the Blueprint. Feed workers, RabbitMQ, and Redis feature/timeline DBs are **not** deployed — see [`docs/feed-platform/RUNBOOK.md`](../../docs/feed-platform/RUNBOOK.md).
+
+**Redis for SSE:** provision a free [Render Key Value](https://render.com/docs/key-value) instance (25 MB is enough for pub/sub) and set `REDIS_URL` to its internal URL. Required when `APP_ENV=production`. Do **not** set `AMQP_URL`, `REDIS_FEED_URL`, or `REDIS_FEATURES_URL` until you cut over the feed engine.
 
 **Required env vars** (Render Dashboard → Service → Environment):
 
@@ -141,9 +145,16 @@ The API is configured for [Render](https://render.com) via [`render.yaml`](../..
 | `S3_BUCKET` / `S3_PUBLIC_BASE_URL` | Image upload bucket + public base URL (CloudFront) |
 | `LEGACY_SUPABASE_URL` | Optional: keep accepting old Supabase image URLs |
 | `CORS_ALLOWED_ORIGIN` | Frontend URL (e.g. `https://your-app.vercel.app`) |
-| `REDIS_URL` | Redis URI for cross-instance notification SSE (e.g. `redis://...`). Required when `APP_ENV=production`. |
+| `REDIS_URL` | Redis / Key Value URI for notification SSE. Required when `APP_ENV=production`. |
+| `FEATURE_FEED_SOURCE` | Blueprint sets `sql`. Do not set to `engine` without workers + Redis DB2. |
 
 Render sets `PORT` automatically; the API reads `PORT` or `API_PORT`.
+
+Local image smoke test:
+
+```bash
+docker build -f apps/api/Dockerfile -t cosmolog-api:test .
+```
 
 ### Automated deploy (after CI)
 

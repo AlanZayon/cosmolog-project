@@ -4,7 +4,7 @@ out
 .git
 **/.env
 **/.env.local
-apps/api/target
+target
 apps/api/coverage
 apps/api/lcov.info
 **/*.profraw

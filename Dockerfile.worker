@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+#
+# Release image for feed workers (not referenced by render.yaml — preparation only).
+#
+#   docker build --build-arg BIN=feed-relay -f Dockerfile.worker -t feed-relay .
+#   docker build --build-arg BIN=feed-features -f Dockerfile.worker -t feed-features .
+#   docker build --build-arg BIN=feed-rank -f Dockerfile.worker -t feed-rank .
+
+ARG BIN=feed-relay
+
+FROM rust:1-bookworm AS builder
+
+ARG BIN
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+COPY apps/api ./apps/api
+COPY apps/feed-relay ./apps/feed-relay
+COPY apps/feed-features ./apps/feed-features
+COPY apps/feed-rank ./apps/feed-rank
+
+RUN cargo build --release --bin ${BIN}
+
+FROM debian:bookworm-slim AS runtime
+
+ARG BIN
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/${BIN} /app/worker
+
+USER nobody
+
+CMD ["/app/worker"]

@@ -21,5 +21,6 @@ pub use rebuild::{list_universe_followers, rebuild_user_timeline, RebuildDeps};
 pub use redis_fs::RedisFeatureStore;
 pub use redis_timeline::RedisTimelineStore;
 pub use topology::{
-    declare_topology, COMMANDS_EXCHANGE, FEATURES_QUEUE, FEED_EXCHANGE, RANK_QUEUE,
+    connect_with_retry, declare_topology, COMMANDS_EXCHANGE, FEATURES_QUEUE, FEED_EXCHANGE,
+    RANK_QUEUE,
 };
