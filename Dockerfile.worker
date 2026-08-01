@@ -20,10 +20,9 @@ RUN apt-get update \
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
-COPY apps/api ./apps/api
-COPY apps/feed-relay ./apps/feed-relay
-COPY apps/feed-features ./apps/feed-features
-COPY apps/feed-rank ./apps/feed-rank
+COPY apps ./apps
+# registry.rs embeds docs/feed-platform/feature-registry.json via include_str!
+COPY docs/feed-platform ./docs/feed-platform
 
 RUN cargo build --release --bin ${BIN}
 

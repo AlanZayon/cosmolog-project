@@ -3,7 +3,7 @@
 # Build from repo root:
 #   docker build -f apps/api/Dockerfile -t cosmolog-api .
 #
-# Render: dockerContext = ., dockerfilePath = ./apps/api/Dockerfile
+# Render: Root Directory empty, dockerContext = ., dockerfilePath = ./apps/api/Dockerfile
 
 FROM rust:1-bookworm AS builder
 
@@ -15,10 +15,9 @@ RUN apt-get update \
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
-COPY apps/api ./apps/api
-COPY apps/feed-relay ./apps/feed-relay
-COPY apps/feed-features ./apps/feed-features
-COPY apps/feed-rank ./apps/feed-rank
+COPY apps ./apps
+# registry.rs embeds docs/feed-platform/feature-registry.json via include_str!
+COPY docs/feed-platform ./docs/feed-platform
 
 RUN cargo build --release --bin cosmolog_api
 

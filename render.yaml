@@ -34,6 +34,7 @@ services:
         - apps/feed-features/**
         - apps/feed-rank/**
         - crates/**
+        - docs/feed-platform/**
         - Cargo.toml
         - Cargo.lock
         - render.yaml
