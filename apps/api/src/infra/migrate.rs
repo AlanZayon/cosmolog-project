@@ -32,7 +32,18 @@ pub async fn run(migrate_database_url: &str) -> anyhow::Result<()> {
 }
 
 /// One-time fixes for renamed or duplicate sqlx migration records.
+///
+/// Runs before `Migrator::run`, which is what creates `_sqlx_migrations`, so a fresh
+/// database has no table to repair yet.
 async fn repair_known_migration_issues(pool: &sqlx::PgPool) -> anyhow::Result<()> {
+    let tracking_table_exists: bool =
+        sqlx::query_scalar("SELECT to_regclass('public._sqlx_migrations') IS NOT NULL")
+            .fetch_one(pool)
+            .await?;
+    if !tracking_table_exists {
+        return Ok(());
+    }
+
     // `20260525200000` was a duplicate of `20260525183000` (comment replies).
     let deleted = sqlx::query(
         r#"

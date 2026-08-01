@@ -111,6 +111,54 @@ pub struct SmtpEmailSender {
     from: Mailbox,
 }
 
+/// Connection settings parsed out of `SMTP_URL`.
+#[derive(Debug, PartialEq, Eq)]
+struct SmtpTarget {
+    host: String,
+    /// Explicit port from the URL; `None` falls back to the scheme default.
+    port: Option<u16>,
+    /// `smtps://` — implicit TLS (SMTPS), as opposed to plain `smtp://`.
+    implicit_tls: bool,
+    /// `(user, password)`; `None` for unauthenticated relays such as Mailpit.
+    credentials: Option<(String, String)>,
+}
+
+/// Parses `smtp[s]://[user[:password]@]host[:port]`.
+///
+/// The userinfo is split on the *last* `@` because relays commonly use an email
+/// address as the username (Gmail app passwords, Brevo, Mailgun).
+fn parse_smtp_url(smtp_url: &str) -> SmtpTarget {
+    let url = smtp_url.trim();
+    let without_scheme = url
+        .strip_prefix("smtp://")
+        .or_else(|| url.strip_prefix("smtps://"))
+        .unwrap_or(url);
+    let implicit_tls = url.starts_with("smtps://");
+
+    let (hostport, credentials) = match without_scheme.rsplit_once('@') {
+        Some((userinfo, hostport)) => {
+            let (user, pass) = userinfo
+                .split_once(':')
+                .map(|(u, p)| (u.to_string(), p.to_string()))
+                .unwrap_or((userinfo.to_string(), String::new()));
+            (hostport, Some((user, pass)))
+        }
+        None => (without_scheme, None),
+    };
+
+    let (host, port) = match hostport.split_once(':') {
+        Some((host, port)) => (host, port.parse::<u16>().ok()),
+        None => (hostport, None),
+    };
+
+    SmtpTarget {
+        host: host.to_string(),
+        port,
+        implicit_tls,
+        credentials,
+    }
+}
+
 impl SmtpEmailSender {
     pub fn from_url(smtp_url: &str, from_address: &str) -> Result<Self, String> {
         let from: Mailbox = from_address
@@ -118,42 +166,27 @@ impl SmtpEmailSender {
             .or_else(|_| format!("Cosmolog <{from_address}>").parse())
             .map_err(|e| format!("invalid SES_FROM_EMAIL / from address: {e}"))?;
 
-        let url = smtp_url.trim();
-        let without_scheme = url
-            .strip_prefix("smtp://")
-            .or_else(|| url.strip_prefix("smtps://"))
-            .unwrap_or(url);
-        let use_tls = url.starts_with("smtps://");
+        let target = parse_smtp_url(smtp_url);
 
-        let (auth_host, credentials) = if let Some((userinfo, hostport)) = without_scheme.split_once('@')
-        {
-            let (user, pass) = userinfo
-                .split_once(':')
-                .map(|(u, p)| (u.to_string(), p.to_string()))
-                .unwrap_or((userinfo.to_string(), String::new()));
-            (
-                hostport.to_string(),
-                Some(Credentials::new(user, pass)),
-            )
-        } else {
-            (without_scheme.to_string(), None)
-        };
-
-        let builder = if use_tls {
-            AsyncSmtpTransport::<Tokio1Executor>::relay(&auth_host.split(':').next().unwrap_or(&auth_host))
+        let mut builder = if target.implicit_tls {
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&target.host)
                 .map_err(|e| format!("smtp relay: {e}"))?
         } else {
             // Mailpit and local relays: plain SMTP, no STARTTLS required.
-            let host = auth_host.split(':').next().unwrap_or(&auth_host);
-            let port: u16 = auth_host
-                .split_once(':')
-                .and_then(|(_, p)| p.parse().ok())
-                .unwrap_or(25);
-            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(host).port(port)
+            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&target.host)
+                .port(target.port.unwrap_or(25))
         };
 
-        let mailer = match credentials {
-            Some(creds) => builder.credentials(creds).build(),
+        // `relay()` defaults to 465; honour an explicit port for hosts that expose
+        // SMTPS elsewhere (e.g. Resend on 2465 when 465 is blocked).
+        if target.implicit_tls {
+            if let Some(port) = target.port {
+                builder = builder.port(port);
+            }
+        }
+
+        let mailer = match target.credentials {
+            Some((user, pass)) => builder.credentials(Credentials::new(user, pass)).build(),
             None => builder.build(),
         };
 
@@ -216,5 +249,53 @@ impl EmailSender for LogEmailSender {
             "SES/SMTP not configured; email was not sent (body logged for local recovery)"
         );
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_smtp_url, SmtpTarget};
+
+    #[test]
+    fn parses_gmail_app_password_url() {
+        assert_eq!(
+            parse_smtp_url("smtps://alan@gmail.com:abcdefghijklmnop@smtp.gmail.com"),
+            SmtpTarget {
+                host: "smtp.gmail.com".into(),
+                port: None,
+                implicit_tls: true,
+                credentials: Some(("alan@gmail.com".into(), "abcdefghijklmnop".into())),
+            }
+        );
+    }
+
+    #[test]
+    fn keeps_at_sign_inside_password() {
+        let target = parse_smtp_url("smtps://apikey:se@cr@et@smtp.sendgrid.net");
+        assert_eq!(target.host, "smtp.sendgrid.net");
+        assert_eq!(
+            target.credentials,
+            Some(("apikey".into(), "se@cr@et".into()))
+        );
+    }
+
+    #[test]
+    fn parses_explicit_port() {
+        let target = parse_smtp_url("smtps://resend:key@smtp.resend.com:2465");
+        assert_eq!(target.host, "smtp.resend.com");
+        assert_eq!(target.port, Some(2465));
+    }
+
+    #[test]
+    fn parses_unauthenticated_mailpit_url() {
+        assert_eq!(
+            parse_smtp_url("smtp://mailpit:1025"),
+            SmtpTarget {
+                host: "mailpit".into(),
+                port: Some(1025),
+                implicit_tls: false,
+                credentials: None,
+            }
+        );
     }
 }

@@ -19,6 +19,11 @@ services:
     runtime: docker
     region: oregon
     plan: free
+    # Cargo workspace build: the Docker context must be the repo root, otherwise
+    # crates/ and apps/feed-* are outside the build context (Render only uploads
+    # files under rootDir). If the service was created before this change, clear
+    # "Root Directory" in Settings → Build & Deploy as well.
+    rootDir: .
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
