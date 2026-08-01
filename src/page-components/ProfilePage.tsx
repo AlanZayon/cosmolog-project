@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 
 export default function ProfilePage() {
-  const { user, refreshProfile } = useAuth();
+  const { user, loading: authLoading, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const completeProfileHandled = useRef(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       router.push("/login");
       return;
@@ -46,7 +47,7 @@ export default function ProfilePage() {
     void fetchProfile();
     void fetchStories();
     void fetchUniverses();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (searchParams.get('complete') !== '1' || completeProfileHandled.current) return;

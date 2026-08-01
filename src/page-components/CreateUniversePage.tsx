@@ -15,7 +15,7 @@ import { CONTENT_LIMITS, describeViolations, validateUniverseFields } from '@/li
 import { ImagePlus, X } from 'lucide-react';
 
 export default function CreateUniversePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -27,8 +27,9 @@ export default function CreateUniversePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) router.push("/login");
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

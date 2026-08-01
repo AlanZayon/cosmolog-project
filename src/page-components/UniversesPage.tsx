@@ -19,19 +19,20 @@ interface Universe {
 }
 
 export default function UniversesPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const [universes, setUniverses] = useState<Universe[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       router.push("/login");
       return;
     }
     fetchUniverses();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const fetchUniverses = async () => {
     setLoading(true);

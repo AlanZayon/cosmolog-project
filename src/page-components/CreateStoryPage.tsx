@@ -49,7 +49,7 @@ const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: Transl
 ];
 
 export default function CreateStoryPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const params = useParams<{ id?: string }>();
   const universeId = params.id;
@@ -76,8 +76,9 @@ export default function CreateStoryPage() {
   const [draftChapters, setDraftChapters] = useState<DraftChapter[]>([]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) router.push("/login");
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (universeId) setSelectedUniverseId(universeId);

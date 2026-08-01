@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 const ACCESS_TOKEN_COOKIE = 'cosmolog_access_token';
+const REFRESH_TOKEN_COOKIE = 'cosmolog_refresh_token';
 
 const PROTECTED_PATTERNS = [
   /^\/profile\/?$/,
@@ -20,7 +21,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (request.cookies.has(ACCESS_TOKEN_COOKIE)) {
+  // The access cookie expires with its token (1h), while the refresh cookie lasts 30 days.
+  // A refresh cookie alone still means a restorable session — `/api/auth/session` renews it
+  // on mount — so redirecting here would log the user out an hour after their last visit.
+  if (
+    request.cookies.has(ACCESS_TOKEN_COOKIE) ||
+    request.cookies.has(REFRESH_TOKEN_COOKIE)
+  ) {
     return NextResponse.next();
   }
 
