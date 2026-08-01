@@ -21,20 +21,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Deploying code without its migrations leaves production 500ing on every
+      # query that touches a new column, so a missing secret must block the deploy.
+      - name: Require MIGRATE_DATABASE_URL
+        if: env.MIGRATE_DATABASE_URL == ''
+        run: |
+          echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to deploy without running migrations."
+          echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
+          echo "Postgres endpoint (not a transaction pooler). See apps/api/README.md."
+          exit 1
+
       - name: Install sqlx-cli
-        if: env.MIGRATE_DATABASE_URL != ''
         uses: taiki-e/install-action@v2
         with:
           tool: sqlx-cli
 
       - name: Run migrations
-        if: env.MIGRATE_DATABASE_URL != ''
         run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
-
-      - name: Skip migrations (missing secret)
-        if: env.MIGRATE_DATABASE_URL == ''
-        run: |
-          echo "::warning::MIGRATE_DATABASE_URL secret is not set — skipping migrations."
 
   deploy:
     name: Deploy to Render
