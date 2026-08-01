@@ -27,6 +27,17 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
   mailpit:
     image: axllent/mailpit:v1.27
     ports:
@@ -74,8 +85,8 @@ services:
 
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
     ports:
       - "8080:8080"
     env_file:
@@ -90,7 +101,10 @@ services:
       CORS_ALLOWED_ORIGIN: http://localhost:3000
       APP_PUBLIC_URL: http://localhost:3000
       REQUIRE_EMAIL_CONFIRMATION: "true"
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379/0
+      REDIS_FEED_URL: redis://redis:6379/2
+      FEATURE_FEED_SOURCE: engine
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672
       SMTP_URL: smtp://mailpit:1025
       SES_FROM_EMAIL: noreply@localhost
       S3_BUCKET: cosmolog
@@ -105,19 +119,94 @@ services:
       OAUTH_ISSUER: http://localhost:9090
       RUST_LOG: cosmolog_api=debug,tower_http=debug,sqlx=warn
     volumes:
-      - ./apps/api:/app
-      - api_cargo_target:/app/target
+      - .:/workspace:cached
+      - api_cargo_target:/workspace/target
       - api_cargo_registry:/usr/local/cargo/registry
+    working_dir: /workspace
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       mailpit:
         condition: service_started
       minio-init:
         condition: service_completed_successfully
       fake-idp:
+        condition: service_started
+
+  feed-relay:
+    build:
+      context: .
+      dockerfile: apps/feed-relay/Dockerfile.dev
+    environment:
+      DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672
+      FEED_RELAY_POLL_MS: "500"
+      RUST_LOG: feed_relay=info,feed_core=info
+    volumes:
+      - .:/workspace:cached
+      - api_cargo_target:/workspace/target
+      - api_cargo_registry:/usr/local/cargo/registry
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  feed-features:
+    build:
+      context: .
+      dockerfile: apps/feed-features/Dockerfile.dev
+    environment:
+      DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672
+      REDIS_FEATURES_URL: redis://redis:6379/1
+      RUST_LOG: feed_features=info,feed_core=info
+    volumes:
+      - .:/workspace:cached
+      - api_cargo_target:/workspace/target
+      - api_cargo_registry:/usr/local/cargo/registry
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      feed-relay:
+        condition: service_started
+
+  feed-rank:
+    build:
+      context: .
+      dockerfile: apps/feed-rank/Dockerfile.dev
+    environment:
+      DATABASE_URL: postgres://cosmolog:cosmolog@postgres:5432/cosmolog_dev
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672
+      REDIS_FEATURES_URL: redis://redis:6379/1
+      REDIS_FEED_URL: redis://redis:6379/2
+      FEED_SCHEDULER_SECS: "300"
+      RUST_LOG: feed_rank=info,feed_core=info
+    volumes:
+      - .:/workspace:cached
+      - api_cargo_target:/workspace/target
+      - api_cargo_registry:/usr/local/cargo/registry
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      feed-relay:
         condition: service_started
 
   web:

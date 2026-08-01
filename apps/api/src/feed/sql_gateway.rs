@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use feed_contracts::gateway::{FeedGateway, FeedQuery, FeedResponseItem, FeedSourceMode};
 use feed_contracts::ids::ItemId;
 use feed_contracts::policy::{FilterDecision, PolicyClient};
+use feed_core::RedisTimelineStore;
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
@@ -12,13 +13,15 @@ use uuid::Uuid;
 use super::materializer::TimelineMaterializer;
 use super::ranking::sticky_arm;
 
-/// Home feed gateway with sql | shadow | canary modes (Phase C).
+/// Home feed gateway with sql | shadow | canary | engine modes.
 pub struct SqlFeedGateway {
     pool: PgPool,
     policy: Arc<dyn PolicyClient>,
     mode: FeedSourceMode,
     materializer: TimelineMaterializer,
-    /// Soft budget for SQL fallback under canary miss (process-local).
+    /// Redis feed-serving (DB2). Preferred for engine/canary when present.
+    redis_timelines: Option<RedisTimelineStore>,
+    /// Soft budget for SQL fallback under canary/engine miss (process-local).
     fallback_count: AtomicU64,
     fallback_budget_per_window: u64,
 }
@@ -30,17 +33,32 @@ impl SqlFeedGateway {
         mode: FeedSourceMode,
         materializer: TimelineMaterializer,
     ) -> Self {
+        Self::with_redis(pool, policy, mode, materializer, None)
+    }
+
+    pub fn with_redis(
+        pool: PgPool,
+        policy: Arc<dyn PolicyClient>,
+        mode: FeedSourceMode,
+        materializer: TimelineMaterializer,
+        redis_timelines: Option<RedisTimelineStore>,
+    ) -> Self {
         Self {
             pool,
             policy,
             mode,
             materializer,
+            redis_timelines,
             fallback_count: AtomicU64::new(0),
             fallback_budget_per_window: 200,
         }
     }
 
-    async fn fetch_sql(&self, limit: i32, viewer_id: Option<Uuid>) -> Result<Vec<FeedResponseItem>, String> {
+    async fn fetch_sql(
+        &self,
+        limit: i32,
+        viewer_id: Option<Uuid>,
+    ) -> Result<Vec<FeedResponseItem>, String> {
         let rows = sqlx::query(
             "SELECT id, type, payload, ranking_score FROM public.get_feed($1, $2)",
         )
@@ -79,7 +97,7 @@ impl SqlFeedGateway {
         items
     }
 
-    fn try_materialized(
+    fn try_memory_materialized(
         &self,
         viewer_id: Uuid,
         limit: usize,
@@ -103,6 +121,45 @@ impl SqlFeedGateway {
         }
         Some(items)
     }
+
+    async fn try_redis_materialized(
+        &self,
+        viewer_id: Uuid,
+        limit: usize,
+    ) -> Option<Vec<FeedResponseItem>> {
+        let store = self.redis_timelines.as_ref()?;
+        let rows = store
+            .read_timeline(viewer_id, limit as isize)
+            .await
+            .ok()?;
+        if rows.is_empty() {
+            tracing::info!(
+                event = "feed.gateway.miss",
+                user_id = %viewer_id,
+                "redis timeline empty"
+            );
+            return None;
+        }
+        match feed_core::hydrate_feed_items(&self.pool, store, &rows).await {
+            Ok(items) => {
+                tracing::info!(
+                    event = "feed.gateway.hit",
+                    user_id = %viewer_id,
+                    count = items.len(),
+                    "served from redis timeline"
+                );
+                Some(items)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    event = "feed.gateway.hydrate_error",
+                    error = %e,
+                    "hydrate failed"
+                );
+                None
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -118,13 +175,17 @@ impl FeedGateway for SqlFeedGateway {
         let sql_items = self.fetch_sql(limit, viewer_uuid).await?;
 
         match self.mode {
-            FeedSourceMode::Sql => {
-                Ok(self.apply_policy(query.viewer_id, sql_items).await)
-            }
+            FeedSourceMode::Sql => Ok(self.apply_policy(query.viewer_id, sql_items).await),
             FeedSourceMode::Shadow => {
-                // Clients still see SQL; log sampled diff vs materializer when present.
                 if let Some(uid) = viewer_uuid {
-                    if let Some(engine_items) = self.try_materialized(uid, limit as usize) {
+                    let engine_items = if let Some(items) =
+                        self.try_redis_materialized(uid, limit as usize).await
+                    {
+                        Some(items)
+                    } else {
+                        self.try_memory_materialized(uid, limit as usize)
+                    };
+                    if let Some(engine_items) = engine_items {
                         let sql_ids: Vec<_> = sql_items.iter().map(|i| i.id).collect();
                         let eng_ids: Vec<_> = engine_items.iter().map(|i| i.id).collect();
                         let agreement = if sql_ids.is_empty() {
@@ -146,12 +207,19 @@ impl FeedGateway for SqlFeedGateway {
             }
             FeedSourceMode::Canary | FeedSourceMode::Engine => {
                 let in_canary = match viewer_uuid {
-                    Some(uid) => sticky_arm(Some(uid), "feed_canary", &["sql", "engine"]) == "engine",
+                    Some(uid) => {
+                        sticky_arm(Some(uid), "feed_canary", &["sql", "engine"]) == "engine"
+                    }
                     None => false,
                 };
                 if matches!(self.mode, FeedSourceMode::Engine) || in_canary {
                     if let Some(uid) = viewer_uuid {
-                        if let Some(items) = self.try_materialized(uid, limit as usize) {
+                        if let Some(items) =
+                            self.try_redis_materialized(uid, limit as usize).await
+                        {
+                            return Ok(self.apply_policy(query.viewer_id, items).await);
+                        }
+                        if let Some(items) = self.try_memory_materialized(uid, limit as usize) {
                             return Ok(self.apply_policy(query.viewer_id, items).await);
                         }
                         let used = self.fallback_count.fetch_add(1, Ordering::Relaxed);
@@ -165,7 +233,7 @@ impl FeedGateway for SqlFeedGateway {
                         tracing::info!(
                             event = "feed.fallback.sql",
                             user_id = %uid,
-                            "canary miss — SQL fallback"
+                            "engine miss — SQL fallback"
                         );
                     }
                 }

@@ -106,6 +106,73 @@ npm run lint   # when frontend touched
 
 ---
 
+## E — Runtime Wiring (MVP integrado)
+
+**Goal:** `StoryCreated → outbox → RabbitMQ → feed-features → FS → feed-rank → Redis → Feed Gateway → GET /feed` with `FEATURE_FEED_SOURCE=engine` on Home.
+
+**API must not** `tokio::spawn` feed workers. Bins: `feed-relay`, `feed-features`, `feed-rank`.
+
+### Gates (every subphase E1–E5)
+
+Before advancing, all must PASS:
+
+| Gate | Check |
+|------|-------|
+| Build | `cargo build -p cosmolog_api -p feed-relay -p feed-features -p feed-rank` (bins that exist for that subphase) |
+| Tests | unit + `cargo test -p feed-contracts` |
+| Integration | Postgres (+ Redis/RabbitMQ as required) for that subphase |
+| Architecture | no feed worker spawn in API; Gateway is feed read path |
+| Performance | smoke `/feed` reasonable when engine; outbox lag not exploding |
+| Contract | JSON `{id,type,payload,ranking_score}` matches client |
+| Documentation | RUNBOOK + PHASE_STATUS + BROKER updated |
+| Acceptance | subphase checklist below + `feed-phase-gate` PASS |
+
+### E1 — RabbitMQ + relay
+
+- [x] RabbitMQ in `docker-compose.dev.yml`
+- [x] `RabbitMqEventBus` implements `EventBus`
+- [x] Bin `apps/feed-relay` polls outbox → publishes
+- [x] API has no feed relay spawn
+
+**Advance to:** E2
+
+### E2 — feed-features + Redis DB1
+
+- [x] Bin `apps/feed-features` consumes domain events
+- [x] Feature Store on Redis DB 1
+- [x] Likes update features only (no full timeline rebuild)
+- [x] Idempotency via `processed_events`
+
+**Advance to:** E3
+
+### E3 — feed-rank + Materializer Redis DB2
+
+- [x] Bin `apps/feed-rank` candidates → ranking → materialize
+- [x] Rebuild on StoryCreated / Follow / Unfollow
+- [x] Scheduler tick (default 5m) for discovery pools
+- [x] Timelines in Redis DB 2 (`feed:user:{id}`)
+
+**Advance to:** E4
+
+### E4 — Gateway engine + hydrate
+
+- [x] Feed Gateway reads Redis timelines; hydrates payload like `get_feed`
+- [x] Dev compose `FEATURE_FEED_SOURCE=engine`
+- [x] Rollback `FEATURE_FEED_SOURCE=sql` restores SQL feed
+
+**Advance to:** E5
+
+### E5 — Obs + E2E + docs
+
+- [x] Structured logs/metrics for outbox lag, consume, feed hit/miss
+- [x] Integration test full path
+- [x] RUNBOOK + PHASE_STATUS E done
+- [x] Browser Home works on engine (manual acceptance note)
+
+**Exit:** Phase E `done`
+
+---
+
 ## Global fail conditions (any phase)
 
 Gate **FAIL** if any:
@@ -113,7 +180,8 @@ Gate **FAIL** if any:
 - Phase scope creep (implemented next phase work “while here”)
 - Supabase client / JWT in localStorage / SQL under `supabase/migrations/`
 - Plugins/scorers with direct SQL in rank hot path
-- `GET /feed` behavior changed before Phase C canary flag
+- `GET /feed` behavior changed before Phase C canary flag (Phase E engine is allowed when E4+)
 - Redpanda added in A/B without user override recorded in PHASE_STATUS
 - Tests failing or skipped to “make green”
 - Phase marked done without invoking `feed-phase-gate`
+- Feed worker loops spawned inside `cosmolog_api` main (Phase E+)

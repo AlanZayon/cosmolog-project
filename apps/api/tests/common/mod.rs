@@ -32,6 +32,7 @@ pub fn test_config() -> Config {
         s3_public_base_url: Some("https://cdn.test.example".into()),
         legacy_supabase_url: None,
         redis_url: None,
+        redis_feed_url: None,
         feed_source_mode: "sql".into(),
     }
 }

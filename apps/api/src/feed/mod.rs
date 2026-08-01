@@ -13,7 +13,7 @@ mod workers;
 
 pub use candidates::{PopularityCandidateSource, RecentCandidateSource};
 pub use feature_store::MemoryFeatureStore;
-pub use gateway::{build_feed_gateway, parse_feed_source_mode};
+pub use gateway::{build_feed_gateway, build_feed_gateway_with_redis, parse_feed_source_mode};
 pub use graph::set_follow_edge;
 pub use materializer::TimelineMaterializer;
 pub use metadata::{load_weights, MetadataSnapshot};

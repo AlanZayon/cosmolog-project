@@ -2,5 +2,9 @@
 resolver = "2"
 members = [
     "apps/api",
+    "apps/feed-relay",
+    "apps/feed-features",
+    "apps/feed-rank",
     "crates/feed-contracts",
+    "crates/feed-core",
 ]

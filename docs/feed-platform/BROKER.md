@@ -1,8 +1,28 @@
-# Feed Platform broker — Phase A
+# Feed Platform broker
 
-Phase A uses `InMemoryEventBus`, a process-local fake bus behind the
-`feed_contracts::EventBus` port. The API outbox relay polls `event_outbox` every
-500 ms, publishes to this port, then marks successfully published rows.
+## Current (Phase E)
 
-RabbitMQ may replace this adapter later without changing producers or the
-transactional outbox. Redpanda and Kafka are intentionally not part of Phase A.
+**RabbitMQ** (`rabbitmq:3-management` in `docker-compose.dev.yml`).
+
+| Exchange | Kind | Purpose |
+|----------|------|---------|
+| `cosmolog.domain` | topic | Domain events from outbox (`domain.#` / `story.created`, …) |
+| `cosmolog.commands` | topic | Rebuild commands (`feed.rebuild.#`) |
+| `cosmolog.dlx` | fanout | Dead-letter |
+
+| Queue | Binding |
+|-------|---------|
+| `q.feed.features` | `cosmolog.domain` / `domain.#` |
+| `q.feed.rank` | `cosmolog.domain` / `domain.#` + `cosmolog.commands` / `feed.rebuild.#` |
+| `q.feed.dlq` | DLX |
+
+Adapter: `feed_core::RabbitMqEventBus` implements `feed_contracts::EventBus`.  
+Tests may still use `MemoryEventBus`.
+
+`feed-relay` is the only process that polls `event_outbox` and publishes. The API writes the outbox in the same TX as domain mutations and does **not** spawn a relay loop.
+
+## History
+
+- Phase A–D: `MemoryEventBus` in-process for foundation tests.
+- Phase E: RabbitMQ for compose / MVP path.
+- Redpanda / Kafka: deferred (scale / Phase F).

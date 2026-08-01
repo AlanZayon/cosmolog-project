@@ -4,6 +4,7 @@ use anyhow::Result;
 use feed_contracts::bus::{EventBus, MemoryEventBus};
 use feed_contracts::gateway::FeedGateway;
 use feed_contracts::registry::FeatureRegistry;
+use feed_core::RedisTimelineStore;
 use sqlx::PgPool;
 
 use crate::auth::{JwtSigner, TokenValidator};
@@ -11,7 +12,7 @@ use crate::config::{Config, GoogleOAuthConfig};
 use crate::domain::activity_notifications::ActivityNotificationEventBus;
 use crate::domain::notifications::NotificationEventBus;
 use crate::feed::{
-    build_feed_gateway, load_feature_registry, parse_feed_source_mode, MemoryFeatureStore,
+    build_feed_gateway_with_redis, load_feature_registry, parse_feed_source_mode, MemoryFeatureStore,
     TimelineMaterializer,
 };
 use crate::infra::aws::AwsCredentials;
@@ -69,6 +70,7 @@ fn storage_settings(config: &Config) -> StorageSettings {
 fn feed_platform_parts(
     pool: &PgPool,
     config: &Config,
+    redis_timelines: Option<RedisTimelineStore>,
 ) -> (
     Arc<dyn FeedGateway>,
     Arc<dyn EventBus>,
@@ -80,7 +82,8 @@ fn feed_platform_parts(
     let mode = parse_feed_source_mode(&config.feed_source_mode);
     let feature_store = MemoryFeatureStore::new();
     (
-        build_feed_gateway(pool.clone(), mode, materializer.clone()),
+        build_feed_gateway_with_redis(pool.clone(), mode, materializer.clone(), redis_timelines),
+        // API does not run feed workers; MemoryEventBus kept for tests / optional in-process use.
         Arc::new(MemoryEventBus::new()),
         Arc::new(load_feature_registry()),
         feature_store,
@@ -91,7 +94,7 @@ fn feed_platform_parts(
 impl AppState {
     pub fn new(pool: PgPool, jwt: Arc<dyn TokenValidator>, config: &Config) -> Self {
         let (feed_gateway, event_bus, feature_registry, feature_store, materializer) =
-            feed_platform_parts(&pool, config);
+            feed_platform_parts(&pool, config, None);
         Self {
             pool,
             jwt,
@@ -171,13 +174,29 @@ impl AppState {
             (None, _) => Arc::new(DisabledStorage),
         };
 
+        let redis_timelines = match config.redis_feed_url.as_deref() {
+            Some(url) => match RedisTimelineStore::connect(url).await {
+                Ok(store) => Some(store),
+                Err(e) => {
+                    tracing::warn!(
+                        event = "feed.redis.connect_failed",
+                        error = %e,
+                        "REDIS_FEED_URL set but connect failed; engine will miss"
+                    );
+                    None
+                }
+            },
+            None => None,
+        };
+
         let (feed_gateway, event_bus, feature_registry, feature_store, materializer) =
-            feed_platform_parts(&pool, config);
+            feed_platform_parts(&pool, config, redis_timelines);
         tracing::info!(
             event = "feed.platform.ready",
             feed_source = %config.feed_source_mode,
             features = feature_registry.features.len(),
-            "feed platform initialized (MemoryEventBus + FeatureStore + Materializer)"
+            redis_feed = config.redis_feed_url.is_some(),
+            "feed platform initialized (Gateway read; workers are separate bins)"
         );
 
         Ok(Self {

@@ -4,10 +4,30 @@
 
 | Value | Client sees | Notes |
 |-------|-------------|-------|
-| `sql` (default) | `get_feed` SQL | Instant rollback |
+| `sql` | `get_feed` SQL | Instant rollback |
 | `shadow` | SQL | Engine/materializer compared in logs (`feed.shadow.diff`) |
 | `canary` | Sticky ~50% engine timeline when present; else SQL | Hash `feed_canary` |
-| `engine` | Materialized timeline; SQL fallback with budget | Miss storm protected |
+| `engine` | Redis timeline + hydrate; SQL fallback with budget | **Dev compose default** |
+
+## Redis layout (dev)
+
+| DB | Env | Use |
+|----|-----|-----|
+| 0 | `REDIS_URL` | SSE fan-out |
+| 1 | `REDIS_FEATURES_URL` | Feature Store (`feed-features`) |
+| 2 | `REDIS_FEED_URL` | Timelines + payloads (`feed-rank` / Gateway) |
+
+Keys: `feed:user:{uuid}` (ZSET), `payload:item:{type}:{id}` (STRING JSON).
+
+## Workers (separate bins — not inside API)
+
+| Bin | Role |
+|-----|------|
+| `feed-relay` | Poll `event_outbox` → RabbitMQ `cosmolog.domain` |
+| `feed-features` | Consume → Redis Feature Store; idempotent via `processed_events` |
+| `feed-rank` | Rebuild timelines on StoryCreated / Follow / Unfollow; scheduler tick; likes ignored for rebuild |
+
+Env: `AMQP_URL=amqp://guest:guest@rabbitmq:5672`.
 
 ## Rollback (&lt; 1 minute)
 
@@ -19,6 +39,15 @@
 
 Under `canary`/`engine`, SQL fallback is rate-limited per process (`fallback_budget_per_window`). When exceeded, serve empty rather than stampede Postgres.
 
-## Broker (Phase A–C)
+## Observability
 
-`MemoryEventBus` + transactional outbox. Swap via `EventBus` port (NATS/RabbitMQ) without changing domain events. Redpanda = Phase D / scale only.
+Look for structured `event=` fields:
+
+- `feed.relay.published`, `feed.outbox.lag`
+- `feed.features.applied`, `feed.features.skip_duplicate`
+- `feed.rank.rebuild_*`, `feed.scheduler.tick`, `feed.materializer.write`
+- `feed.gateway.hit` / `feed.gateway.miss` / `feed.fallback.sql`
+
+## Manual acceptance (Home)
+
+With `docker compose -f docker-compose.dev.yml up`, Home should serve engine timelines once `feed-relay` / `feed-features` / `feed-rank` have processed events. Set `FEATURE_FEED_SOURCE=sql` on `api` and restart to confirm SQL rollback.
