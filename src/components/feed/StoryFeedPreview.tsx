@@ -18,6 +18,7 @@ import type { TranslationKey } from '@/i18n/translations';
 import { PEEK_ILLUSTRATED_BLOCKS } from '@/lib/storyPreviewPeek';
 import { loadBlocks, normalizeStoryType, type StoryBlockRow } from '@/lib/storyBlocks';
 import StoryBlocksView from '@/components/StoryBlocksView';
+import { StoryReaderSkeleton } from '@/components/loading/skeletons';
 import StoryLibraryActions from '@/components/library/StoryLibraryActions';
 import ComicReader from '@/components/ComicReader';
 import type { ApiStory } from '@/lib/api/types';
@@ -165,10 +166,19 @@ export default function StoryFeedPreview({
   const titleFullClass = 'text-3xl font-bold font-serif';
   const TitlePeek = 'h2' as const;
 
-  if (loading || !story) {
+  if (loading) {
+    return (
+      <div className={peek ? 'min-h-[28vh] py-6' : 'min-h-[40vh] bg-background p-4 sm:p-8'}>
+        <span className="sr-only">{t('common.loading')}</span>
+        <StoryReaderSkeleton />
+      </div>
+    );
+  }
+
+  if (!story) {
     return (
       <div className={peek ? 'min-h-[28vh] py-12 text-center text-muted-foreground' : 'min-h-[40vh] bg-background p-8 text-center text-muted-foreground'}>
-        {loading ? t('common.loading') : t('common.noContent')}
+        {t('common.noContent')}
       </div>
     );
   }

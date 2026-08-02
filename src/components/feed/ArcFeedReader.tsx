@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getArc, getArcStories, getUniverseById } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
+import { StoryShelfSkeleton, UniverseDetailSkeleton } from '@/components/loading/skeletons';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -66,7 +67,11 @@ export default function ArcFeedReader({
 
   if (loading) {
     return (
-      <div className="min-h-[40vh] p-8 text-center text-muted-foreground">{t('common.loading')}</div>
+      <div className="min-h-[40vh] p-4 sm:p-8">
+        <span className="sr-only">{t('common.loading')}</span>
+        <UniverseDetailSkeleton />
+        <StoryShelfSkeleton count={3} />
+      </div>
     );
   }
 

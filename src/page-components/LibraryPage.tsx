@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
 import CollectionFormDialog, { type CollectionFormValues } from '@/components/library/CollectionFormDialog';
@@ -10,6 +11,7 @@ import CollectionStoriesShelf from '@/components/library/CollectionStoriesShelf'
 import LibrarySearchInput from '@/components/library/LibrarySearchInput';
 import LibraryFiltersBar from '@/components/library/LibraryFiltersBar';
 import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
+import { ListRowsSkeleton, StoryShelfSkeleton } from '@/components/loading/skeletons';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +32,7 @@ import {
   type ApiLibraryCollectionSummary,
   type ApiLibraryStoryItem,
 } from '@/lib/api/library';
+import { queryKeys } from '@/lib/query-keys';
 import {
   DEFAULT_COLLECTION_LIST_FILTERS,
   filterAndSortLibraryCollections,
@@ -81,6 +84,7 @@ export default function LibraryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [likedStories, setLikedStories] = useState<ApiLibraryStoryItem[]>([]);
   const [collections, setCollections] = useState<ApiLibraryCollectionSummary[]>([]);
@@ -99,8 +103,6 @@ export default function LibraryPage() {
   const [savingToShelf, setSavingToShelf] = useState(false);
   const openedFromUrlRef = useRef<string | null>(null);
   const prevCollectionIdFromUrlRef = useRef<string | null>(null);
-  const [loadingLiked, setLoadingLiked] = useState(true);
-  const [loadingCollections, setLoadingCollections] = useState(true);
   const [loadingCollectionStories, setLoadingCollectionStories] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -115,6 +117,25 @@ export default function LibraryPage() {
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
   const [collectionsListSearchQuery, setCollectionsListSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'liked' | 'collections'>('liked');
+
+  const libraryEnabled = Boolean(user) && !authLoading;
+
+  const likedQuery = useQuery({
+    queryKey: queryKeys.library.liked,
+    queryFn: getLikedStories,
+    enabled: libraryEnabled,
+    staleTime: 60_000,
+  });
+
+  const collectionsQuery = useQuery({
+    queryKey: queryKeys.library.collections,
+    queryFn: getLibraryCollections,
+    enabled: libraryEnabled,
+    staleTime: 60_000,
+  });
+
+  const loadingLiked = libraryEnabled && likedQuery.isPending && !likedQuery.data;
+  const loadingCollections = libraryEnabled && collectionsQuery.isPending && !collectionsQuery.data;
 
   const likedStoryFilterOptions = useMemo(
     () => collectStoryFilterOptions(likedStories),
@@ -175,32 +196,19 @@ export default function LibraryPage() {
     if (authLoading) return;
     if (!user) {
       router.push('/login');
-      return;
     }
-    void fetchLiked();
-    void fetchCollections();
   }, [user, authLoading, router]);
 
-  const fetchLiked = async () => {
-    setLoadingLiked(true);
-    try {
-      setLikedStories(await getLikedStories());
-    } catch {
-      setLikedStories([]);
-    } finally {
-      setLoadingLiked(false);
-    }
-  };
+  useEffect(() => {
+    if (likedQuery.data) setLikedStories(likedQuery.data);
+  }, [likedQuery.data]);
+
+  useEffect(() => {
+    if (collectionsQuery.data) setCollections(collectionsQuery.data);
+  }, [collectionsQuery.data]);
 
   const fetchCollections = async () => {
-    setLoadingCollections(true);
-    try {
-      setCollections(await getLibraryCollections());
-    } catch {
-      setCollections([]);
-    } finally {
-      setLoadingCollections(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: queryKeys.library.collections });
   };
 
   const loadCollectionStories = async (collectionId: string) => {
@@ -514,8 +522,9 @@ export default function LibraryPage() {
 
           <TabsContent value="liked">
             {!libraryReady || loadingLiked ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="py-4">
+                <span className="sr-only">{t('common.loading')}</span>
+                <StoryShelfSkeleton count={5} />
               </div>
             ) : likedStories.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-8 text-center">
@@ -568,12 +577,14 @@ export default function LibraryPage() {
 
           <TabsContent value="collections">
             {!libraryReady ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="py-4">
+                <span className="sr-only">{t('common.loading')}</span>
+                <ListRowsSkeleton count={4} />
               </div>
             ) : pendingExternalCollection ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="py-4">
+                <span className="sr-only">{t('common.loading')}</span>
+                <StoryShelfSkeleton count={4} />
               </div>
             ) : selectedCollection ? (
               <>
@@ -669,8 +680,9 @@ export default function LibraryPage() {
                 </div>
 
                 {loadingCollectionStories ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="py-4">
+                    <span className="sr-only">{t('common.loading')}</span>
+                    <StoryShelfSkeleton count={4} />
                   </div>
                 ) : collectionStories.length === 0 ? (
                   <p className="text-muted-foreground">{t('library.emptyCollectionsHint')}</p>
@@ -779,8 +791,9 @@ export default function LibraryPage() {
                 </div>
 
                 {loadingCollections ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="py-4">
+                    <span className="sr-only">{t('common.loading')}</span>
+                    <ListRowsSkeleton count={4} />
                   </div>
                 ) : collections.length === 0 ? (
                   <div className="rounded-xl border border-border bg-card p-8 text-center">

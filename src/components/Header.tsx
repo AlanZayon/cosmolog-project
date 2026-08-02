@@ -22,13 +22,14 @@ import CosmologLogo from "@/components/CosmologLogo";
 import { ActivityNotificationAvatarBadge } from "@/components/ActivityNotificationUnreadDot";
 import HeaderActivityNotificationCenter from "@/components/HeaderActivityNotificationCenter";
 import HeaderNotificationCenter from "@/components/HeaderNotificationCenter";
+import { HeaderAuthSkeleton, HeaderSheetAuthSkeleton } from "@/components/loading/skeletons";
 import { useActivityNotificationInbox } from "@/hooks/useActivityNotificationInbox";
 import { COMMUNITY_FEED_ELEMENT_ID, HOME_FEED_PATH } from "@/lib/homeFeedNav";
 
 const LANGUAGES: Language[] = ["pt", "en", "ja", "es"];
 
 export default function Header() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
   const { unreadCount: activityUnreadCount } = useActivityNotificationInbox();
   const hasActivityUnread = Boolean(user) && activityUnreadCount > 0;
   const { t, language, setLanguage } = useLanguage();
@@ -75,7 +76,9 @@ export default function Header() {
 
           <div className="mt-4 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-0.5 pb-4 scrollbar-none">
           <div className="flex flex-col gap-1">
-            {user ? (
+            {authLoading ? (
+              <HeaderSheetAuthSkeleton />
+            ) : user ? (
               <div className="flex min-w-0 items-center gap-1 rounded-lg px-1 py-1 hover:bg-accent/50">
                 <SheetClose asChild>
                   <Link
@@ -150,7 +153,7 @@ export default function Header() {
                   {t("header.write")}
                 </Link>
               </SheetClose>
-              {user ? (
+              {user && !authLoading ? (
                 <>
                   <SheetClose asChild>
                     <Link
@@ -215,7 +218,7 @@ export default function Header() {
             </div>
           </div>
 
-          {user ? (
+          {user && !authLoading ? (
             <>
               <hr className="border-border" />
               <Button
@@ -269,36 +272,42 @@ export default function Header() {
                   <span className="hidden min-[400px]:inline">{t("header.write")}</span>
                 </Link>
               </Button>
-              {user ? (
-                <Button variant="outline" size="sm" asChild className="h-10 gap-1.5 px-2 font-medium sm:h-9 sm:px-2.5 md:px-3">
-                  <Link href="/library" title={t("header.library")}>
-                    <Library className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="hidden min-[400px]:inline">{t("header.library")}</span>
-                  </Link>
-                </Button>
-              ) : null}
-              {!user ? (
+              {authLoading ? (
+                <HeaderAuthSkeleton />
+              ) : (
                 <>
-                  <Button variant="outline" size="sm" asChild className="h-10 shrink-0 gap-1 px-2 font-medium sm:h-9 sm:px-2.5">
-                    <Link href="/login" title={t("header.login")} aria-label={t("header.login")}>
-                      <LogIn className="h-4 w-4 shrink-0 sm:mr-0.5" aria-hidden />
-                      <span className="hidden min-[480px]:inline">{t("header.login")}</span>
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="hidden h-10 shrink-0 gap-1 border-2 border-primary/35 bg-background px-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-primary/10 min-[520px]:inline-flex sm:h-9"
-                  >
-                    <Link href="/signup" title={t("header.signup")}>
-                      <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
-                      <span>{t("header.signup")}</span>
-                    </Link>
-                  </Button>
+                  {user ? (
+                    <Button variant="outline" size="sm" asChild className="h-10 gap-1.5 px-2 font-medium sm:h-9 sm:px-2.5 md:px-3">
+                      <Link href="/library" title={t("header.library")}>
+                        <Library className="h-4 w-4 shrink-0" aria-hidden />
+                        <span className="hidden min-[400px]:inline">{t("header.library")}</span>
+                      </Link>
+                    </Button>
+                  ) : null}
+                  {!user ? (
+                    <>
+                      <Button variant="outline" size="sm" asChild className="h-10 shrink-0 gap-1 px-2 font-medium sm:h-9 sm:px-2.5">
+                        <Link href="/login" title={t("header.login")} aria-label={t("header.login")}>
+                          <LogIn className="h-4 w-4 shrink-0 sm:mr-0.5" aria-hidden />
+                          <span className="hidden min-[480px]:inline">{t("header.login")}</span>
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="hidden h-10 shrink-0 gap-1 border-2 border-primary/35 bg-background px-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-primary/10 min-[520px]:inline-flex sm:h-9"
+                      >
+                        <Link href="/signup" title={t("header.signup")}>
+                          <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
+                          <span>{t("header.signup")}</span>
+                        </Link>
+                      </Button>
+                    </>
+                  ) : null}
+                  {user ? <HeaderNotificationCenter /> : null}
                 </>
-              ) : null}
-              {user ? <HeaderNotificationCenter /> : null}
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -314,7 +323,11 @@ export default function Header() {
                 className="relative shrink-0 overflow-visible"
               >
                 <ActivityNotificationAvatarBadge hasUnread={hasActivityUnread && !menuOpen}>
-                  {profile?.avatar_url ? (
+                  {authLoading ? (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                      <span className="h-8 w-8 animate-pulse rounded-full bg-muted-foreground/20" aria-hidden />
+                    </span>
+                  ) : profile?.avatar_url ? (
                     <img
                       key={profile.avatar_url}
                       src={profile.avatar_url}

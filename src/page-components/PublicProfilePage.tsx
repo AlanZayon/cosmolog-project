@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
 import ProfileNotificationButton, {
   ProfileNotificationLoginPrompt,
 } from '@/components/profile/ProfileNotificationButton';
 import { BrowseContentRow, browseLandscapeTileClass, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
+import {
+  LandscapeShelfSkeleton,
+  ProfileHeroSkeleton,
+  StoryShelfSkeleton,
+} from '@/components/loading/skeletons';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +24,7 @@ import {
   getProfileStoriesByUsername,
   getProfileUniversesByUsername,
 } from '@/lib/api';
-import type { ApiProfile, ApiStoryWithProfile, ApiUniverse } from '@/lib/api/types';
+import { queryKeys } from '@/lib/query-keys';
 import NotificationLampIcon from '@/components/NotificationLampIcon';
 import { cn } from '@/lib/utils';
 
@@ -30,65 +36,61 @@ export default function PublicProfilePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const [profile, setProfile] = useState<ApiProfile | null>(null);
-  const [stories, setStories] = useState<ApiStoryWithProfile[]>([]);
-  const [universes, setUniverses] = useState<ApiUniverse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const profileQuery = useQuery({
+    queryKey: queryKeys.profile.byUsername(username),
+    queryFn: () => getProfileByUsername(username),
+    enabled: Boolean(username),
+    staleTime: 60_000,
+    retry: (count, err) => !(err instanceof ApiError && err.status === 404) && count < 2,
+  });
+
+  const storiesQuery = useQuery({
+    queryKey: queryKeys.profile.storiesByUsername(username),
+    queryFn: () => getProfileStoriesByUsername(username),
+    enabled: Boolean(username) && profileQuery.isSuccess,
+    staleTime: 60_000,
+  });
+
+  const universesQuery = useQuery({
+    queryKey: queryKeys.profile.universesByUsername(username),
+    queryFn: () => getProfileUniversesByUsername(username),
+    enabled: Boolean(username) && profileQuery.isSuccess,
+    staleTime: 60_000,
+  });
+
+  const profile = profileQuery.data ?? null;
+  const stories = storiesQuery.data ?? [];
+  const universes = universesQuery.data ?? [];
+  const notFound = profileQuery.isError && profileQuery.error instanceof ApiError && profileQuery.error.status === 404;
+  const loading =
+    Boolean(username) &&
+    (profileQuery.isPending ||
+      (profileQuery.isSuccess && (storiesQuery.isPending || universesQuery.isPending)));
 
   const isOwnProfile = Boolean(user && profile && user.id === profile.user_id);
   const showNotificationControl = stories.length > 0 && !isOwnProfile;
 
   useEffect(() => {
-    if (!username) return;
-    let cancelled = false;
-
-    const run = async () => {
-      setLoading(true);
-      setNotFound(false);
-      setProfile(null);
-      setStories([]);
-      setUniverses([]);
-      try {
-        const profileData = await getProfileByUsername(username);
-        if (cancelled) return;
-        setProfile(profileData);
-
-        const [storiesData, universesData] = await Promise.all([
-          getProfileStoriesByUsername(username),
-          getProfileUniversesByUsername(username),
-        ]);
-        if (cancelled) return;
-        setStories(storiesData);
-        setUniverses(universesData);
-      } catch (err) {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setNotFound(true);
-        } else {
-          toast({
-            title: t('common.error'),
-            description: err instanceof ApiError ? err.message : String(err),
-            variant: 'destructive',
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [username]);
+    if (!profileQuery.error || notFound) return;
+    toast({
+      title: t('common.error'),
+      description:
+        profileQuery.error instanceof ApiError
+          ? profileQuery.error.message
+          : String(profileQuery.error),
+      variant: 'destructive',
+    });
+  }, [profileQuery.error, notFound, t, toast]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container max-w-6xl py-20 text-center text-muted-foreground">
-          {t('common.loading')}
+        <main className="container max-w-6xl py-8">
+          <span className="sr-only">{t('common.loading')}</span>
+          <ProfileHeroSkeleton />
+          <StoryShelfSkeleton />
+          <LandscapeShelfSkeleton />
         </main>
       </div>
     );

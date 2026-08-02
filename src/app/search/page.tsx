@@ -2,18 +2,11 @@
 
 import { Suspense } from "react";
 import SearchPage from "@/page-components/SearchPage";
-
-function SearchFallback() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-      Loading
-    </div>
-  );
-}
+import RouteLoadingFallback from "@/components/loading/RouteLoadingFallback";
 
 export default function SearchRoutePage() {
   return (
-    <Suspense fallback={<SearchFallback />}>
+    <Suspense fallback={<RouteLoadingFallback variant="search" />}>
       <SearchPage />
     </Suspense>
   );

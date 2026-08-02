@@ -26,6 +26,7 @@ import Header from '@/components/Header';
 import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
 import CharacterMeter from '@/components/CharacterMeter';
 import StoryCard from '@/components/StoryCard';
+import { StoryShelfSkeleton, UniverseDetailSkeleton } from '@/components/loading/skeletons';
 import { useToast } from '@/hooks/use-toast';
 import { CONTENT_LIMITS, describeViolations, validateArcFields, validateUniverseFields } from '@/lib/contentLimits';
 import { Plus, Pencil, X, ImagePlus, FileText, BookOpen, Image, Globe, Save } from 'lucide-react';
@@ -374,7 +375,10 @@ export default function UniversePage({
     return (
       <div className={uShell}>
         {!embedExploration && <Header />}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+        <main className="container max-w-6xl py-8">
+          <span className="sr-only">{t('common.loading')}</span>
+          <UniverseDetailSkeleton />
+        </main>
       </div>
     );
   }
@@ -388,7 +392,10 @@ export default function UniversePage({
             <PreviousScreenBackButton />
           </div>
         )}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+        <main className="container max-w-6xl py-8">
+          <span className="sr-only">{t('common.loading')}</span>
+          <UniverseDetailSkeleton />
+        </main>
       </div>
     );
   }
@@ -689,7 +696,7 @@ export default function UniversePage({
           </div>
 
           {loading ? (
-            <p className="text-muted-foreground text-center">{t('common.loading')}</p>
+            <StoryShelfSkeleton />
           ) : stories.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('universe.noStories')}</p>

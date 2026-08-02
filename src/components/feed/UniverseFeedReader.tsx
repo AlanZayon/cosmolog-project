@@ -9,6 +9,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { HorizontalScrollStrip } from '@/components/browse/HorizontalScrollStrip';
 import { browseStoryTileClassNarrow } from '@/components/browse/BrowseContentRow';
 import { UniverseArcShelfTile } from '@/components/universe/UniverseArcShelfTile';
+import { UniverseDetailSkeleton } from '@/components/loading/skeletons';
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
 type Arc = Tables<'arcs'>;
@@ -99,7 +100,10 @@ export default function UniverseFeedReader({
 
   if (loading) {
     return (
-      <div className="min-h-[40vh] p-8 text-center text-muted-foreground">{t('common.loading')}</div>
+      <div className="min-h-[40vh] p-4 sm:p-8">
+        <span className="sr-only">{t('common.loading')}</span>
+        <UniverseDetailSkeleton />
+      </div>
     );
   }
 

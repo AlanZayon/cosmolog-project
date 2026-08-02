@@ -2,10 +2,11 @@
 
 import { Suspense } from "react";
 import ProfilePage from "@/page-components/ProfilePage";
+import RouteLoadingFallback from "@/components/loading/RouteLoadingFallback";
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<RouteLoadingFallback variant="profile" />}>
       <ProfilePage />
     </Suspense>
   );

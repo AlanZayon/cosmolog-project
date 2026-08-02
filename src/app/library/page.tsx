@@ -2,18 +2,11 @@
 
 import { Suspense } from "react";
 import LibraryPage from "@/page-components/LibraryPage";
-
-function LibraryFallback() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-      Loading
-    </div>
-  );
-}
+import RouteLoadingFallback from "@/components/loading/RouteLoadingFallback";
 
 export default function LibraryRoutePage() {
   return (
-    <Suspense fallback={<LibraryFallback />}>
+    <Suspense fallback={<RouteLoadingFallback variant="library" />}>
       <LibraryPage />
     </Suspense>
   );

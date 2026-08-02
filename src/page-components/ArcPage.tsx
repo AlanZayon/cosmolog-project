@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import PreviousScreenBackButton from '@/components/PreviousScreenBackButton';
 import StoryCard from '@/components/StoryCard';
 import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/BrowseContentRow';
+import { UniverseDetailSkeleton } from '@/components/loading/skeletons';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { getArc, getArcStories, getUniverseById } from '@/lib/api';
@@ -65,7 +66,10 @@ export default function ArcPage({
     return (
       <div className={shell}>
         {!embedExploration && <Header />}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+        <main className="container max-w-6xl py-8">
+          <span className="sr-only">{t('common.loading')}</span>
+          <UniverseDetailSkeleton />
+        </main>
       </div>
     );
   }
@@ -79,7 +83,10 @@ export default function ArcPage({
             <PreviousScreenBackButton />
           </div>
         )}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+        <main className="container max-w-6xl py-8">
+          <span className="sr-only">{t('common.loading')}</span>
+          <UniverseDetailSkeleton />
+        </main>
       </div>
     );
   }

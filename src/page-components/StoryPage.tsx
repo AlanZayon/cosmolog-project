@@ -3,18 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
   createChapter,
-  getComicPages,
-  getProfileByUserId,
-  getStoryById,
-  getStoryChapters,
-  getUniverseArcs,
   replaceComicPages,
   updateStory,
 } from '@/lib/api';
-import type { ApiStory } from '@/lib/api/types';
 import { uploadFile } from '@/lib/api/storage';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -43,7 +38,6 @@ import {
   blockHasContent,
   blocksFromLegacyPlainText,
   blocksToEditorItems,
-  loadBlocks,
   normalizeStoryType,
   saveBlocks,
 } from '@/lib/storyBlocks';
@@ -55,9 +49,15 @@ import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDis
 import ReadingModeField, { type ReadingMode } from '@/components/ReadingModeField';
 import ComicReader from '@/components/ComicReader';
 import StoryLibraryActions from '@/components/library/StoryLibraryActions';
+import { StoryBodySkeleton, StoryReaderSkeleton } from '@/components/loading/skeletons';
 import { clearChapterReturnStoryId, markChapterOpenedFromStory } from '@/lib/storyChapterNav';
+import { queryKeys } from '@/lib/query-keys';
+import {
+  fetchStoryPageBody,
+  fetchStoryPageMeta,
+  type StoryWithProfile,
+} from '@/lib/storyPageBundle';
 
-type StoryWithProfile = ApiStory & { profiles: { username: string } | null };
 type Arc = Tables<'arcs'>;
 
 export type StoryPageProps = {
@@ -83,6 +83,7 @@ export default function StoryPage({
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [story, setStory] = useState<StoryWithProfile | null>(null);
   const [storyArc, setStoryArc] = useState<Arc | null>(null);
   const [availableArcs, setAvailableArcs] = useState<Arc[]>([]);
@@ -114,9 +115,41 @@ export default function StoryPage({
   const coverInputRef = useRef<HTMLInputElement>(null);
   const commentsSectionRef = useRef<HTMLElement>(null);
 
+  const metaQuery = useQuery({
+    queryKey: id ? [...queryKeys.story.detail(id), 'meta'] : ['story', 'missing', 'meta'],
+    queryFn: () => fetchStoryPageMeta(id!),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+    retry: (count, err) => !(err instanceof ApiError && err.status === 404) && count < 2,
+  });
+
+  const bodyQuery = useQuery({
+    queryKey: id ? [...queryKeys.story.detail(id), 'body'] : ['story', 'missing', 'body'],
+    queryFn: () => fetchStoryPageBody(id!, metaQuery.data?.story.type),
+    enabled: Boolean(id) && metaQuery.isSuccess,
+    staleTime: 60_000,
+  });
+
+  const storyLoading = Boolean(id) && metaQuery.isPending && !metaQuery.data;
+  const bodyLoading = Boolean(id) && metaQuery.isSuccess && bodyQuery.isPending && !bodyQuery.data;
+  const storyNotFound =
+    Boolean(id) &&
+    !storyLoading &&
+    (metaQuery.isError || (metaQuery.isFetched && !metaQuery.data));
+
   useEffect(() => {
-    if (id) fetchAll();
-  }, [id, user]);
+    if (!metaQuery.data) return;
+    setStory(metaQuery.data.story);
+    setAvailableArcs(metaQuery.data.availableArcs);
+    setStoryArc(metaQuery.data.storyArc);
+  }, [metaQuery.data]);
+
+  useEffect(() => {
+    if (!bodyQuery.data) return;
+    setChapters(bodyQuery.data.chapters);
+    setComicPages(bodyQuery.data.comicPages);
+    setShortStoryBlocks(bodyQuery.data.shortStoryBlocks);
+  }, [bodyQuery.data]);
 
   useEffect(() => {
     if (!embedExploration && id) clearChapterReturnStoryId();
@@ -132,46 +165,7 @@ export default function StoryPage({
 
   const fetchAll = async () => {
     if (!id) return;
-    try {
-      const storyData = await getStoryById(id);
-      const authorProfile = await getProfileByUserId(storyData.author_id);
-      setStory({
-        ...storyData,
-        profiles: authorProfile ? { username: authorProfile.username } : null,
-      });
-
-      if (storyData.universe_id) {
-        const arcsData = await getUniverseArcs(storyData.universe_id);
-        const sorted = [...arcsData].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        );
-        setAvailableArcs(sorted as Arc[]);
-        setStoryArc((sorted as Arc[]).find((arc) => arc.id === storyData.arc_id) || null);
-      } else {
-        setAvailableArcs([]);
-        setStoryArc(null);
-      }
-
-      if (normalizeStoryType(storyData.type) === 'chapters') {
-        setChapters((await getStoryChapters(id)) as Tables<'chapters'>[]);
-      } else {
-        setChapters([]);
-      }
-
-      if (storyData.type === 'comic') {
-        setComicPages((await getComicPages(id)) as Tables<'comic_pages'>[]);
-      } else {
-        setComicPages([]);
-      }
-
-      if (storyData.type === 'short_story') {
-        setShortStoryBlocks(await loadBlocks(id, null));
-      } else {
-        setShortStoryBlocks([]);
-      }
-    } catch {
-      setStory(null);
-    }
+    await queryClient.invalidateQueries({ queryKey: queryKeys.story.detail(id) });
   };
 
   const addChapter = async () => {
@@ -376,16 +370,7 @@ export default function StoryPage({
     }
   };
 
-  if (!id) {
-    return (
-      <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
-        {!embedExploration && <Header />}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
-      </div>
-    );
-  }
-
-  if (!story) {
+  if (!id || storyLoading || (metaQuery.isSuccess && !story)) {
     return (
       <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
         {!embedExploration && <Header />}
@@ -394,7 +379,24 @@ export default function StoryPage({
             <PreviousScreenBackButton className="-mt-1" />
           </div>
         )}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+        <main className="container max-w-2xl py-8">
+          <span className="sr-only">{t('common.loading')}</span>
+          <StoryReaderSkeleton />
+        </main>
+      </div>
+    );
+  }
+
+  if (storyNotFound || !story) {
+    return (
+      <div className={embedExploration ? 'min-h-full bg-background' : 'min-h-screen bg-background'}>
+        {!embedExploration && <Header />}
+        {!embedExploration && (
+          <div className="container max-w-2xl py-4">
+            <PreviousScreenBackButton className="-mt-1" />
+          </div>
+        )}
+        <div className="container py-20 text-center text-muted-foreground">{t('common.noContent')}</div>
       </div>
     );
   }
@@ -546,6 +548,10 @@ export default function StoryPage({
         </div>
 
         {/* Content by type */}
+        {bodyLoading ? (
+          <StoryBodySkeleton />
+        ) : (
+          <>
         {storyType === 'short_story' && (
           <section className="mb-8">
             {editingContent ? (
@@ -671,6 +677,8 @@ export default function StoryPage({
               />
             )}
           </section>
+        )}
+          </>
         )}
 
         {/* Comments */}

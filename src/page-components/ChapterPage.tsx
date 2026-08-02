@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, Pencil, Save, X } from 'lucide-react';
 import CharacterMeter from '@/components/CharacterMeter';
 import IllustratedBlockEditor, { type IllustratedBlockItem } from '@/components/IllustratedBlockEditor';
 import StoryBlocksView from '@/components/StoryBlocksView';
+import { ChapterBodySkeleton, StoryReaderSkeleton } from '@/components/loading/skeletons';
 import { useToast } from '@/hooks/use-toast';
 import { CONTENT_LIMITS, describeViolations, validateChapterTitle } from '@/lib/contentLimits';
 import {
@@ -54,6 +55,9 @@ export default function ChapterPage({
   const { t } = useLanguage();
   const { toast } = useToast();
   const [chapter, setChapter] = useState<Tables<'chapters'> | null>(null);
+  const [chapterLoading, setChapterLoading] = useState(true);
+  const [bodyLoading, setBodyLoading] = useState(true);
+  const [chapterNotFound, setChapterNotFound] = useState(false);
   const [chapterBlocks, setChapterBlocks] = useState<StoryBlockRow[]>([]);
   const [totalChapters, setTotalChapters] = useState(0);
   const [authorId, setAuthorId] = useState<string | null>(null);
@@ -76,18 +80,35 @@ export default function ChapterPage({
   useEffect(() => {
     if (!id || !chapterNum) return;
     void (async () => {
-      const num = Number(chapterNum);
-      const data = await getChapterByNumber(id, num);
-      if (data) {
+      setChapterLoading(true);
+      setBodyLoading(true);
+      setChapterNotFound(false);
+      try {
+        const num = Number(chapterNum);
+        const data = await getChapterByNumber(id, num);
+        if (!data) {
+          setChapter(null);
+          setChapterNotFound(true);
+          setChapterLoading(false);
+          setBodyLoading(false);
+          return;
+        }
         setChapter(data as Tables<'chapters'>);
         setEditTitle(data.title);
+        setChapterLoading(false);
         const blocks = await loadBlocks(id, data.id);
         setChapterBlocks(blocks);
+        const { count } = await getChapterCount(id);
+        setTotalChapters(count);
+        const story = await getStoryById(id);
+        setAuthorId(story.author_id);
+      } catch {
+        setChapter(null);
+        setChapterNotFound(true);
+        setChapterLoading(false);
+      } finally {
+        setBodyLoading(false);
       }
-      const { count } = await getChapterCount(id);
-      setTotalChapters(count);
-      const story = await getStoryById(id);
-      setAuthorId(story.author_id);
     })();
   }, [id, chapterNum]);
 
@@ -150,11 +171,23 @@ export default function ChapterPage({
     }
   };
 
-  if (!chapter) {
+  if (chapterLoading) {
     return (
       <div className={shellClass}>
         {!embedExploration && <Header />}
-        <div className="container py-20 text-center text-muted-foreground">{t('common.loading')}</div>
+        <main className={`container max-w-2xl ${embedExploration ? 'px-4 py-6 sm:px-8' : 'py-8'}`}>
+          <span className="sr-only">{t('common.loading')}</span>
+          <StoryReaderSkeleton />
+        </main>
+      </div>
+    );
+  }
+
+  if (chapterNotFound || !chapter) {
+    return (
+      <div className={shellClass}>
+        {!embedExploration && <Header />}
+        <div className="container py-20 text-center text-muted-foreground">{t('common.noContent')}</div>
       </div>
     );
   }
@@ -255,6 +288,8 @@ export default function ChapterPage({
               </Button>
             </div>
           </div>
+        ) : bodyLoading ? (
+          <ChapterBodySkeleton />
         ) : chapterBlocks.length > 0 ? (
           <StoryBlocksView blocks={chapterBlocks} className="mt-6" />
         ) : (

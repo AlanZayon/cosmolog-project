@@ -5,6 +5,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { ApiError, getMyUniverses } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
+import { CardGridSkeleton } from '@/components/loading/skeletons';
 import { Plus, Globe } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
@@ -69,7 +70,7 @@ export default function UniversesPage() {
         </div>
 
         {loading ? (
-          <p className="text-muted-foreground text-center">{t('common.loading')}</p>
+          <CardGridSkeleton count={4} className="sm:grid-cols-2 lg:grid-cols-2" />
         ) : universes.length === 0 ? (
           <div className="text-center py-16">
             <Globe className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />

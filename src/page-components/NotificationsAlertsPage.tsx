@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Globe, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import LibrarySearchInput from '@/components/library/LibrarySearchInput';
+import { ListRowsSkeleton } from '@/components/loading/skeletons';
 import NotificationLampIcon from '@/components/NotificationLampIcon';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BookOpen, Globe, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useToast } from '@/hooks/use-toast';
@@ -173,9 +174,9 @@ export default function NotificationsAlertsPage() {
   ) => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+        <div className="py-4">
           <span className="sr-only">{t('common.loading')}</span>
+          <ListRowsSkeleton count={4} />
         </div>
       );
     }

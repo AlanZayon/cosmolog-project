@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { AuthPageShell } from '@/components/auth/AuthPageShell';
 import { SignupForm } from '@/components/auth/SignupForm';
+import AuthRouteLoadingFallback from '@/components/loading/AuthRouteLoadingFallback';
 import { useLanguage } from '@/hooks/useLanguage';
 
 function SignupPageContent() {
@@ -17,13 +18,7 @@ function SignupPageContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<AuthRouteLoadingFallback />}>
       <SignupPageContent />
     </Suspense>
   );

@@ -8,6 +8,7 @@ import type { ApiLibraryCollectionSummary } from '@/lib/api/library';
 import { useLanguage } from '@/hooks/useLanguage';
 import Header from '@/components/Header';
 import StoryCard from '@/components/StoryCard';
+import { ListRowsSkeleton, StoryShelfSkeleton } from '@/components/loading/skeletons';
 import type { Tables } from '@/integrations/supabase/types';
 
 type StoryWithProfile = Tables<'stories'> & { profiles: { username: string; avatar_url: string | null } | null };
@@ -19,10 +20,16 @@ export default function SearchPage() {
   const [results, setResults] = useState<StoryWithProfile[]>([]);
   const [profileResults, setProfileResults] = useState<ApiProfile[]>([]);
   const [collectionResults, setCollectionResults] = useState<ApiLibraryCollectionSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(q));
 
   useEffect(() => {
-    if (!q) return;
+    if (!q) {
+      setLoading(false);
+      setProfileResults([]);
+      setResults([]);
+      setCollectionResults([]);
+      return;
+    }
     setLoading(true);
     Promise.all([searchProfiles(q), searchStories(q), searchLibraryCollections(q)])
       .then(([profiles, stories, collections]) => {
@@ -55,7 +62,11 @@ export default function SearchPage() {
       <main className="container py-8">
         <h1 className="text-xl font-bold mb-4">{t('search.resultsFor')} "{q}"</h1>
         {loading ? (
-          <p className="text-muted-foreground">{t('search.searching')}</p>
+          <div className="space-y-8" aria-busy="true">
+            <span className="sr-only">{t('search.searching')}</span>
+            <ListRowsSkeleton count={3} />
+            <StoryShelfSkeleton count={4} />
+          </div>
         ) : !hasResults ? (
           <p className="text-muted-foreground">{t('search.noResults')}</p>
         ) : (

@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/Header';
 import FeedRenderer from '@/components/feed/FeedRenderer';
+import { FeedListSkeleton } from '@/components/loading/skeletons';
 import { getFeed, type FeedItem } from '@/lib/feed';
+import { queryKeys } from '@/lib/query-keys';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
@@ -11,14 +14,22 @@ import { COMMUNITY_FEED_ELEMENT_ID } from '@/lib/homeFeedNav';
 
 export default function Index() {
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchFeed();
-  }, []);
+  const { user, loading: authLoading } = useAuth();
+  const {
+    data: items = [],
+    isPending: loading,
+    isError,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.feed.all,
+    queryFn: () => getFeed(),
+    staleTime: 60_000,
+  });
+  const error = isError
+    ? queryError instanceof Error
+      ? queryError.message
+      : t('common.error')
+    : null;
 
   useEffect(() => {
     const hash = `#${COMMUNITY_FEED_ELEMENT_ID}`;
@@ -34,19 +45,6 @@ export default function Index() {
     window.addEventListener('hashchange', scrollToFeed);
     return () => window.removeEventListener('hashchange', scrollToFeed);
   }, []);
-
-  const fetchFeed = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const feed = await getFeed();
-      setItems(feed);
-    } catch (err: any) {
-      setError(err.message || t('common.error'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,7 +104,7 @@ export default function Index() {
             </Button>
           </div>
 
-          {!user ? (
+          {!authLoading && !user ? (
             <p className="relative mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground">
               <span>{t('index.guestHint')}</span>{' '}
               <Link href="/signup" className="font-semibold text-primary underline-offset-4 hover:underline">
@@ -140,7 +138,7 @@ export default function Index() {
           </header>
 
           {loading ? (
-            <p className="text-center text-muted-foreground">{t('index.loading')}</p>
+            <FeedListSkeleton />
           ) : error ? (
             <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
               {error}
@@ -158,7 +156,7 @@ export default function Index() {
               </div>
             </div>
           ) : (
-            <FeedRenderer items={items} />
+            <FeedRenderer items={items as FeedItem[]} />
           )}
         </section>
       </main>
