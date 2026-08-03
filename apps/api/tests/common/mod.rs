@@ -34,6 +34,7 @@ pub fn test_config() -> Config {
         redis_url: None,
         redis_feed_url: None,
         feed_source_mode: "sql".into(),
+        feed_sql_delivery_log: true,
     }
 }
 

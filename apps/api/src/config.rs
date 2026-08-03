@@ -54,6 +54,8 @@ pub struct Config {
     pub redis_feed_url: Option<String>,
     /// Feed Gateway mode: `sql` | `shadow` | `canary` | `engine` (`FEATURE_FEED_SOURCE`).
     pub feed_source_mode: String,
+    /// When true, authenticated `GET /feed` upserts into `feed_deliveries` (SQL ranking anti-repeat).
+    pub feed_sql_delivery_log: bool,
 }
 
 impl Config {
@@ -142,6 +144,7 @@ impl Config {
         let redis_feed_url = non_empty_env("REDIS_FEED_URL");
         let feed_source_mode =
             non_empty_env("FEATURE_FEED_SOURCE").unwrap_or_else(|| "sql".to_string());
+        let feed_sql_delivery_log = env_bool("FEED_SQL_DELIVERY_LOG", true);
 
         if is_production {
             if redis_url.is_none() {
@@ -180,6 +183,7 @@ impl Config {
             redis_url,
             redis_feed_url,
             feed_source_mode,
+            feed_sql_delivery_log,
         })
     }
 
@@ -224,6 +228,7 @@ impl Config {
             redis_url: None,
             redis_feed_url: None,
             feed_source_mode: "sql".into(),
+            feed_sql_delivery_log: true,
         }
     }
 }

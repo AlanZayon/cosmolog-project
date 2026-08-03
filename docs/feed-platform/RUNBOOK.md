@@ -12,6 +12,8 @@
 
 Phase E runtime wiring is complete and verified in **dev**. Production stays on SQL until `get_feed` becomes a bottleneck. Enabling the engine is then a deploy/config change, not a rewrite.
 
+**SQL ranking MVP:** production `get_feed` uses the freshness / engagement / follow / diversity formula documented in [SQL_RANKING.md](./SQL_RANKING.md). Tunable via `feed_metadata.weights.sql_feed`. This is a baseline upgrade, not a phase advance.
+
 ### `event_outbox` without a relay
 
 The API still writes domain events to `event_outbox` in the same TX as mutations. With no `feed-relay` in production, rows accumulate with `published_at IS NULL`.

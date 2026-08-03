@@ -24,6 +24,8 @@ pub struct SqlFeedGateway {
     /// Soft budget for SQL fallback under canary/engine miss (process-local).
     fallback_count: AtomicU64,
     fallback_budget_per_window: u64,
+    /// Upsert served items into `feed_deliveries` for SQL ranking anti-repeat.
+    delivery_log: bool,
 }
 
 impl SqlFeedGateway {
@@ -33,7 +35,7 @@ impl SqlFeedGateway {
         mode: FeedSourceMode,
         materializer: TimelineMaterializer,
     ) -> Self {
-        Self::with_redis(pool, policy, mode, materializer, None)
+        Self::with_redis(pool, policy, mode, materializer, None, true)
     }
 
     pub fn with_redis(
@@ -42,6 +44,7 @@ impl SqlFeedGateway {
         mode: FeedSourceMode,
         materializer: TimelineMaterializer,
         redis_timelines: Option<RedisTimelineStore>,
+        delivery_log: bool,
     ) -> Self {
         Self {
             pool,
@@ -51,6 +54,7 @@ impl SqlFeedGateway {
             redis_timelines,
             fallback_count: AtomicU64::new(0),
             fallback_budget_per_window: 200,
+            delivery_log,
         }
     }
 
@@ -95,6 +99,42 @@ impl SqlFeedGateway {
             items.retain(|i| !drop_ids.contains(&i.id));
         }
         items
+    }
+
+    async fn record_deliveries(&self, viewer_id: Uuid, items: &[FeedResponseItem]) {
+        if !self.delivery_log || items.is_empty() {
+            return;
+        }
+        let types: Vec<String> = items.iter().map(|i| i.item_type.clone()).collect();
+        let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
+        if let Err(e) = sqlx::query(
+            r#"
+            INSERT INTO public.feed_deliveries (user_id, item_type, item_id)
+            SELECT $1, t.item_type, t.item_id
+            FROM unnest($2::text[], $3::uuid[]) AS t(item_type, item_id)
+            ON CONFLICT (user_id, item_type, item_id) DO UPDATE
+            SET delivery_count = public.feed_deliveries.delivery_count
+                  + CASE
+                      WHEN public.feed_deliveries.last_delivered_at < now() - INTERVAL '1 hour'
+                      THEN 1
+                      ELSE 0
+                    END,
+                last_delivered_at = now()
+            "#,
+        )
+        .bind(viewer_id)
+        .bind(&types)
+        .bind(&ids)
+        .execute(&self.pool)
+        .await
+        {
+            tracing::warn!(
+                event = "feed.delivery_log.error",
+                error = %e,
+                user_id = %viewer_id,
+                "failed to record feed deliveries"
+            );
+        }
     }
 
     fn try_memory_materialized(
@@ -162,6 +202,33 @@ impl SqlFeedGateway {
     }
 }
 
+/// Drop delivery rows older than 30 days (called once at API startup).
+pub async fn prune_feed_deliveries(pool: &PgPool) {
+    match sqlx::query(
+        "DELETE FROM public.feed_deliveries WHERE last_delivered_at < now() - INTERVAL '30 days'",
+    )
+    .execute(pool)
+    .await
+    {
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                tracing::info!(
+                    event = "feed.deliveries.pruned",
+                    rows = result.rows_affected(),
+                    "pruned stale feed_deliveries"
+                );
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                event = "feed.deliveries.prune_error",
+                error = %e,
+                "failed to prune feed_deliveries"
+            );
+        }
+    }
+}
+
 #[async_trait]
 impl FeedGateway for SqlFeedGateway {
     fn mode(&self) -> FeedSourceMode {
@@ -174,8 +241,8 @@ impl FeedGateway for SqlFeedGateway {
 
         let sql_items = self.fetch_sql(limit, viewer_uuid).await?;
 
-        match self.mode {
-            FeedSourceMode::Sql => Ok(self.apply_policy(query.viewer_id, sql_items).await),
+        let items = match self.mode {
+            FeedSourceMode::Sql => self.apply_policy(query.viewer_id, sql_items).await,
             FeedSourceMode::Shadow => {
                 if let Some(uid) = viewer_uuid {
                     let engine_items = if let Some(items) =
@@ -203,7 +270,7 @@ impl FeedGateway for SqlFeedGateway {
                         );
                     }
                 }
-                Ok(self.apply_policy(query.viewer_id, sql_items).await)
+                self.apply_policy(query.viewer_id, sql_items).await
             }
             FeedSourceMode::Canary | FeedSourceMode::Engine => {
                 let in_canary = match viewer_uuid {
@@ -217,28 +284,40 @@ impl FeedGateway for SqlFeedGateway {
                         if let Some(items) =
                             self.try_redis_materialized(uid, limit as usize).await
                         {
-                            return Ok(self.apply_policy(query.viewer_id, items).await);
+                            self.apply_policy(query.viewer_id, items).await
+                        } else if let Some(items) = self.try_memory_materialized(uid, limit as usize)
+                        {
+                            self.apply_policy(query.viewer_id, items).await
+                        } else {
+                            let used = self.fallback_count.fetch_add(1, Ordering::Relaxed);
+                            if used >= self.fallback_budget_per_window {
+                                tracing::warn!(
+                                    event = "feed.fallback.budget_exceeded",
+                                    "SQL fallback budget exceeded; serving empty/degraded"
+                                );
+                                Vec::new()
+                            } else {
+                                tracing::info!(
+                                    event = "feed.fallback.sql",
+                                    user_id = %uid,
+                                    "engine miss — SQL fallback"
+                                );
+                                self.apply_policy(query.viewer_id, sql_items).await
+                            }
                         }
-                        if let Some(items) = self.try_memory_materialized(uid, limit as usize) {
-                            return Ok(self.apply_policy(query.viewer_id, items).await);
-                        }
-                        let used = self.fallback_count.fetch_add(1, Ordering::Relaxed);
-                        if used >= self.fallback_budget_per_window {
-                            tracing::warn!(
-                                event = "feed.fallback.budget_exceeded",
-                                "SQL fallback budget exceeded; serving empty/degraded"
-                            );
-                            return Ok(vec![]);
-                        }
-                        tracing::info!(
-                            event = "feed.fallback.sql",
-                            user_id = %uid,
-                            "engine miss — SQL fallback"
-                        );
+                    } else {
+                        self.apply_policy(query.viewer_id, sql_items).await
                     }
+                } else {
+                    self.apply_policy(query.viewer_id, sql_items).await
                 }
-                Ok(self.apply_policy(query.viewer_id, sql_items).await)
             }
+        };
+
+        if let Some(uid) = viewer_uuid {
+            self.record_deliveries(uid, &items).await;
         }
+
+        Ok(items)
     }
 }

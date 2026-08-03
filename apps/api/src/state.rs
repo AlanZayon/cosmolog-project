@@ -82,7 +82,13 @@ fn feed_platform_parts(
     let mode = parse_feed_source_mode(&config.feed_source_mode);
     let feature_store = MemoryFeatureStore::new();
     (
-        build_feed_gateway_with_redis(pool.clone(), mode, materializer.clone(), redis_timelines),
+        build_feed_gateway_with_redis(
+            pool.clone(),
+            mode,
+            materializer.clone(),
+            redis_timelines,
+            config.feed_sql_delivery_log,
+        ),
         // API does not run feed workers; MemoryEventBus kept for tests / optional in-process use.
         Arc::new(MemoryEventBus::new()),
         Arc::new(load_feature_registry()),
@@ -191,6 +197,7 @@ impl AppState {
 
         let (feed_gateway, event_bus, feature_registry, feature_store, materializer) =
             feed_platform_parts(&pool, config, redis_timelines);
+        crate::feed::prune_feed_deliveries(&pool).await;
         tracing::info!(
             event = "feed.platform.ready",
             feed_source = %config.feed_source_mode,

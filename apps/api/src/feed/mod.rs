@@ -19,5 +19,5 @@ pub use materializer::TimelineMaterializer;
 pub use metadata::{load_weights, MetadataSnapshot};
 pub use ranking::{rank_candidates, sticky_arm, ExperimentAssignment, RankingPipeline, ScoredItem};
 pub use registry::load_feature_registry;
-pub use sql_gateway::SqlFeedGateway;
+pub use sql_gateway::{prune_feed_deliveries, SqlFeedGateway};
 pub use workers::FeatureWorkers;

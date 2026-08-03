@@ -54,10 +54,10 @@ pub async fn ensure_schema(pool: &PgPool) {
     apply_feed_function(pool).await;
 }
 
-/// `get_feed` lives in a separate file because plpgsql bodies contain `;`
-/// (the naive splitter in `apply_schema` would break them).
+/// `get_feed` is loaded from the v2 ranking migration (single source of truth).
+/// The naive `;` splitter in `apply_schema` would break plpgsql bodies.
 async fn apply_feed_function(pool: &PgPool) {
-    let sql = include_str!("../fixtures/feed_function.sql");
+    let sql = include_str!("../../migrations/20260803192840_get_feed_v2_ranking.sql");
     sqlx::raw_sql(sql)
         .execute(pool)
         .await
@@ -103,6 +103,26 @@ async fn apply_schema_patches(pool: &PgPool) {
         r#"INSERT INTO public.feed_metadata (key, value, version)
            VALUES ('weights.global', '{"recency": 1.0, "popularity": 0.6, "following": 2.0, "max_candidates": 500}'::jsonb, 1)
            ON CONFLICT (key) DO NOTHING"#,
+        r#"CREATE TABLE IF NOT EXISTS public.feed_deliveries (
+            user_id UUID NOT NULL,
+            item_type TEXT NOT NULL CHECK (item_type IN ('story', 'arc', 'universe')),
+            item_id UUID NOT NULL,
+            delivery_count INTEGER NOT NULL DEFAULT 1,
+            first_delivered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            last_delivered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (user_id, item_type, item_id)
+        )"#,
+        "CREATE INDEX IF NOT EXISTS idx_feed_deliveries_recent ON public.feed_deliveries (user_id, last_delivered_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_likes_story_created ON public.likes (story_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_likes_created ON public.likes (created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_universes_owner ON public.universes (owner_id)",
+        r#"INSERT INTO public.feed_metadata (key, value, version)
+           VALUES (
+             'weights.sql_feed',
+             '{"freshness": 1.0, "half_life_hours": 30.0, "following": 1.2, "engagement": 0.7, "engagement_72h": 0.5, "own": -0.7, "seen": 0.45, "jitter": 0.06, "author_penalty": 0.18, "universe_penalty": 0.10, "tier_arc": -0.30, "tier_universe": -0.45}'::jsonb,
+             1
+           )
+           ON CONFLICT (key) DO NOTHING"#,
     ];
     for sql in patches {
         let _ = sqlx::query(sql).execute(pool).await;
@@ -128,6 +148,7 @@ pub async fn truncate_all(pool: &PgPool) {
         "TRUNCATE TABLE
             processed_events,
             feed_metadata,
+            feed_deliveries,
             event_outbox,
             activity_notifications,
             notifications,
@@ -154,4 +175,15 @@ pub async fn truncate_all(pool: &PgPool) {
     .execute(pool)
     .await
     .expect("truncate test tables");
+
+    // Re-seed feed metadata defaults cleared by TRUNCATE.
+    let _ = sqlx::query(
+        r#"INSERT INTO public.feed_metadata (key, value, version)
+           VALUES
+             ('weights.global', '{"recency": 1.0, "popularity": 0.6, "following": 2.0, "max_candidates": 500}'::jsonb, 1),
+             ('weights.sql_feed', '{"freshness": 1.0, "half_life_hours": 30.0, "following": 1.2, "engagement": 0.7, "engagement_72h": 0.5, "own": -0.7, "seen": 0.45, "jitter": 0.06, "author_penalty": 0.18, "universe_penalty": 0.10, "tier_arc": -0.30, "tier_universe": -0.45}'::jsonb, 1)
+           ON CONFLICT (key) DO NOTHING"#,
+    )
+    .execute(pool)
+    .await;
 }

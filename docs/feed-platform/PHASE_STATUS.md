@@ -16,6 +16,8 @@
 | `user_overrides` | Phase E Runtime Wiring MVP — Redis timelines, separate bins, engine on Home |
 
 > **Production note:** Phase E is **dev-only**. Render runs `FEATURE_FEED_SOURCE=sql` with no feed workers / RabbitMQ / Redis DB1–DB2. See `RUNBOOK.md` § Production. Phase fields above are unchanged — this is not a phase advance.
+>
+> **SQL ranking MVP (2026-08):** production `get_feed` scoring upgraded (see `SQL_RANKING.md`). Not a phase advance — do not run `feed-phase-gate` for this.
 
 Valid `current_phase`: `DOC` \| `A` \| `B` \| `C` \| `D` \| `E`  
 Valid `subphase` (when E): `E0` \| `E1` \| `E2` \| `E3` \| `E4` \| `E5`  

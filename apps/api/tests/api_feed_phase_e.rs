@@ -84,6 +84,7 @@ async fn engine_gateway_serves_redis_timeline_with_get_feed_shape() {
         FeedSourceMode::Engine,
         TimelineMaterializer::new(),
         Some(timelines),
+        true,
     );
 
     let items = gw

@@ -13,7 +13,7 @@ pub fn build_feed_gateway(
     mode: feed_contracts::gateway::FeedSourceMode,
     materializer: TimelineMaterializer,
 ) -> Arc<dyn FeedGateway> {
-    build_feed_gateway_with_redis(pool, mode, materializer, None)
+    build_feed_gateway_with_redis(pool, mode, materializer, None, true)
 }
 
 pub fn build_feed_gateway_with_redis(
@@ -21,6 +21,7 @@ pub fn build_feed_gateway_with_redis(
     mode: feed_contracts::gateway::FeedSourceMode,
     materializer: TimelineMaterializer,
     redis_timelines: Option<RedisTimelineStore>,
+    delivery_log: bool,
 ) -> Arc<dyn FeedGateway> {
     Arc::new(SqlFeedGateway::with_redis(
         pool,
@@ -28,6 +29,7 @@ pub fn build_feed_gateway_with_redis(
         mode,
         materializer,
         redis_timelines,
+        delivery_log,
     ))
 }
 
