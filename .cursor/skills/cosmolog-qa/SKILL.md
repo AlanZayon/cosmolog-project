@@ -40,7 +40,8 @@ curl -s http://127.0.0.1:8080/db/ping
 
 - `.github/workflows/web-ci.yml`
 - `.github/workflows/api-test.yml`
-- `.github/workflows/api-deploy.yml` (migrate current + production, then Render hook)
+- `.github/workflows/api-test.yml` (on push: test → migrate current + production → Render)
+- `.github/workflows/api-deploy.yml` (manual migrate + Render)
 - `.github/workflows/security-scan.yml` (gitleaks; no tracked `supabase/.temp`)
 
 ## Report format

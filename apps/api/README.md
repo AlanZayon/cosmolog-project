@@ -158,7 +158,9 @@ docker build -f apps/api/Dockerfile -t cosmolog-api:test .
 
 ### Automated deploy (after CI)
 
-Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) runs **sqlx migrations on both databases**, then triggers a Render deploy **after** the API test workflow succeeds on `main`/`master`.
+Workflow [`.github/workflows/api-test.yml`](../../.github/workflows/api-test.yml) on **push** to `main`/`master` (API-related paths) runs tests, then **sqlx migrations on both databases**, then triggers Render.
+
+Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) is **manual only** (`workflow_dispatch`) for re-running migrate + Render without waiting on tests.
 
 GitHub → **Settings** → **Secrets and variables** → **Actions**:
 
@@ -168,12 +170,14 @@ GitHub → **Settings** → **Secrets and variables** → **Actions**:
 | `MIGRATE_DATABASE_URL_PRODUCTION` | Direct Postgres URI for **production** |
 | `RENDER_DEPLOY_HOOK_URL` | Render Deploy Hook URL |
 
-Both migrate secrets are **required** — missing either blocks deploy. Use the session/direct endpoint (not a transaction pooler).
+Both migrate secrets are **required** on push deploy — missing either blocks Render. Use the session/direct endpoint (not a transaction pooler).
+
+**Note:** Vercel deploys the Next.js app on every git push independently of these workflows. Front-only pushes do **not** run API tests/migrations.
 
 1. Render Dashboard → your API service → **Settings** → **Deploy Hook** → copy URL → `RENDER_DEPLOY_HOOK_URL`
 2. Disable Render **Auto-Deploy** if you only want deploys post-CI (optional)
 
-Manual deploy: Render Dashboard → **Manual Deploy**, or `workflow_dispatch` on the deploy workflow.
+Manual migrate/deploy: Actions → **Deploy API** → **Run workflow**.
 
 `/db/ping` requires a valid `DATABASE_URL`.
 

@@ -1,10 +1,9 @@
 name: Deploy API
 
+# Manual / on-demand migrate + Render deploy (same steps as post-test jobs in
+# "API tests"). Prefer pushing API changes so tests run first; use this when you
+# only need to re-run migrations or trigger Render without a code change.
 on:
-  workflow_run:
-    workflows: ["API tests"]
-    types: [completed]
-    branches: [master, main]
   workflow_dispatch:
 
 jobs:
@@ -21,8 +20,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Deploying code without its migrations leaves the API 500ing on every
-      # query that touches a new column, so a missing secret must block the deploy.
       - name: Require MIGRATE_DATABASE_URL
         if: env.MIGRATE_DATABASE_URL == ''
         run: |
@@ -77,9 +74,7 @@ jobs:
     if: >
       always() &&
       needs.migrate-current.result == 'success' &&
-      needs.migrate-production.result == 'success' &&
-      (github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success')
+      needs.migrate-production.result == 'success'
     concurrency:
       group: api-deploy-${{ github.ref }}
       cancel-in-progress: true
