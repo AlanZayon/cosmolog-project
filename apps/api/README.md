@@ -158,7 +158,7 @@ docker build -f apps/api/Dockerfile -t cosmolog-api:test .
 
 ### Automated deploy (after CI)
 
-Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) runs on **every push** to `main`/`master` (no path filters): sqlx migrations on **current + production**, then Render deploy hook.
+Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) runs on **every push** to `main`/`master` (no path filters): sqlx migrations on **HMG + production**, then **both** Render deploy hooks.
 
 Workflow [`.github/workflows/api-test.yml`](../../.github/workflows/api-test.yml) is separate (path-filtered API tests only).
 
@@ -166,16 +166,18 @@ GitHub → **Settings** → **Secrets and variables** → **Actions**:
 
 | Secret | Purpose |
 |--------|---------|
-| `MIGRATE_DATABASE_URL` | Direct Postgres URI for the **current** (existing) environment |
+| `MIGRATE_DATABASE_URL` | Direct Postgres URI for **HMG** (homologation) |
 | `MIGRATE_DATABASE_URL_PRODUCTION` | Direct Postgres URI for **production** |
-| `RENDER_DEPLOY_HOOK_URL` | Render Deploy Hook URL |
+| `RENDER_DEPLOY_HOOK_URL` | Render Deploy Hook for the **HMG** API service |
+| `RENDER_DEPLOY_HOOK_URL_PRODUCTION` | Render Deploy Hook for the **production** API service |
 
-Both migrate secrets are **required** — missing either fails the workflow. Use the session/direct endpoint (not a transaction pooler).
+All four secrets are **required** — missing any fails the workflow. Use the session/direct Postgres endpoint (not a transaction pooler).
 
-**Vercel vs Actions:** Vercel deploys the Next.js app on every git push by itself. Migrations live in GitHub Actions → open [Actions](https://github.com/AlanZayon/cosmolog-project/actions) and look for **Migrate + Deploy API**. If *no* workflows appear (not even Security scan), enable Actions under **Settings → Actions → General → Allow all actions**.
+**Vercel vs Actions:** Vercel deploys the Next.js app on every git push by itself. Migrations + Render live in GitHub Actions → open [Actions](https://github.com/AlanZayon/cosmolog-project/actions) and look for **Migrate + Deploy API**. If *no* workflows appear (not even Security scan), enable Actions under **Settings → Actions → General → Allow all actions**.
 
-1. Render Dashboard → your API service → **Settings** → **Deploy Hook** → copy URL → `RENDER_DEPLOY_HOOK_URL`
-2. Disable Render **Auto-Deploy** if you only want deploys post-migrate (optional)
+1. Render Dashboard → **HMG** API service → **Settings** → **Deploy Hook** → `RENDER_DEPLOY_HOOK_URL`
+2. Render Dashboard → **production** API service → **Settings** → **Deploy Hook** → `RENDER_DEPLOY_HOOK_URL_PRODUCTION`
+3. Disable Render **Auto-Deploy** on both if you only want deploys post-migrate (optional)
 
 Manual run: Actions → **Migrate + Deploy API** → **Run workflow**.
 

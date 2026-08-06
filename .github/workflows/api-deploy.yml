@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  migrate-current:
-    name: Migrate (current)
+  migrate-hmg:
+    name: Migrate (hmg)
     runs-on: ubuntu-latest
     env:
       MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
@@ -24,9 +24,9 @@ jobs:
       - name: Require MIGRATE_DATABASE_URL
         if: env.MIGRATE_DATABASE_URL == ''
         run: |
-          echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to continue without migrations."
+          echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to continue without HMG migrations."
           echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
-          echo "Postgres endpoint for the current environment (not a transaction pooler)."
+          echo "Postgres endpoint for homologation (not a transaction pooler)."
           echo "See apps/api/README.md."
           exit 1
 
@@ -35,7 +35,7 @@ jobs:
         with:
           tool: sqlx-cli
 
-      - name: Run migrations (current)
+      - name: Run migrations (hmg)
         run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
 
   migrate-production:
@@ -69,27 +69,31 @@ jobs:
         run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
 
   deploy:
-    name: Deploy to Render
+    name: Deploy to Render (hmg + production)
     runs-on: ubuntu-latest
-    needs: [migrate-current, migrate-production]
+    needs: [migrate-hmg, migrate-production]
     if: >
       always() &&
-      needs.migrate-current.result == 'success' &&
+      needs.migrate-hmg.result == 'success' &&
       needs.migrate-production.result == 'success'
     concurrency:
       group: api-deploy-${{ github.ref }}
       cancel-in-progress: true
     env:
       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL_PRODUCTION: ${{ secrets.RENDER_DEPLOY_HOOK_URL_PRODUCTION }}
 
     steps:
-      - name: Trigger Render deploy
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
+      - name: Require both Render deploy hooks
+        if: env.RENDER_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL_PRODUCTION == ''
+        run: |
+          echo "::error::Both RENDER_DEPLOY_HOOK_URL (HMG) and RENDER_DEPLOY_HOOK_URL_PRODUCTION are required."
+          echo "Render Dashboard → each API service → Settings → Deploy Hook → copy URL into GitHub Actions secrets."
+          echo "See apps/api/README.md and render.yaml."
+          exit 1
+
+      - name: Trigger Render deploy (hmg)
         run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
 
-      - name: Skip deploy (missing secret)
-        if: env.RENDER_DEPLOY_HOOK_URL == ''
-        run: |
-          echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set — skipping Render deploy."
-          echo "Migrations above still ran. Add the Deploy Hook secret or enable Render auto-deploy."
-          echo "See apps/api/README.md and render.yaml."
+      - name: Trigger Render deploy (production)
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL_PRODUCTION"
