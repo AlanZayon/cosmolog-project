@@ -1,9 +1,10 @@
-name: Deploy API
+name: Migrate + Deploy API
 
-# Manual / on-demand migrate + Render deploy (same steps as post-test jobs in
-# "API tests"). Prefer pushing API changes so tests run first; use this when you
-# only need to re-run migrations or trigger Render without a code change.
+# Runs on every push to main/master (no path filters) so DB migrations are not
+# skipped when only the web app or docs change. Vercel deploys independently.
 on:
+  push:
+    branches: [master, main]
   workflow_dispatch:
 
 jobs:
@@ -23,7 +24,7 @@ jobs:
       - name: Require MIGRATE_DATABASE_URL
         if: env.MIGRATE_DATABASE_URL == ''
         run: |
-          echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to deploy without running migrations."
+          echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to continue without migrations."
           echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
           echo "Postgres endpoint for the current environment (not a transaction pooler)."
           echo "See apps/api/README.md."
@@ -53,7 +54,7 @@ jobs:
       - name: Require MIGRATE_DATABASE_URL_PRODUCTION
         if: env.MIGRATE_DATABASE_URL == ''
         run: |
-          echo "::error::MIGRATE_DATABASE_URL_PRODUCTION secret is not set — refusing to deploy without migrating production."
+          echo "::error::MIGRATE_DATABASE_URL_PRODUCTION secret is not set — refusing to continue without migrating production."
           echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
           echo "Postgres endpoint for production (not a transaction pooler)."
           echo "See apps/api/README.md."
@@ -89,6 +90,6 @@ jobs:
       - name: Skip deploy (missing secret)
         if: env.RENDER_DEPLOY_HOOK_URL == ''
         run: |
-          echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set — skipping deploy."
-          echo "Use Render auto-deploy from Git, or add a Deploy Hook secret."
+          echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set — skipping Render deploy."
+          echo "Migrations above still ran. Add the Deploy Hook secret or enable Render auto-deploy."
           echo "See apps/api/README.md and render.yaml."

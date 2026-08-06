@@ -12,7 +12,6 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/api-test.yml"
-      - ".github/workflows/api-deploy.yml"
   pull_request:
     paths:
       - "apps/api/**"
@@ -23,7 +22,10 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/api-test.yml"
-      - ".github/workflows/api-deploy.yml"
+
+defaults:
+  run:
+    working-directory: apps/api
 
 env:
   CARGO_TERM_COLOR: always
@@ -34,9 +36,6 @@ jobs:
   test:
     name: Rust tests + coverage
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
 
     services:
       postgres:
@@ -110,95 +109,3 @@ jobs:
           name: api-coverage-lcov
           path: apps/api/lcov.info
           retention-days: 14
-
-  # Migrations + Render only on push to default branches (never on PRs).
-  migrate-current:
-    name: Migrate (current)
-    needs: [test]
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    env:
-      MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
-    defaults:
-      run:
-        working-directory: apps/api
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Require MIGRATE_DATABASE_URL
-        if: env.MIGRATE_DATABASE_URL == ''
-        run: |
-          echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to deploy without running migrations."
-          echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
-          echo "Postgres endpoint for the current environment (not a transaction pooler)."
-          echo "See apps/api/README.md."
-          exit 1
-
-      - name: Install sqlx-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: sqlx-cli
-
-      - name: Run migrations (current)
-        run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
-
-  migrate-production:
-    name: Migrate (production)
-    needs: [test]
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    env:
-      MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL_PRODUCTION }}
-    defaults:
-      run:
-        working-directory: apps/api
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Require MIGRATE_DATABASE_URL_PRODUCTION
-        if: env.MIGRATE_DATABASE_URL == ''
-        run: |
-          echo "::error::MIGRATE_DATABASE_URL_PRODUCTION secret is not set — refusing to deploy without migrating production."
-          echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
-          echo "Postgres endpoint for production (not a transaction pooler)."
-          echo "See apps/api/README.md."
-          exit 1
-
-      - name: Install sqlx-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: sqlx-cli
-
-      - name: Run migrations (production)
-        run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
-
-  deploy:
-    name: Deploy to Render
-    needs: [migrate-current, migrate-production]
-    if: >
-      always() &&
-      github.event_name == 'push' &&
-      needs.migrate-current.result == 'success' &&
-      needs.migrate-production.result == 'success'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: api-deploy-${{ github.ref }}
-      cancel-in-progress: true
-    env:
-      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-
-    steps:
-      - name: Trigger Render deploy
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
-        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
-
-      - name: Skip deploy (missing secret)
-        if: env.RENDER_DEPLOY_HOOK_URL == ''
-        run: |
-          echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set — skipping deploy."
-          echo "Use Render auto-deploy from Git, or add a Deploy Hook secret."
-          echo "See apps/api/README.md and render.yaml."
