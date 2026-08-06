@@ -158,11 +158,20 @@ docker build -f apps/api/Dockerfile -t cosmolog-api:test .
 
 ### Automated deploy (after CI)
 
-Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) triggers a Render deploy **after** the API test workflow succeeds on `main`/`master`.
+Workflow [`.github/workflows/api-deploy.yml`](../../.github/workflows/api-deploy.yml) runs **sqlx migrations on both databases**, then triggers a Render deploy **after** the API test workflow succeeds on `main`/`master`.
 
-1. Render Dashboard → your API service → **Settings** → **Deploy Hook** → copy URL
-2. GitHub → **Settings** → **Secrets** → add `RENDER_DEPLOY_HOOK_URL`
-3. Disable Render **Auto-Deploy** if you only want deploys post-CI (optional)
+GitHub → **Settings** → **Secrets and variables** → **Actions**:
+
+| Secret | Purpose |
+|--------|---------|
+| `MIGRATE_DATABASE_URL` | Direct Postgres URI for the **current** (existing) environment |
+| `MIGRATE_DATABASE_URL_PRODUCTION` | Direct Postgres URI for **production** |
+| `RENDER_DEPLOY_HOOK_URL` | Render Deploy Hook URL |
+
+Both migrate secrets are **required** — missing either blocks deploy. Use the session/direct endpoint (not a transaction pooler).
+
+1. Render Dashboard → your API service → **Settings** → **Deploy Hook** → copy URL → `RENDER_DEPLOY_HOOK_URL`
+2. Disable Render **Auto-Deploy** if you only want deploys post-CI (optional)
 
 Manual deploy: Render Dashboard → **Manual Deploy**, or `workflow_dispatch` on the deploy workflow.
 
@@ -319,7 +328,7 @@ Use this in production if you prefer a deploy step (`sqlx migrate run`) instead 
 | `RUNTIME_DATABASE_URL` | No | session pooler derived from `DATABASE_URL` | Override runtime pool |
 | `MIGRATE_DATABASE_URL` | No | session pooler derived from `DATABASE_URL` | Override migrations connection |
 | `CORS_ALLOWED_ORIGIN` | No | `http://localhost:3000` | Allowed browser origin |
-| `RUN_MIGRATIONS` | No | `true` (local dev) | Apply sqlx migrations on startup. **Production (Render): `false`** — run migrations in CI/deploy via `MIGRATE_DATABASE_URL` secret. |
+| `RUN_MIGRATIONS` | No | `true` (local dev) | Apply sqlx migrations on startup. **Production (Render): `false`** — run migrations in CI/deploy via `MIGRATE_DATABASE_URL` + `MIGRATE_DATABASE_URL_PRODUCTION` secrets. |
 | `AUTH_JWT_SECRET` | Prod | dev fallback | HMAC secret for HS256 access tokens (>= 32 chars) |
 | `REQUIRE_EMAIL_CONFIRMATION` | No | `true` in prod | Require email confirmation before sign-in |
 | `APP_PUBLIC_URL` | No | `CORS_ALLOWED_ORIGIN` | Public web URL used in email links |

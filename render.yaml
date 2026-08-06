@@ -12,6 +12,7 @@
 # Redis DB1–DB2 stay in docker-compose.dev.yml until the SQL feed becomes a bottleneck.
 #
 # Deploy hook (Settings → Deploy Hook): add RENDER_DEPLOY_HOOK_URL to GitHub Actions secrets.
+# CI also needs MIGRATE_DATABASE_URL (current) + MIGRATE_DATABASE_URL_PRODUCTION (prod).
 
 services:
   - type: web

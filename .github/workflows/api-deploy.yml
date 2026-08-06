@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  migrate:
-    name: Run database migrations
+  migrate-current:
+    name: Migrate (current)
     runs-on: ubuntu-latest
     env:
       MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
@@ -21,14 +21,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Deploying code without its migrations leaves production 500ing on every
+      # Deploying code without its migrations leaves the API 500ing on every
       # query that touches a new column, so a missing secret must block the deploy.
       - name: Require MIGRATE_DATABASE_URL
         if: env.MIGRATE_DATABASE_URL == ''
         run: |
           echo "::error::MIGRATE_DATABASE_URL secret is not set — refusing to deploy without running migrations."
           echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
-          echo "Postgres endpoint (not a transaction pooler). See apps/api/README.md."
+          echo "Postgres endpoint for the current environment (not a transaction pooler)."
+          echo "See apps/api/README.md."
           exit 1
 
       - name: Install sqlx-cli
@@ -36,16 +37,47 @@ jobs:
         with:
           tool: sqlx-cli
 
-      - name: Run migrations
+      - name: Run migrations (current)
+        run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
+
+  migrate-production:
+    name: Migrate (production)
+    runs-on: ubuntu-latest
+    env:
+      MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL_PRODUCTION }}
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require MIGRATE_DATABASE_URL_PRODUCTION
+        if: env.MIGRATE_DATABASE_URL == ''
+        run: |
+          echo "::error::MIGRATE_DATABASE_URL_PRODUCTION secret is not set — refusing to deploy without migrating production."
+          echo "Add the secret (Settings → Secrets and variables → Actions) pointing at the direct"
+          echo "Postgres endpoint for production (not a transaction pooler)."
+          echo "See apps/api/README.md."
+          exit 1
+
+      - name: Install sqlx-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: sqlx-cli
+
+      - name: Run migrations (production)
         run: sqlx migrate run --database-url "$MIGRATE_DATABASE_URL"
 
   deploy:
     name: Deploy to Render
     runs-on: ubuntu-latest
-    needs: [migrate]
+    needs: [migrate-current, migrate-production]
     if: >
       always() &&
-      needs.migrate.result == 'success' &&
+      needs.migrate-current.result == 'success' &&
+      needs.migrate-production.result == 'success' &&
       (github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success')
     concurrency:
