@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { ImagePlus, X, BookOpen, FileText, Image, Plus, ChevronUp, ChevronDown } from 'lucide-react';
@@ -36,11 +37,17 @@ import { blockHasContent, saveBlocks } from '@/lib/storyBlocks';
 import FeedDisplayModeField, { type FeedDisplayMode } from '@/components/FeedDisplayModeField';
 import ReadingModeField, { type ReadingMode } from '@/components/ReadingModeField';
 import { HOME_FEED_PATH } from '@/lib/homeFeedNav';
+import CreateStoryDraftPreview from '@/components/create/CreateStoryDraftPreview';
+import {
+  buildCreateStoryPreviewData,
+  type CreateStoryType,
+  type DraftChapter,
+} from '@/components/create/createStoryDraft';
 
-type StoryType = 'short_story' | 'chapters' | 'comic';
+type StoryType = CreateStoryType;
 type Universe = Tables<'universes'>;
 type Arc = Tables<'arcs'>;
-type DraftChapter = { title: string; blocks: IllustratedBlockItem[] };
+type CreateStep = 'meta' | 'content';
 
 const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: TranslationKey; icon: React.ReactNode }[] = [
   { value: 'short_story', labelKey: 'typeLabel.short_story', descKey: 'typeDesc.short_story', icon: <FileText className="h-5 w-5" /> },
@@ -49,13 +56,14 @@ const STORY_TYPES: { value: StoryType; labelKey: TranslationKey; descKey: Transl
 ];
 
 export default function CreateStoryPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const params = useParams<{ id?: string }>();
   const universeId = params.id;
   const router = useRouter();
   const { toast } = useToast();
   const [storyType, setStoryType] = useState<StoryType | null>(null);
+  const [step, setStep] = useState<CreateStep>('meta');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -183,6 +191,66 @@ export default function CreateStoryPage() {
   const createStoryOverLimit = createStoryViolations.length > 0;
   const createStoryBlocked = createStoryOverLimit || chapterMissingTitle || shortStoryMissingContent;
 
+  const selectedUniverse = universes.find((u) => u.id === selectedUniverseId) ?? null;
+  const selectedArc = arcs.find((a) => a.id === selectedArcId) ?? null;
+
+  const previewData = useMemo(() => {
+    if (!storyType) return null;
+    return buildCreateStoryPreviewData({
+      storyType,
+      title,
+      description,
+      tags,
+      coverPreview,
+      readingMode,
+      authorUsername: profile?.username ?? null,
+      universe: selectedUniverse
+        ? { id: selectedUniverse.id, title: selectedUniverse.title }
+        : null,
+      arc: selectedArc ? { id: selectedArc.id, name: selectedArc.name } : null,
+      shortStoryBlocks,
+      draftChapters,
+      comicPages,
+    });
+  }, [
+    storyType,
+    title,
+    description,
+    tags,
+    coverPreview,
+    readingMode,
+    profile?.username,
+    selectedUniverse,
+    selectedArc,
+    shortStoryBlocks,
+    draftChapters,
+    comicPages,
+  ]);
+
+  const goToContentStep = () => {
+    if (!title.trim()) {
+      toast({ title: t('common.error'), description: t('createStory.titleRequired'), variant: 'destructive' });
+      return;
+    }
+    if (metaViolationsCreate.length > 0) {
+      toast({
+        title: t('validation.charLimitsTitle'),
+        description: describeViolations(t, metaViolationsCreate),
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (feedDisplayMode === 'cover' && !coverFile && !coverPreview) {
+      toast({
+        title: t('common.error'),
+        description: t('story.feedDisplayCoverRequired'),
+        variant: 'destructive',
+      });
+      return;
+    }
+    setStep('content');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !storyType) return;
@@ -275,6 +343,117 @@ export default function CreateStoryPage() {
 
   const backHref = universeId ? `/universe/${universeId}` : HOME_FEED_PATH;
 
+  const contentEditor = storyType ? (
+    <>
+      {storyType === 'short_story' && (
+        <div>
+          <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.blocksLabel')}</label>
+          <IllustratedBlockEditor blocks={shortStoryBlocks} onChange={setShortStoryBlocks} />
+          <CharacterMeter
+            length={shortStoryBlocks.filter((b) => b.block_type === 'text').reduce((n, b) => n + b.content.length, 0)}
+            max={CONTENT_LIMITS.storyShortBody}
+            className="mt-1 text-right"
+          />
+        </div>
+      )}
+
+      {storyType === 'chapters' && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t('createStory.chaptersHint')}</p>
+          <label className="text-sm font-medium text-foreground block">{t('story.chapters')}</label>
+          <div className="space-y-3">
+            {draftChapters.map((ch, i) => (
+              <div key={i} className="p-3 rounded-lg border border-border bg-card space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  {ch.title.trim() ? (
+                    <span className="text-sm font-medium text-foreground truncate min-w-0">{ch.title.trim()}</span>
+                  ) : (
+                    <span className="flex-1" aria-hidden />
+                  )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (i === 0) return;
+                        const next = [...draftChapters];
+                        [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                        setDraftChapters(next);
+                      }}
+                      disabled={i === 0}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+                      aria-label={t('common.previous')}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (i >= draftChapters.length - 1) return;
+                        const next = [...draftChapters];
+                        [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                        setDraftChapters(next);
+                      }}
+                      disabled={i === draftChapters.length - 1}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+                      aria-label={t('common.next')}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraftChapters(draftChapters.filter((_, j) => j !== i))}
+                      className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      aria-label={t('common.delete')}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Input
+                    value={ch.title}
+                    onChange={(e) => {
+                      const next = [...draftChapters];
+                      next[i] = { ...next[i], title: e.target.value };
+                      setDraftChapters(next);
+                    }}
+                    placeholder={t('story.chapterTitlePlaceholder')}
+                  />
+                  <CharacterMeter length={ch.title.length} max={CONTENT_LIMITS.chapterTitle} className="mt-1 text-right" />
+                </div>
+                <IllustratedBlockEditor
+                  blocks={ch.blocks}
+                  onChange={(blocks) => {
+                    const next = [...draftChapters];
+                    next[i] = { ...next[i], blocks };
+                    setDraftChapters(next);
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setDraftChapters([...draftChapters, { title: '', blocks: [] }])}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            {t('createStory.addChapter')}
+          </Button>
+        </div>
+      )}
+
+      {storyType === 'comic' && (
+        <div>
+          <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.pagesLabel')}</label>
+          <ComicPageUploader pages={comicPages} onChange={setComicPages} />
+        </div>
+      )}
+    </>
+  ) : null;
+
   if (!storyType) {
     return (
       <div className="min-h-screen bg-background">
@@ -310,7 +489,10 @@ export default function CreateStoryPage() {
             {STORY_TYPES.map(st => (
               <button
                 key={st.value}
-                onClick={() => setStoryType(st.value)}
+                onClick={() => {
+                  setStoryType(st.value);
+                  setStep('meta');
+                }}
                 disabled={loadingRelations}
                 className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-accent transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -327,204 +509,164 @@ export default function CreateStoryPage() {
     );
   }
 
+  if (step === 'meta') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-8 max-w-lg animate-fade-in">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Button variant="ghost" size="sm" className="-ml-2 h-9 shrink-0 px-2" onClick={() => setStoryType(null)}>
+                {t('common.back')}
+              </Button>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">{t('createStory.stepInfo')}</p>
+                <h1 className="text-2xl font-bold font-serif truncate">
+                  {t(STORY_TYPES.find(st => st.value === storyType)!.labelKey)}
+                </h1>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" className="h-9 shrink-0 text-muted-foreground hover:text-foreground" asChild>
+              <Link href={backHref}>{t('header.home')}</Link>
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('story.universe')}</label>
+              <select
+                value={selectedUniverseId}
+                onChange={(e) => setSelectedUniverseId(e.target.value)}
+                disabled={!!universeId}
+                className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+              >
+                <option value="">{t('common.none')}</option>
+                {universes.map((universe) => (
+                  <option key={universe.id} value={universe.id}>{universe.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('story.arc')}</label>
+              <select
+                value={selectedArcId}
+                onChange={(e) => setSelectedArcId(e.target.value)}
+                className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                disabled={!selectedUniverseId}
+              >
+                <option value="">{t('common.none')}</option>
+                {arcs.map((arc) => (
+                  <option key={arc.id} value={arc.id}>{arc.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">{t('story.cover')}</label>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCoverSelect} className="hidden" />
+              {coverPreview ? (
+                <div className="relative w-full aspect-[3/4] max-w-[200px] rounded-lg overflow-hidden border border-border">
+                  <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button type="button" onClick={removeCover} className="absolute top-2 right-2 p-1 rounded-full bg-background/80 hover:bg-background text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center w-full aspect-[3/4] max-w-[200px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors bg-muted/30">
+                  <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
+                  <span className="text-xs text-muted-foreground">{t('story.addCover')}</span>
+                </button>
+              )}
+            </div>
+
+            <FeedDisplayModeField value={feedDisplayMode} onChange={setFeedDisplayMode} />
+
+            {storyType === 'comic' && (
+              <ReadingModeField value={readingMode} onChange={setReadingMode} />
+            )}
+
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('story.title')}</label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('createStory.titlePlaceholder')} required />
+              <CharacterMeter length={title.length} max={CONTENT_LIMITS.storyTitle} className="mt-1 text-right" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('story.description')}</label>
+              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('createStory.descPlaceholder')} rows={3} />
+              <CharacterMeter length={description.length} max={CONTENT_LIMITS.storyDescription} className="mt-1 text-right" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">{t('story.tags')}</label>
+              <TagInput tags={tags} onChange={setTags} />
+            </div>
+
+            <Button
+              type="button"
+              className="w-full gradient-warm text-primary-foreground"
+              onClick={goToContentStep}
+              disabled={metaViolationsCreate.length > 0}
+            >
+              {t('createStory.continueToContent')}
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container py-8 max-w-lg animate-fade-in">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <main className="container py-6 max-w-6xl animate-fade-in">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="sm" className="-ml-2 h-9 shrink-0 px-2" onClick={() => setStoryType(null)}>
-              {t('common.back')}
+            <Button variant="ghost" size="sm" className="-ml-2 h-9 shrink-0 px-2" onClick={() => setStep('meta')}>
+              {t('createStory.backToInfo')}
             </Button>
-            <h1 className="text-2xl font-bold font-serif">
-              {t(STORY_TYPES.find(st => st.value === storyType)!.labelKey)}
-            </h1>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t('createStory.stepContent')}</p>
+              <h1 className="text-xl font-bold font-serif truncate sm:text-2xl">
+                {title.trim() || t(STORY_TYPES.find(st => st.value === storyType)!.labelKey)}
+              </h1>
+            </div>
           </div>
           <Button variant="ghost" size="sm" className="h-9 shrink-0 text-muted-foreground hover:text-foreground" asChild>
             <Link href={backHref}>{t('header.home')}</Link>
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground">{t('story.universe')}</label>
-            <select
-              value={selectedUniverseId}
-              onChange={(e) => setSelectedUniverseId(e.target.value)}
-              disabled={!!universeId}
-              className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
-            >
-              <option value="">{t('common.none')}</option>
-              {universes.map((universe) => (
-                <option key={universe.id} value={universe.id}>{universe.title}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground">{t('story.arc')}</label>
-            <select
-              value={selectedArcId}
-              onChange={(e) => setSelectedArcId(e.target.value)}
-              className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
-              disabled={!selectedUniverseId}
-            >
-              <option value="">{t('common.none')}</option>
-              {arcs.map((arc) => (
-                <option key={arc.id} value={arc.id}>{arc.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">{t('story.cover')}</label>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCoverSelect} className="hidden" />
-            {coverPreview ? (
-              <div className="relative w-full aspect-[3/4] max-w-[200px] rounded-lg overflow-hidden border border-border">
-                <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
-                <button type="button" onClick={removeCover} className="absolute top-2 right-2 p-1 rounded-full bg-background/80 hover:bg-background text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center w-full aspect-[3/4] max-w-[200px] rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors bg-muted/30">
-                <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
-                <span className="text-xs text-muted-foreground">{t('story.addCover')}</span>
-              </button>
-            )}
-          </div>
-
-          <FeedDisplayModeField value={feedDisplayMode} onChange={setFeedDisplayMode} />
-
-          {storyType === 'comic' && (
-            <ReadingModeField value={readingMode} onChange={setReadingMode} />
-          )}
-
-          <div>
-            <label className="text-sm font-medium text-foreground">{t('story.title')}</label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('createStory.titlePlaceholder')} required />
-            <CharacterMeter length={title.length} max={CONTENT_LIMITS.storyTitle} className="mt-1 text-right" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">{t('story.description')}</label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('createStory.descPlaceholder')} rows={3} />
-            <CharacterMeter length={description.length} max={CONTENT_LIMITS.storyDescription} className="mt-1 text-right" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">{t('story.tags')}</label>
-            <TagInput tags={tags} onChange={setTags} />
-          </div>
-
-          {storyType === 'short_story' && (
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.blocksLabel')}</label>
-              <IllustratedBlockEditor blocks={shortStoryBlocks} onChange={setShortStoryBlocks} />
-              <CharacterMeter
-                length={shortStoryBlocks.filter((b) => b.block_type === 'text').reduce((n, b) => n + b.content.length, 0)}
-                max={CONTENT_LIMITS.storyShortBody}
-                className="mt-1 text-right"
-              />
-            </div>
-          )}
-
-          {storyType === 'chapters' && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{t('createStory.chaptersHint')}</p>
-              <label className="text-sm font-medium text-foreground block">{t('story.chapters')}</label>
-              <div className="space-y-3">
-                {draftChapters.map((ch, i) => (
-                  <div key={i} className="p-3 rounded-lg border border-border bg-card space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      {ch.title.trim() ? (
-                        <span className="text-sm font-medium text-foreground truncate min-w-0">{ch.title.trim()}</span>
-                      ) : (
-                        <span className="flex-1" aria-hidden />
-                      )}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (i === 0) return;
-                            const next = [...draftChapters];
-                            [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                            setDraftChapters(next);
-                          }}
-                          disabled={i === 0}
-                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
-                          aria-label={t('common.previous')}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (i >= draftChapters.length - 1) return;
-                            const next = [...draftChapters];
-                            [next[i], next[i + 1]] = [next[i + 1], next[i]];
-                            setDraftChapters(next);
-                          }}
-                          disabled={i === draftChapters.length - 1}
-                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
-                          aria-label={t('common.next')}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDraftChapters(draftChapters.filter((_, j) => j !== i))}
-                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          aria-label={t('common.delete')}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <Input
-                        value={ch.title}
-                        onChange={(e) => {
-                          const next = [...draftChapters];
-                          next[i] = { ...next[i], title: e.target.value };
-                          setDraftChapters(next);
-                        }}
-                        placeholder={t('story.chapterTitlePlaceholder')}
-                      />
-                      <CharacterMeter length={ch.title.length} max={CONTENT_LIMITS.chapterTitle} className="mt-1 text-right" />
-                    </div>
-                    <IllustratedBlockEditor
-                      blocks={ch.blocks}
-                      onChange={(blocks) => {
-                        const next = [...draftChapters];
-                        next[i] = { ...next[i], blocks };
-                        setDraftChapters(next);
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => setDraftChapters([...draftChapters, { title: '', blocks: [] }])}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                {t('createStory.addChapter')}
+        <form onSubmit={handleSubmit}>
+          <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+            <div className="space-y-4 min-w-0">
+              {contentEditor}
+              <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || createStoryBlocked}>
+                {loading ? t('common.creating') : t('createStory.submit')}
               </Button>
             </div>
-          )}
-
-          {storyType === 'comic' && (
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">{t('createStory.pagesLabel')}</label>
-              <ComicPageUploader pages={comicPages} onChange={setComicPages} />
+            <div className="min-w-0 sticky top-4">
+              <p className="mb-2 text-sm font-medium text-foreground">{t('createStory.preview')}</p>
+              {previewData ? <CreateStoryDraftPreview data={previewData} /> : null}
             </div>
-          )}
+          </div>
 
-          <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || createStoryBlocked}>
-            {loading ? t('common.creating') : t('createStory.submit')}
-          </Button>
+          <div className="lg:hidden">
+            <Tabs defaultValue="editor" className="w-full">
+              <TabsList className="mb-4 w-full">
+                <TabsTrigger value="editor" className="flex-1">{t('createStory.editorTab')}</TabsTrigger>
+                <TabsTrigger value="preview" className="flex-1">{t('createStory.previewTab')}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="editor" className="mt-0 space-y-4">
+                {contentEditor}
+                <Button type="submit" className="w-full gradient-warm text-primary-foreground" disabled={loading || createStoryBlocked}>
+                  {loading ? t('common.creating') : t('createStory.submit')}
+                </Button>
+              </TabsContent>
+              <TabsContent value="preview" className="mt-0">
+                {previewData ? <CreateStoryDraftPreview data={previewData} /> : null}
+              </TabsContent>
+            </Tabs>
+          </div>
         </form>
       </main>
     </div>

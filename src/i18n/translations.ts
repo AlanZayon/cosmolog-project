@@ -1182,10 +1182,10 @@ const translations = {
   'story.feedDisplay': { pt: 'Exibição no feed', en: 'Feed display', ja: 'フィード表示', es: 'Visualización en el feed' },
   'story.feedDisplayPreview': { pt: 'Prévia do conteúdo', en: 'Content preview', ja: 'コンテンツプレビュー', es: 'Vista previa del contenido' },
   'story.feedDisplayPreviewDesc': {
-    pt: 'Mostra a capa no feed; ao passar o mouse ou segurar, as primeiras páginas aparecem em sequência.',
-    en: 'Shows the cover in the feed; on hover or press-and-hold, the first pages appear in sequence.',
-    ja: 'フィードではカバーを表示し、ホバーまたは長押しで最初のページを順番に表示します。',
-    es: 'Muestra la portada en el feed; al pasar el cursor o mantener pulsado, aparecen las primeras páginas en secuencia.',
+    pt: 'Mostra o início do conteúdo no feed; ao passar o mouse ou segurar, a capa da história aparece.',
+    en: 'Shows the beginning of the content in the feed; on hover or press-and-hold, the story cover appears.',
+    ja: 'フィードではコンテンツの冒頭を表示し、ホバーまたは長押しでストーリーのカバーを表示します。',
+    es: 'Muestra el inicio del contenido en el feed; al pasar el cursor o mantener pulsado, aparece la portada de la historia.',
   },
   'story.feedDisplayCover': { pt: 'Capa da história', en: 'Story cover', ja: 'ストーリーカバー', es: 'Portada de la historia' },
   'story.feedDisplayCoverDesc': {
@@ -1275,6 +1275,66 @@ const translations = {
   'createStory.blocksLabel': { pt: 'Blocos de Conteúdo', en: 'Content Blocks', ja: 'コンテンツブロック', es: 'Bloques de contenido' },
   'createStory.submit': { pt: 'Criar História', en: 'Create Story', ja: 'ストーリーを作成', es: 'Crear historia' },
   'createStory.success': { pt: 'História criada!', en: 'Story created!', ja: 'ストーリーが作成されました！', es: '¡Historia creada!' },
+  'createStory.continueToContent': {
+    pt: 'Continuar para o conteúdo',
+    en: 'Continue to content',
+    ja: 'コンテンツへ進む',
+    es: 'Continuar al contenido',
+  },
+  'createStory.backToInfo': {
+    pt: 'Voltar às informações',
+    en: 'Back to story info',
+    ja: '情報に戻る',
+    es: 'Volver a la información',
+  },
+  'createStory.stepInfo': {
+    pt: 'Informações da história',
+    en: 'Story information',
+    ja: 'ストーリー情報',
+    es: 'Información de la historia',
+  },
+  'createStory.stepContent': {
+    pt: 'Conteúdo',
+    en: 'Content',
+    ja: 'コンテンツ',
+    es: 'Contenido',
+  },
+  'createStory.preview': {
+    pt: 'Prévia',
+    en: 'Preview',
+    ja: 'プレビュー',
+    es: 'Vista previa',
+  },
+  'createStory.previewPage': {
+    pt: 'Página da história',
+    en: 'Story page',
+    ja: 'ストーリーページ',
+    es: 'Página de la historia',
+  },
+  'createStory.previewFeedModal': {
+    pt: 'Modal do feed',
+    en: 'Feed modal',
+    ja: 'フィードモーダル',
+    es: 'Modal del feed',
+  },
+  'createStory.editorTab': {
+    pt: 'Editor',
+    en: 'Editor',
+    ja: 'エディター',
+    es: 'Editor',
+  },
+  'createStory.previewTab': {
+    pt: 'Prévia',
+    en: 'Preview',
+    ja: 'プレビュー',
+    es: 'Vista previa',
+  },
+  'createStory.titleRequired': {
+    pt: 'Informe o título da história.',
+    en: 'Enter a story title.',
+    ja: 'ストーリーのタイトルを入力してください。',
+    es: 'Introduce el título de la historia.',
+  },
 
   // Feed / Arc
   'feed.exploreArc': { pt: 'Explorar Arco', en: 'Explore Arc', ja: 'アークを見る', es: 'Explorar arco' },
