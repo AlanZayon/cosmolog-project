@@ -14,7 +14,12 @@ fn event_feature_rank_materialize_path() {
     let store = MemoryFeatureStore::new();
     let story_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
-    store.set_feature("story", story_id, "story.likes_count", FeatureValue::Float(12.0));
+    store.set_feature(
+        "story",
+        story_id,
+        "story.likes_count",
+        FeatureValue::Float(12.0),
+    );
 
     let set = CandidateSet {
         items: vec![Candidate {
@@ -50,7 +55,10 @@ fn event_feature_rank_materialize_path() {
     assert_eq!(ranked.len(), 1);
 
     let mat = TimelineMaterializer::new();
-    mat.put_payload(story_id, serde_json::json!({ "id": story_id, "title": "t" }));
+    mat.put_payload(
+        story_id,
+        serde_json::json!({ "id": story_id, "title": "t" }),
+    );
     mat.write_timeline(user_id, &ranked);
     let tl = mat.read_timeline(user_id, 10);
     assert_eq!(tl[0].0, story_id);

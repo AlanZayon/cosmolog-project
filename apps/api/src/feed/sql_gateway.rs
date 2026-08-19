@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use feed_contracts::gateway::{FeedGateway, FeedQuery, FeedResponseItem, FeedSourceMode};
@@ -63,14 +63,13 @@ impl SqlFeedGateway {
         limit: i32,
         viewer_id: Option<Uuid>,
     ) -> Result<Vec<FeedResponseItem>, String> {
-        let rows = sqlx::query(
-            "SELECT id, type, payload, ranking_score FROM public.get_feed($1, $2)",
-        )
-        .bind(limit)
-        .bind(viewer_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| e.to_string())?;
+        let rows =
+            sqlx::query("SELECT id, type, payload, ranking_score FROM public.get_feed($1, $2)")
+                .bind(limit)
+                .bind(viewer_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
 
         Ok(rows
             .into_iter()
@@ -168,10 +167,7 @@ impl SqlFeedGateway {
         limit: usize,
     ) -> Option<Vec<FeedResponseItem>> {
         let store = self.redis_timelines.as_ref()?;
-        let rows = store
-            .read_timeline(viewer_id, limit as isize)
-            .await
-            .ok()?;
+        let rows = store.read_timeline(viewer_id, limit as isize).await.ok()?;
         if rows.is_empty() {
             tracing::info!(
                 event = "feed.gateway.miss",
@@ -281,11 +277,11 @@ impl FeedGateway for SqlFeedGateway {
                 };
                 if matches!(self.mode, FeedSourceMode::Engine) || in_canary {
                     if let Some(uid) = viewer_uuid {
-                        if let Some(items) =
-                            self.try_redis_materialized(uid, limit as usize).await
+                        if let Some(items) = self.try_redis_materialized(uid, limit as usize).await
                         {
                             self.apply_policy(query.viewer_id, items).await
-                        } else if let Some(items) = self.try_memory_materialized(uid, limit as usize)
+                        } else if let Some(items) =
+                            self.try_memory_materialized(uid, limit as usize)
                         {
                             self.apply_policy(query.viewer_id, items).await
                         } else {

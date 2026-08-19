@@ -131,10 +131,7 @@ mod tests {
     #[test]
     fn rejects_wrong_host() {
         assert!(matches!(
-            validate_stored_image_url(
-                "https://evil.example/avatars/x/y.png",
-                &prefixes()
-            ),
+            validate_stored_image_url("https://evil.example/avatars/x/y.png", &prefixes()),
             Err(AppError::BadRequest(_))
         ));
     }

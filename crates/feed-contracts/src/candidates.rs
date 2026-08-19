@@ -92,10 +92,8 @@ impl CandidateMixer {
             }
         }
 
-        let mut items: Vec<Candidate> = order
-            .into_iter()
-            .filter_map(|k| by_id.remove(&k))
-            .collect();
+        let mut items: Vec<Candidate> =
+            order.into_iter().filter_map(|k| by_id.remove(&k)).collect();
         if items.len() > self.max_total {
             items.truncate(self.max_total);
         }

@@ -7,7 +7,6 @@ mod repository;
 
 pub use deliver::{deliver_and_publish, deliver_optional};
 pub use fanout::fanout_comment_activity;
-pub use repository::DeliveredActivityNotification;
 pub use mentions::resolve_mentioned_user_ids;
 pub use model::{
     ActivityNotificationListResponse, ActivityUnreadCountResponse,
@@ -19,10 +18,10 @@ pub use realtime::{
     ActivityNotificationCreatedClientEvent, ActivityNotificationEventBus,
     ActivityNotificationRealtimeEvent,
 };
+pub use repository::DeliveredActivityNotification;
 pub use repository::{
     default_list_limit, insert_collection_saved, insert_comment_liked, insert_comment_mention,
     insert_comment_reply, insert_profile_alert_activated, insert_story_comment,
-    insert_universe_alert_activated,
-    list_for_recipient,
-    mark_all_read, mark_read, max_list_limit, unread_count,
+    insert_universe_alert_activated, list_for_recipient, mark_all_read, mark_read, max_list_limit,
+    unread_count,
 };

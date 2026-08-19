@@ -118,10 +118,7 @@ impl IntoResponse for AppError {
                     error = %msg,
                     "upstream request failed"
                 );
-                let public = if msg
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c == '_')
-                {
+                let public = if msg.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
                     msg.clone()
                 } else {
                     "service_unavailable".to_string()

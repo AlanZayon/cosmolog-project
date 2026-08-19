@@ -99,6 +99,8 @@ GitHub Actions workflow [`.github/workflows/api-test.yml`](../../.github/workflo
 
 See [docs/TESTING_PLAN.md](docs/TESTING_PLAN.md) for the full testing roadmap.
 
+Weekly volume checks (SQL + log filters, no dashboards): [docs/OPS.md](../../docs/OPS.md).
+
 ## Docker
 
 ### Production image

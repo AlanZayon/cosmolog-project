@@ -69,7 +69,8 @@ impl FeatureWorkers {
                 );
                 if let Some(universe_id) = payload.get("universe_id").and_then(|v| v.as_str()) {
                     if let Ok(uid) = Uuid::parse_str(universe_id) {
-                        self.store.incr_f64("universe", uid, "universe.story_count", 1.0);
+                        self.store
+                            .incr_f64("universe", uid, "universe.story_count", 1.0);
                     }
                 }
             }
@@ -79,8 +80,12 @@ impl FeatureWorkers {
                     .get("liked")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(true);
-                self.store
-                    .incr_f64("story", story_id, "story.likes_count", if liked { 1.0 } else { -1.0 });
+                self.store.incr_f64(
+                    "story",
+                    story_id,
+                    "story.likes_count",
+                    if liked { 1.0 } else { -1.0 },
+                );
             }
             t if t == EventType::StoryUnliked.as_str() => {
                 let story_id = payload_uuid(payload, "story_id")?;

@@ -10,7 +10,8 @@ use super::deliver::deliver_optional;
 use super::mentions::resolve_mentioned_user_ids;
 use super::realtime::ActivityNotificationEventBus;
 use super::repository::{
-    insert_comment_mention, insert_comment_reply, insert_story_comment, DeliveredActivityNotification,
+    insert_comment_mention, insert_comment_reply, insert_story_comment,
+    DeliveredActivityNotification,
 };
 
 async fn notify(
@@ -68,8 +69,7 @@ pub async fn fanout_comment_activity(
         };
         if notify_story_author {
             let delivered =
-                insert_story_comment(pool, story.author_id, actor_id, story_id, comment_id)
-                    .await?;
+                insert_story_comment(pool, story.author_id, actor_id, story_id, comment_id).await?;
             notify(pool, bus, &mut notified, delivered).await?;
         }
     }

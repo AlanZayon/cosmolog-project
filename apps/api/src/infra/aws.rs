@@ -189,31 +189,17 @@ mod tests {
         assert_eq!(a.headers, b.headers);
 
         let auth = &a.headers[0].1;
-        assert!(auth.starts_with("AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20260612/us-east-1/s3/aws4_request"));
+        assert!(auth.starts_with(
+            "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20260612/us-east-1/s3/aws4_request"
+        ));
         assert!(auth.contains("SignedHeaders=host;x-amz-content-sha256;x-amz-date"));
     }
 
     #[test]
     fn signature_changes_with_body() {
         let now = datetime!(2026-06-12 12:00:00 UTC);
-        let a = sign_request(
-            &test_credentials(),
-            "s3",
-            "PUT",
-            "h",
-            "/k",
-            b"one",
-            now,
-        );
-        let b = sign_request(
-            &test_credentials(),
-            "s3",
-            "PUT",
-            "h",
-            "/k",
-            b"two",
-            now,
-        );
+        let a = sign_request(&test_credentials(), "s3", "PUT", "h", "/k", b"one", now);
+        let b = sign_request(&test_credentials(), "s3", "PUT", "h", "/k", b"two", now);
         assert_ne!(a.headers[0].1, b.headers[0].1);
     }
 

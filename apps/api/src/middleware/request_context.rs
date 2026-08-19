@@ -57,12 +57,21 @@ pub async fn middleware(mut req: Request, next: Next) -> Response {
         current.record("status", status);
         current.record("latency_ms", latency_ms);
 
-        tracing::info!(
-            event = "http.request.completed",
-            status = status,
-            latency_ms = latency_ms,
-            "request completed"
-        );
+        if status >= 500 {
+            tracing::error!(
+                event = "http.request.completed",
+                status = status,
+                latency_ms = latency_ms,
+                "request completed"
+            );
+        } else {
+            tracing::info!(
+                event = "http.request.completed",
+                status = status,
+                latency_ms = latency_ms,
+                "request completed"
+            );
+        }
 
         if let Ok(value) = HeaderValue::from_str(&request_id) {
             response

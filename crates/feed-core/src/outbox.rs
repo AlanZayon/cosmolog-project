@@ -51,11 +51,7 @@ pub async fn mark_published(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> 
     Ok(())
 }
 
-pub async fn mark_attempt_failed(
-    pool: &PgPool,
-    id: Uuid,
-    error: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn mark_attempt_failed(pool: &PgPool, id: Uuid, error: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         UPDATE event_outbox

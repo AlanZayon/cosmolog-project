@@ -5,14 +5,14 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::auth::{AuthUser, OptionalAuth};
-use crate::domain::limits::MAX_SEARCH_QUERY_LEN;
 use crate::domain::activity_notifications::{self, deliver_optional};
+use crate::domain::library::visibility::resolved_visibility;
 use crate::domain::library::{
     self, present::build_library_story_items, CreateCollectionInput, LibraryCollection,
     LibraryCollectionSaveStatus, LibraryCollectionSummary, LibraryStatus, LibraryStoryItem,
     ReorderCollectionStoriesInput, UpdateCollectionInput,
 };
-use crate::domain::library::visibility::resolved_visibility;
+use crate::domain::limits::MAX_SEARCH_QUERY_LEN;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -185,12 +185,7 @@ pub async fn save_collection(
         )
         .await
         .map_err(AppError::from_db)?;
-        deliver_optional(
-            &state.pool,
-            &state.activity_notification_events,
-            delivered,
-        )
-        .await;
+        deliver_optional(&state.pool, &state.activity_notification_events, delivered).await;
     }
 
     Ok(StatusCode::NO_CONTENT)

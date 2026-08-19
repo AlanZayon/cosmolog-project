@@ -3,10 +3,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::model::{
-    ActivityNotificationListItem, ActivityNotificationListRow, MarkActivityNotificationReadResponse,
-    KIND_COLLECTION_SAVED, KIND_COMMENT_MENTION, KIND_PROFILE_ALERT_ACTIVATED,
-    KIND_COMMENT_LIKED, KIND_COMMENT_REPLY, KIND_STORY_COMMENT, KIND_UNIVERSE_ALERT_ACTIVATED,
-    MarkAllActivityNotificationsReadResponse,
+    ActivityNotificationListItem, ActivityNotificationListRow,
+    MarkActivityNotificationReadResponse, MarkAllActivityNotificationsReadResponse,
+    KIND_COLLECTION_SAVED, KIND_COMMENT_LIKED, KIND_COMMENT_MENTION, KIND_COMMENT_REPLY,
+    KIND_PROFILE_ALERT_ACTIVATED, KIND_STORY_COMMENT, KIND_UNIVERSE_ALERT_ACTIVATED,
 };
 
 const DEFAULT_LIST_LIMIT: i32 = 30;
@@ -257,7 +257,10 @@ pub async fn list_for_recipient(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows.into_iter().map(ActivityNotificationListItem::from).collect())
+    Ok(rows
+        .into_iter()
+        .map(ActivityNotificationListItem::from)
+        .collect())
 }
 
 pub async fn unread_count(pool: &PgPool, recipient_id: Uuid) -> Result<i64, sqlx::Error> {

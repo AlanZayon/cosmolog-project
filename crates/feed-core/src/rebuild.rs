@@ -6,7 +6,9 @@ use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::candidates::{FollowingCandidateSource, PopularityCandidateSource, RecentCandidateSource};
+use crate::candidates::{
+    FollowingCandidateSource, PopularityCandidateSource, RecentCandidateSource,
+};
 use crate::hydrate::hydrate_story_payloads;
 use crate::ranking::{rank_candidates, ExperimentAssignment, RankingPipeline};
 use crate::redis_fs::RedisFeatureStore;

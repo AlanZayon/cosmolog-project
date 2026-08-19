@@ -10,11 +10,10 @@ pub struct MetadataSnapshot {
 }
 
 pub async fn load_weights(pool: &PgPool) -> Result<MetadataSnapshot, sqlx::Error> {
-    let row: Option<(Value, i32)> = sqlx::query_as(
-        "SELECT value, version FROM feed_metadata WHERE key = 'weights.global'",
-    )
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(Value, i32)> =
+        sqlx::query_as("SELECT value, version FROM feed_metadata WHERE key = 'weights.global'")
+            .fetch_optional(pool)
+            .await?;
 
     Ok(match row {
         Some((value, version)) => MetadataSnapshot { version, value },

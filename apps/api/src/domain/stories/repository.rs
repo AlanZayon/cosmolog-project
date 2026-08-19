@@ -171,10 +171,7 @@ pub async fn update(
     let reading_mode = if story_type != "comic" {
         "vertical".to_string()
     } else {
-        input
-            .reading_mode
-            .clone()
-            .unwrap_or(story.reading_mode)
+        input.reading_mode.clone().unwrap_or(story.reading_mode)
     };
     let content = input.content.clone().unwrap_or(story.content);
 

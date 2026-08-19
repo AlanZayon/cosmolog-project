@@ -42,7 +42,10 @@ pub struct CollectionStoryMeta {
     pub universe_title: Option<String>,
 }
 
-pub async fn list_liked_stories(pool: &PgPool, user_id: Uuid) -> Result<Vec<LikedStoryMeta>, sqlx::Error> {
+pub async fn list_liked_stories(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<Vec<LikedStoryMeta>, sqlx::Error> {
     let rows = sqlx::query_as::<_, LikedStoryRow>(
         r#"
         SELECT s.id, s.author_id, s.title, s.description, s.cover_image_url,
@@ -408,7 +411,11 @@ pub async fn unsave_collection(
     Ok(())
 }
 
-pub async fn is_saved(pool: &PgPool, collection_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Error> {
+pub async fn is_saved(
+    pool: &PgPool,
+    collection_id: Uuid,
+    user_id: Uuid,
+) -> Result<bool, sqlx::Error> {
     let exists: bool = sqlx::query_scalar(
         r#"
         SELECT EXISTS (

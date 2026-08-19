@@ -36,13 +36,7 @@ async fn like_story(pool: &PgPool, user_id: Uuid, story_id: Uuid) {
         .expect("like story");
 }
 
-async fn seed_delivery(
-    pool: &PgPool,
-    user_id: Uuid,
-    item_type: &str,
-    item_id: Uuid,
-    count: i32,
-) {
+async fn seed_delivery(pool: &PgPool, user_id: Uuid, item_type: &str, item_id: Uuid, count: i32) {
     sqlx::query(
         r#"
         INSERT INTO feed_deliveries (user_id, item_type, item_id, delivery_count, last_delivered_at)
@@ -61,7 +55,11 @@ async fn seed_delivery(
     .expect("seed delivery");
 }
 
-async fn call_get_feed(pool: &PgPool, limit: i32, viewer_id: Option<Uuid>) -> Vec<(Uuid, String, f64)> {
+async fn call_get_feed(
+    pool: &PgPool,
+    limit: i32,
+    viewer_id: Option<Uuid>,
+) -> Vec<(Uuid, String, f64)> {
     let rows = sqlx::query_as::<_, (Uuid, String, f64)>(
         "SELECT id, type, ranking_score FROM public.get_feed($1, $2)",
     )
@@ -445,5 +443,8 @@ async fn authenticated_feed_records_deliveries() {
     .fetch_one(&app.pool)
     .await
     .expect("count deliveries");
-    assert_eq!(count.0, 1, "served story should be logged in feed_deliveries");
+    assert_eq!(
+        count.0, 1,
+        "served story should be logged in feed_deliveries"
+    );
 }

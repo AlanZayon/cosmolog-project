@@ -12,8 +12,8 @@ use crate::config::{Config, GoogleOAuthConfig};
 use crate::domain::activity_notifications::ActivityNotificationEventBus;
 use crate::domain::notifications::NotificationEventBus;
 use crate::feed::{
-    build_feed_gateway_with_redis, load_feature_registry, parse_feed_source_mode, MemoryFeatureStore,
-    TimelineMaterializer,
+    build_feed_gateway_with_redis, load_feature_registry, parse_feed_source_mode,
+    MemoryFeatureStore, TimelineMaterializer,
 };
 use crate::infra::aws::AwsCredentials;
 use crate::infra::email::{EmailSender, LogEmailSender, SesEmailSender, SmtpEmailSender};
@@ -198,6 +198,7 @@ impl AppState {
         let (feed_gateway, event_bus, feature_registry, feature_store, materializer) =
             feed_platform_parts(&pool, config, redis_timelines);
         crate::feed::prune_feed_deliveries(&pool).await;
+        crate::domain::outbox::prune_event_outbox(&pool).await;
         tracing::info!(
             event = "feed.platform.ready",
             feed_source = %config.feed_source_mode,

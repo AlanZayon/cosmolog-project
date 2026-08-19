@@ -28,7 +28,11 @@ pub fn resolved_visibility(value: Option<&str>) -> Result<&'static str, AppError
     }
 }
 
-pub fn can_read_collection(collection_user_id: uuid::Uuid, visibility: &str, viewer_id: uuid::Uuid) -> bool {
+pub fn can_read_collection(
+    collection_user_id: uuid::Uuid,
+    visibility: &str,
+    viewer_id: uuid::Uuid,
+) -> bool {
     collection_user_id == viewer_id || visibility == VISIBILITY_PUBLIC
 }
 

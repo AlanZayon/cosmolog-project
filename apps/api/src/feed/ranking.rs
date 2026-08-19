@@ -79,18 +79,13 @@ impl RankingPipeline {
             .map(|(i, c)| {
                 let fv = features.get(i).cloned().unwrap_or_default();
                 let recency = (c.rough_score / 1_000_000.0).clamp(0.0, 1.0);
-                let popularity = fv
-                    .get_f64("story.likes_count")
-                    .unwrap_or(0.0)
-                    .ln_1p()
-                    / 10.0;
+                let popularity = fv.get_f64("story.likes_count").unwrap_or(0.0).ln_1p() / 10.0;
                 let following_boost = if c.reasons.iter().any(|r| r == "following") {
                     1.0
                 } else {
                     0.0
                 };
-                let score =
-                    w_recency * recency + w_pop * popularity + w_follow * following_boost;
+                let score = w_recency * recency + w_pop * popularity + w_follow * following_boost;
                 ScoredItem {
                     candidate: c,
                     score,

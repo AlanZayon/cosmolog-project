@@ -34,7 +34,9 @@ fn sign_up_input(email: &str, username: &str) -> SignUpInput {
 
 #[tokio::test]
 async fn sign_up_and_sign_in_roundtrip() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, false);
 
@@ -48,11 +50,12 @@ async fn sign_up_and_sign_in_roundtrip() {
     assert_eq!(session.token_type, "bearer");
 
     // Profile created like the old Supabase trigger.
-    let username = sqlx::query_scalar::<_, String>("SELECT username FROM profiles WHERE user_id = $1")
-        .bind(session.user.id)
-        .fetch_one(&pool)
-        .await
-        .expect("profile row");
+    let username =
+        sqlx::query_scalar::<_, String>("SELECT username FROM profiles WHERE user_id = $1")
+            .bind(session.user.id)
+            .fetch_one(&pool)
+            .await
+            .expect("profile row");
     assert_eq!(username, "ana");
 
     // Case-insensitive sign-in with the right password.
@@ -70,7 +73,9 @@ async fn sign_up_and_sign_in_roundtrip() {
 
 #[tokio::test]
 async fn sign_up_rejects_duplicate_email() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, false);
 
@@ -85,7 +90,9 @@ async fn sign_up_rejects_duplicate_email() {
 
 #[tokio::test]
 async fn duplicate_username_gets_suffix() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, false);
 
@@ -100,17 +107,20 @@ async fn duplicate_username_gets_suffix() {
         panic!("expected session");
     };
 
-    let username = sqlx::query_scalar::<_, String>("SELECT username FROM profiles WHERE user_id = $1")
-        .bind(second.user.id)
-        .fetch_one(&pool)
-        .await
-        .expect("profile row");
+    let username =
+        sqlx::query_scalar::<_, String>("SELECT username FROM profiles WHERE user_id = $1")
+            .bind(second.user.id)
+            .fetch_one(&pool)
+            .await
+            .expect("profile row");
     assert_eq!(username, "samename_1");
 }
 
 #[tokio::test]
 async fn refresh_token_rotates_and_cannot_be_reused() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, false);
 
@@ -146,7 +156,9 @@ async fn refresh_token_rotates_and_cannot_be_reused() {
 
 #[tokio::test]
 async fn email_confirmation_flow_gates_sign_in() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, true);
 
@@ -183,7 +195,9 @@ async fn email_confirmation_flow_gates_sign_in() {
 
 #[tokio::test]
 async fn password_reset_flow_sets_new_password_and_revokes_sessions() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, false);
 
@@ -234,7 +248,9 @@ async fn password_reset_flow_sets_new_password_and_revokes_sessions() {
 
 #[tokio::test]
 async fn migrated_user_without_password_requires_reset() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
     let signer = signer();
     let ctx = ctx(&pool, &signer, false);
 
@@ -251,14 +267,22 @@ async fn migrated_user_without_password_requires_reset() {
 
 #[tokio::test]
 async fn oauth_account_links_user() {
-    let Some(pool) = common::db::test_db().await else { return };
+    let Some(pool) = common::db::test_db().await else {
+        return;
+    };
 
     let user = repository::insert_user(&pool, "google@example.com", None, true)
         .await
         .expect("user");
-    repository::insert_oauth_account(&pool, "google", "sub-123", user.id, Some("google@example.com"))
-        .await
-        .expect("link");
+    repository::insert_oauth_account(
+        &pool,
+        "google",
+        "sub-123",
+        user.id,
+        Some("google@example.com"),
+    )
+    .await
+    .expect("link");
 
     let found = repository::find_oauth_user(&pool, "google", "sub-123")
         .await

@@ -53,7 +53,11 @@ async fn metadata_weights_loadable() {
     };
     let snap = load_weights(&app.pool).await.expect("weights");
     assert!(snap.version >= 0);
-    assert!(snap.value.get("recency").is_some() || snap.value.get("max_candidates").is_some() || snap.value.is_object());
+    assert!(
+        snap.value.get("recency").is_some()
+            || snap.value.get("max_candidates").is_some()
+            || snap.value.is_object()
+    );
 }
 
 #[tokio::test]

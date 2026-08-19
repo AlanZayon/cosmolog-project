@@ -122,10 +122,7 @@ async fn public_collection_readable_and_saveable_via_api() {
         )
         .await;
     assert_status(&create_resp, StatusCode::OK);
-    let collection_id = json(create_resp).await["id"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let collection_id = json(create_resp).await["id"].as_str().unwrap().to_string();
 
     let read_resp = app
         .get(
@@ -161,10 +158,7 @@ async fn public_collection_readable_and_saveable_via_api() {
     assert_status(&search_resp, StatusCode::OK);
     let search_body = json(search_resp).await;
     assert_eq!(search_body.as_array().unwrap().len(), 1);
-    assert_eq!(
-        search_body[0]["is_saved_by_me"].as_bool(),
-        Some(true)
-    );
+    assert_eq!(search_body[0]["is_saved_by_me"].as_bool(), Some(true));
 }
 
 #[tokio::test]

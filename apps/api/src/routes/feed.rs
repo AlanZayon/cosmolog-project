@@ -38,6 +38,15 @@ pub async fn list(
         .await
         .map_err(AppError::Upstream)?;
 
+    let item_count = items.len();
+    tracing::info!(
+        event = "feed.served",
+        item_count,
+        empty = item_count == 0,
+        viewer = viewer_id.is_some(),
+        "home feed served"
+    );
+
     let body: Vec<Value> = items
         .into_iter()
         .map(|item| {

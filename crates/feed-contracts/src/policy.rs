@@ -30,7 +30,11 @@ pub struct AllowAllPolicy;
 
 #[async_trait]
 impl PolicyClient for AllowAllPolicy {
-    async fn evaluate(&self, _viewer: Option<ViewerId>, item_ids: &[ItemId]) -> Vec<PolicyDecision> {
+    async fn evaluate(
+        &self,
+        _viewer: Option<ViewerId>,
+        item_ids: &[ItemId],
+    ) -> Vec<PolicyDecision> {
         item_ids
             .iter()
             .map(|id| PolicyDecision {

@@ -7,12 +7,8 @@ use crate::infra::http_client::build_http_client;
 /// Stores uploaded image objects (production: Amazon S3; local: MinIO).
 #[async_trait]
 pub trait ObjectStorage: Send + Sync {
-    async fn put_object(
-        &self,
-        key: &str,
-        bytes: Vec<u8>,
-        content_type: &str,
-    ) -> Result<(), String>;
+    async fn put_object(&self, key: &str, bytes: Vec<u8>, content_type: &str)
+        -> Result<(), String>;
 }
 
 /// Amazon S3 / MinIO storage via the REST API (SigV4).
@@ -39,11 +35,7 @@ impl S3Storage {
         }
     }
 
-    pub fn with_endpoint(
-        credentials: AwsCredentials,
-        bucket: String,
-        endpoint: String,
-    ) -> Self {
+    pub fn with_endpoint(credentials: AwsCredentials, bucket: String, endpoint: String) -> Self {
         Self {
             http: build_http_client(),
             credentials,
@@ -53,7 +45,10 @@ impl S3Storage {
     }
 
     fn aws_host(&self) -> String {
-        format!("{}.s3.{}.amazonaws.com", self.bucket, self.credentials.region)
+        format!(
+            "{}.s3.{}.amazonaws.com",
+            self.bucket, self.credentials.region
+        )
     }
 }
 
@@ -66,8 +61,8 @@ impl ObjectStorage for S3Storage {
         content_type: &str,
     ) -> Result<(), String> {
         let (url, host, path) = if let Some(endpoint) = &self.endpoint {
-            let endpoint_url = reqwest::Url::parse(endpoint)
-                .map_err(|e| format!("invalid S3_ENDPOINT: {e}"))?;
+            let endpoint_url =
+                reqwest::Url::parse(endpoint).map_err(|e| format!("invalid S3_ENDPOINT: {e}"))?;
             let host = endpoint_url
                 .host_str()
                 .ok_or_else(|| "S3_ENDPOINT missing host".to_string())?

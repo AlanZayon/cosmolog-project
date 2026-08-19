@@ -208,10 +208,7 @@ async fn comment_reply_notifies_parent_author() {
     assert_status(&reply, StatusCode::OK);
 
     let commenter_list = app
-        .get(
-            "/activity-notifications?limit=10",
-            Some(&commenter_token),
-        )
+        .get("/activity-notifications?limit=10", Some(&commenter_token))
         .await;
     let commenter_body = json(commenter_list).await;
     let items = commenter_body["items"].as_array().unwrap();

@@ -7,7 +7,7 @@ use anyhow::Context;
 use feed_contracts::events::EventEnvelope;
 use feed_core::{
     connect_with_retry, declare_topology, list_universe_followers, rebuild_user_timeline,
-    RedisFeatureStore, RedisTimelineStore, RebuildDeps, COMMANDS_EXCHANGE, RANK_QUEUE,
+    RebuildDeps, RedisFeatureStore, RedisTimelineStore, COMMANDS_EXCHANGE, RANK_QUEUE,
 };
 use futures_lite::StreamExt;
 use lapin::options::{
@@ -34,8 +34,8 @@ async fn main() -> anyhow::Result<()> {
     let database_url = std::env::var("DATABASE_URL").context("DATABASE_URL required")?;
     let amqp_url =
         std::env::var("AMQP_URL").unwrap_or_else(|_| "amqp://guest:guest@127.0.0.1:5672".into());
-    let features_url = std::env::var("REDIS_FEATURES_URL")
-        .unwrap_or_else(|_| "redis://127.0.0.1:6379/1".into());
+    let features_url =
+        std::env::var("REDIS_FEATURES_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/1".into());
     let feed_url =
         std::env::var("REDIS_FEED_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/2".into());
     let scheduler_secs: u64 = std::env::var("FEED_SCHEDULER_SECS")
@@ -121,11 +121,7 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-async fn run_once(
-    deps: &RebuildDeps,
-    amqp_url: &str,
-    shutdown: &Notify,
-) -> anyhow::Result<()> {
+async fn run_once(deps: &RebuildDeps, amqp_url: &str, shutdown: &Notify) -> anyhow::Result<()> {
     let conn = connect_with_retry(amqp_url, Duration::from_secs(30)).await?;
     let channel = conn.create_channel().await?;
     declare_topology(&channel).await?;

@@ -63,14 +63,23 @@ impl RedisFeatureStore {
     }
 
     /// Apply a domain event payload to the feature store (idempotency is caller's job).
-    pub async fn apply_event(&self, event_type: &str, payload: &serde_json::Value) -> anyhow::Result<()> {
+    pub async fn apply_event(
+        &self,
+        event_type: &str,
+        payload: &serde_json::Value,
+    ) -> anyhow::Result<()> {
         match event_type {
             "story.created" => {
                 let story_id = payload_uuid(payload, "story_id")?;
                 self.set_feature("story", story_id, "story.likes_count", FeatureValue::Int(0))
                     .await?;
-                self.set_feature("story", story_id, "story.age_hours", FeatureValue::Float(0.0))
-                    .await?;
+                self.set_feature(
+                    "story",
+                    story_id,
+                    "story.age_hours",
+                    FeatureValue::Float(0.0),
+                )
+                .await?;
                 if let Ok(uid) = payload_uuid(payload, "universe_id") {
                     self.incr_f64("universe", uid, "universe.story_count", 1.0)
                         .await?;
@@ -78,7 +87,10 @@ impl RedisFeatureStore {
             }
             "story.liked" => {
                 let story_id = payload_uuid(payload, "story_id")?;
-                let liked = payload.get("liked").and_then(|v| v.as_bool()).unwrap_or(true);
+                let liked = payload
+                    .get("liked")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(true);
                 self.incr_f64(
                     "story",
                     story_id,

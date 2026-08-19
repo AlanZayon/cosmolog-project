@@ -12,8 +12,7 @@ use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::middleware::{rate_limit, request_context, security_headers};
 use crate::routes::{
     activity_notifications, arcs, auth, db, feed, health, library, notifications, profiles,
-    storage, stories,
-    story_content, universes,
+    storage, stories, story_content, universes,
 };
 use crate::state::AppState;
 
@@ -207,7 +206,10 @@ pub fn router(state: AppState, config: &Config) -> Router {
             "/notifications/unread-count",
             get(notifications::unread_count),
         )
-        .route("/notifications/read-all", post(notifications::mark_all_read))
+        .route(
+            "/notifications/read-all",
+            post(notifications::mark_all_read),
+        )
         .route("/notifications/{id}/consume", post(notifications::consume))
         .route(
             "/activity-notifications/stream",

@@ -13,9 +13,7 @@ pub const DLQ: &str = "q.feed.dlq";
 use std::time::Duration;
 
 use anyhow::Context;
-use lapin::options::{
-    ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
-};
+use lapin::options::{ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions};
 use lapin::types::{AMQPValue, FieldTable, LongString};
 use lapin::{Channel, Connection, ConnectionProperties, ExchangeKind};
 

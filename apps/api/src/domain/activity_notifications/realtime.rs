@@ -117,7 +117,10 @@ impl ActivityNotificationEventBus {
         self.local.subscribe()
     }
 
-    pub async fn publish(&self, event: ActivityNotificationRealtimeEvent) -> Result<(), PublishError> {
+    pub async fn publish(
+        &self,
+        event: ActivityNotificationRealtimeEvent,
+    ) -> Result<(), PublishError> {
         match self.backend.as_ref() {
             Backend::LocalOnly => {
                 self.local.publish_local(event);

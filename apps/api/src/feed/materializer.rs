@@ -20,10 +20,8 @@ impl TimelineMaterializer {
     }
 
     pub fn write_timeline(&self, user_id: Uuid, scored: &[ScoredItem]) {
-        let mut items: Vec<(Uuid, f64)> = scored
-            .iter()
-            .map(|s| (s.candidate.id, s.score))
-            .collect();
+        let mut items: Vec<(Uuid, f64)> =
+            scored.iter().map(|s| (s.candidate.id, s.score)).collect();
         items.truncate(500);
         self.timelines
             .write()

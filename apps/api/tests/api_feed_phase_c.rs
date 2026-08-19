@@ -2,8 +2,10 @@
 
 mod common;
 
+use axum::http::StatusCode;
 use common::app::{assert_status, json, setup_app};
 use common::fixtures::{seed_story, seed_user};
+use cosmolog_api::feed::SqlFeedGateway;
 use cosmolog_api::feed::{
     sticky_arm, ExperimentAssignment, RankingPipeline, ScoredItem, TimelineMaterializer,
 };
@@ -11,8 +13,6 @@ use feed_contracts::candidates::{Candidate, ItemType};
 use feed_contracts::gateway::{FeedGateway, FeedQuery, FeedSourceMode};
 use feed_contracts::ids::ViewerId;
 use feed_contracts::policy::AllowAllPolicy;
-use cosmolog_api::feed::SqlFeedGateway;
-use axum::http::StatusCode;
 use std::sync::Arc;
 use uuid::Uuid;
 

@@ -173,10 +173,7 @@ async fn list_active_subscriptions() {
         .iter()
         .find(|item| item["scope"] == "profile")
         .unwrap();
-    assert_eq!(
-        profile_item["target_username"],
-        author.profile.username
-    );
+    assert_eq!(profile_item["target_username"], author.profile.username);
 
     let universe_item = items
         .iter()

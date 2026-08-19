@@ -70,11 +70,35 @@ pub async fn mark_published(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> 
     Ok(())
 }
 
-pub async fn mark_attempt_failed(
-    pool: &PgPool,
-    id: Uuid,
-    error: &str,
-) -> Result<(), sqlx::Error> {
+/// Drop outbox rows older than 14 days (called once at API startup).
+/// Without a production relay, unpublished rows would otherwise grow unbounded.
+pub async fn prune_event_outbox(pool: &PgPool) {
+    match sqlx::query(
+        "DELETE FROM public.event_outbox WHERE created_at < now() - INTERVAL '14 days'",
+    )
+    .execute(pool)
+    .await
+    {
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                tracing::info!(
+                    event = "outbox.pruned",
+                    rows = result.rows_affected(),
+                    "pruned stale event_outbox rows"
+                );
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                event = "outbox.prune_error",
+                error = %e,
+                "failed to prune event_outbox"
+            );
+        }
+    }
+}
+
+pub async fn mark_attempt_failed(pool: &PgPool, id: Uuid, error: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         UPDATE event_outbox

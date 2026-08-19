@@ -122,4 +122,3 @@ pub async fn by_id(
 
     Ok(Json(story))
 }
-

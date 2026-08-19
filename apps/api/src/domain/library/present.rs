@@ -22,12 +22,14 @@ pub async fn build_library_story_items(
         .zip(library_added_at)
         .zip(liked_at)
         .zip(universe_titles)
-        .map(|(((story, library_added_at), liked_at), universe_title)| LibraryStoryItem {
-            story,
-            library_added_at,
-            liked_at,
-            universe_title,
-        })
+        .map(
+            |(((story, library_added_at), liked_at), universe_title)| LibraryStoryItem {
+                story,
+                library_added_at,
+                liked_at,
+                universe_title,
+            },
+        )
         .collect())
 }
 

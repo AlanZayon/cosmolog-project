@@ -16,19 +16,18 @@ Phase E runtime wiring is complete and verified in **dev**. Production stays on 
 
 ### `event_outbox` without a relay
 
-The API still writes domain events to `event_outbox` in the same TX as mutations. With no `feed-relay` in production, rows accumulate with `published_at IS NULL`.
+The API still writes domain events to `event_outbox` in the same TX as mutations. With no `feed-relay` in production, rows stay `published_at IS NULL`.
 
-Risks:
+On API startup the process deletes rows with `created_at` older than **14 days** (`event=outbox.pruned`). That bounds table growth on Neon and drops the backlog that would stampede a first `feed-relay` start.
 
-1. Slow table growth on free Postgres (Neon).
-2. **Stampede on cutover** — the first time `feed-relay` starts, it would drain months of unpublished events and fan out rebuilds.
+Rows inside the 14-day window are still unpublished until a relay exists.
 
 ### Cutover checklist (engine on)
 
-Before starting `feed-relay` against a production database that has been writing outbox rows without a consumer:
+Before starting `feed-relay` against a production database that has been writing outbox rows without a consumer, mark whatever is left unpublished so the relay does not replay recent history:
 
 ```sql
--- Mark all pending rows published so the relay does not replay history.
+-- Remaining rows are at most 14 days old (startup prune). Still skip replay.
 UPDATE event_outbox SET published_at = now() WHERE published_at IS NULL;
 ```
 
@@ -114,6 +113,11 @@ Look for structured `event=` fields:
 - `feed.features.applied`, `feed.features.skip_duplicate`
 - `feed.rank.rebuild_*`, `feed.scheduler.tick`, `feed.materializer.write`
 - `feed.gateway.hit` / `feed.gateway.miss` / `feed.fallback.sql`
+- `feed.served` (SQL or engine Home: `item_count`, `empty`, `viewer`)
+- `outbox.pruned` (startup dropped `event_outbox` rows older than 14 days)
+- `http.request.completed` at **error** when `status` ≥ 500
+
+Weekly volume SQL (users, stories, outbox) and log filters: [docs/OPS.md](../OPS.md).
 
 ## Manual acceptance (Home)
 

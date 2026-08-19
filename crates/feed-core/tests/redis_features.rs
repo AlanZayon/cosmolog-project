@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 #[tokio::test]
 async fn feature_store_applies_like_and_idempotent_claim() {
-    let redis_url = std::env::var("REDIS_FEATURES_URL")
-        .unwrap_or_else(|_| "redis://127.0.0.1:6379/1".into());
+    let redis_url =
+        std::env::var("REDIS_FEATURES_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/1".into());
     let store = match RedisFeatureStore::connect(&redis_url).await {
         Ok(s) => s,
         Err(e) => {

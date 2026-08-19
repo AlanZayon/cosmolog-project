@@ -3,11 +3,11 @@
 mod common;
 
 use axum::http::StatusCode;
+use feed_contracts::candidates::{Candidate, ItemType};
 use feed_contracts::gateway::{FeedGateway, FeedQuery, FeedSourceMode};
 use feed_contracts::ids::ViewerId;
 use feed_contracts::policy::AllowAllPolicy;
-use feed_core::{hydrate_story_payloads, RedisTimelineStore, RankingPipeline, ScoredItem};
-use feed_contracts::candidates::{Candidate, ItemType};
+use feed_core::{hydrate_story_payloads, RankingPipeline, RedisTimelineStore, ScoredItem};
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;

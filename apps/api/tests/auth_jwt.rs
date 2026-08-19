@@ -72,6 +72,9 @@ async fn rejects_token_signed_with_other_secret() {
 
 #[tokio::test]
 async fn rejects_malformed_token() {
-    assert!(validator().validate("eyJhbGciOiJIUzI1NiJ9.e30.x").await.is_err());
+    assert!(validator()
+        .validate("eyJhbGciOiJIUzI1NiJ9.e30.x")
+        .await
+        .is_err());
     assert!(validator().validate("not-a-jwt").await.is_err());
 }

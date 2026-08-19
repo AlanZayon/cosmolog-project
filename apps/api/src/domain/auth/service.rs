@@ -237,9 +237,10 @@ pub async fn sign_out(pool: &PgPool, refresh_token: &str) -> Result<(), AuthFlow
 }
 
 pub async fn confirm_email(ctx: &AuthContext<'_>, token: &str) -> Result<(), AuthFlowError> {
-    let user_id = repository::consume_email_token(ctx.pool, PURPOSE_CONFIRM_EMAIL, &hash_token(token))
-        .await?
-        .ok_or(AuthFlowError::InvalidToken)?;
+    let user_id =
+        repository::consume_email_token(ctx.pool, PURPOSE_CONFIRM_EMAIL, &hash_token(token))
+            .await?
+            .ok_or(AuthFlowError::InvalidToken)?;
     repository::set_email_verified(ctx.pool, user_id).await?;
     Ok(())
 }
@@ -384,8 +385,14 @@ pub async fn oauth_google(
                 "google email not verified; cannot link account".into(),
             ));
         }
-        repository::insert_oauth_account(ctx.pool, "google", &claims.sub, existing.id, Some(&email))
-            .await?;
+        repository::insert_oauth_account(
+            ctx.pool,
+            "google",
+            &claims.sub,
+            existing.id,
+            Some(&email),
+        )
+        .await?;
         repository::set_email_verified(ctx.pool, existing.id).await?;
         tracing::info!(
             event = "auth.oauth_linked",

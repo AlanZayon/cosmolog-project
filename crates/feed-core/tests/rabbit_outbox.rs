@@ -97,7 +97,9 @@ async fn outbox_row_publishes_to_rabbit_features_queue() {
     .await
     .expect("insert outbox");
 
-    let conn = feed_core::topology::connect(&amqp_url()).await.expect("amqp");
+    let conn = feed_core::topology::connect(&amqp_url())
+        .await
+        .expect("amqp");
     let channel = conn.create_channel().await.expect("channel");
     declare_topology(&channel).await.expect("topology");
     let mut consumer = channel
@@ -121,8 +123,7 @@ async fn outbox_row_publishes_to_rabbit_features_queue() {
         .expect("timeout waiting for message")
         .expect("consumer closed")
         .expect("delivery");
-    let body: EventEnvelope<serde_json::Value> =
-        serde_json::from_slice(&got.data).expect("decode");
+    let body: EventEnvelope<serde_json::Value> = serde_json::from_slice(&got.data).expect("decode");
     assert_eq!(body.event_id, event_id);
     got.ack(BasicAckOptions::default()).await.expect("ack");
 

@@ -52,11 +52,7 @@ impl EventBus for MemoryEventBus {
 }
 
 /// Helper to build a JSON envelope quickly.
-pub fn envelope_json(
-    event_type: &str,
-    producer: &str,
-    payload: Value,
-) -> EventEnvelope<Value> {
+pub fn envelope_json(event_type: &str, producer: &str, payload: Value) -> EventEnvelope<Value> {
     EventEnvelope {
         event_id: Uuid::new_v4(),
         event_type: event_type.to_string(),

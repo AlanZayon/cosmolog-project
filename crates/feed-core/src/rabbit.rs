@@ -24,10 +24,7 @@ impl RabbitMqEventBus {
         Ok(Self { channel })
     }
 
-    pub async fn connect_with_retry(
-        amqp_url: &str,
-        max_backoff: Duration,
-    ) -> anyhow::Result<Self> {
+    pub async fn connect_with_retry(amqp_url: &str, max_backoff: Duration) -> anyhow::Result<Self> {
         let conn = connect_with_retry(amqp_url, max_backoff).await?;
         let channel = conn.create_channel().await?;
         declare_topology(&channel).await?;

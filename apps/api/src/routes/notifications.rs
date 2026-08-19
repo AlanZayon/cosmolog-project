@@ -10,11 +10,11 @@ use tokio_stream::wrappers::BroadcastStream;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
-use crate::domain::limits::MAX_NOTIFICATIONS_LIST_LIMIT;
 use crate::domain::activity_notifications::{self, deliver_optional};
+use crate::domain::limits::MAX_NOTIFICATIONS_LIST_LIMIT;
 use crate::domain::notifications::{
-    self, ConsumeNotificationResponse, MarkAllNotificationsReadResponse,
-    NotificationListResponse, SubscriptionListResponse, SubscriptionStatus, UnreadCountResponse,
+    self, ConsumeNotificationResponse, MarkAllNotificationsReadResponse, NotificationListResponse,
+    SubscriptionListResponse, SubscriptionStatus, UnreadCountResponse,
 };
 use crate::domain::profiles;
 use crate::error::AppError;
@@ -97,12 +97,7 @@ pub async fn subscribe_profile(
     )
     .await
     .map_err(AppError::from_db)?;
-    deliver_optional(
-        &state.pool,
-        &state.activity_notification_events,
-        delivered,
-    )
-    .await;
+    deliver_optional(&state.pool, &state.activity_notification_events, delivered).await;
 
     Ok(Json(SubscriptionStatus::from_row(&row)))
 }
@@ -179,12 +174,7 @@ pub async fn subscribe_universe(
     )
     .await
     .map_err(AppError::from_db)?;
-    deliver_optional(
-        &state.pool,
-        &state.activity_notification_events,
-        delivered,
-    )
-    .await;
+    deliver_optional(&state.pool, &state.activity_notification_events, delivered).await;
 
     let mut status = SubscriptionStatus::from_row(&row);
     status.universe_id = Some(id);

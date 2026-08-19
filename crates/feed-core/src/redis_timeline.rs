@@ -31,7 +31,11 @@ impl RedisTimelineStore {
         let mut conn = self.conn.clone();
         let _: () = redis::cmd("DEL").arg(&key).query_async(&mut conn).await?;
         for item in scored.iter().take(500) {
-            let member = format!("{}:{}", item_type_str(item.candidate.item_type), item.candidate.id);
+            let member = format!(
+                "{}:{}",
+                item_type_str(item.candidate.item_type),
+                item.candidate.id
+            );
             let _: () = conn.zadd(&key, member, item.score).await?;
         }
         let _: () = conn.expire(&key, 86_400).await?;

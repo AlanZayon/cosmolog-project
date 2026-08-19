@@ -51,19 +51,15 @@ async fn main() -> anyhow::Result<()> {
 
     let mut consecutive_failures: u32 = 0;
     loop {
-        let bus = match RabbitMqEventBus::connect_with_retry(
-            &amqp_url,
-            Duration::from_secs(30),
-        )
-        .await
-        {
-            Ok(b) => b,
-            Err(e) => {
-                // connect_with_retry only returns Err if somehow broken; treat as fatal
-                tracing::error!(event = "feed.relay.fatal", error = %e);
-                return Err(e);
-            }
-        };
+        let bus =
+            match RabbitMqEventBus::connect_with_retry(&amqp_url, Duration::from_secs(30)).await {
+                Ok(b) => b,
+                Err(e) => {
+                    // connect_with_retry only returns Err if somehow broken; treat as fatal
+                    tracing::error!(event = "feed.relay.fatal", error = %e);
+                    return Err(e);
+                }
+            };
 
         let mut tick = tokio::time::interval(Duration::from_millis(poll_ms));
         loop {
@@ -103,7 +99,11 @@ async fn main() -> anyhow::Result<()> {
             }
             if let Ok(Some(lag)) = outbox::unpublished_lag_seconds(&pool).await {
                 if lag > 5.0 {
-                    tracing::warn!(event = "feed.outbox.lag", lag_seconds = lag, "outbox lag elevated");
+                    tracing::warn!(
+                        event = "feed.outbox.lag",
+                        lag_seconds = lag,
+                        "outbox lag elevated"
+                    );
                 } else {
                     tracing::debug!(event = "feed.outbox.lag", lag_seconds = lag);
                 }

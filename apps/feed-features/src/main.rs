@@ -28,8 +28,8 @@ async fn main() -> anyhow::Result<()> {
     let database_url = std::env::var("DATABASE_URL").context("DATABASE_URL required")?;
     let amqp_url =
         std::env::var("AMQP_URL").unwrap_or_else(|_| "amqp://guest:guest@127.0.0.1:5672".into());
-    let redis_url = std::env::var("REDIS_FEATURES_URL")
-        .unwrap_or_else(|_| "redis://127.0.0.1:6379/1".into());
+    let redis_url =
+        std::env::var("REDIS_FEATURES_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/1".into());
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
