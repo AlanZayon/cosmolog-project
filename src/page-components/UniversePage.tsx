@@ -36,6 +36,8 @@ import { cn } from '@/lib/utils';
 import { BrowseContentRow, browseStoryTileClassNarrow } from '@/components/browse/BrowseContentRow';
 import { HorizontalScrollStrip } from '@/components/browse/HorizontalScrollStrip';
 import { UniverseArcShelfTile } from '@/components/universe/UniverseArcShelfTile';
+import { CodexModeToggle } from '@/components/codex/CodexModeToggle';
+import type { ApiUniverse } from '@/lib/api/types';
 
 const TYPE_FILTERS: { value: string; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   { value: 'short_story', labelKey: 'type.short_story', icon: <FileText className="h-3 w-3" /> },
@@ -51,14 +53,19 @@ const ARC_TYPES: { value: Tables<'arcs'>['type']; labelKey: TranslationKey }[] =
   { value: 'custom', labelKey: 'arcType.custom' },
 ];
 
-interface Universe {
-  id: string;
-  title: string;
-  description: string | null;
-  cover_image_url: string | null;
-  owner_id: string;
-  created_at: string;
-}
+type Universe = Pick<
+  ApiUniverse,
+  | 'id'
+  | 'title'
+  | 'description'
+  | 'cover_image_url'
+  | 'owner_id'
+  | 'created_at'
+  | 'codex_enabled'
+  | 'saga_premise'
+  | 'default_calendar_label'
+  | 'afterword'
+>;
 
 export type UniversePageProps = {
   embedExploration?: boolean;
@@ -113,6 +120,10 @@ export default function UniversePage({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editSagaPremise, setEditSagaPremise] = useState('');
+  const [editAfterword, setEditAfterword] = useState('');
+  const [editCalendarLabel, setEditCalendarLabel] = useState('');
+  const [editCodexEnabled, setEditCodexEnabled] = useState(true);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -279,6 +290,10 @@ export default function UniversePage({
     if (!universe) return;
     setEditTitle(universe.title);
     setEditDescription(universe.description || '');
+    setEditSagaPremise(universe.saga_premise || '');
+    setEditAfterword(universe.afterword || '');
+    setEditCalendarLabel(universe.default_calendar_label || '');
+    setEditCodexEnabled(universe.codex_enabled ?? true);
     setEditCoverPreview(universe.cover_image_url || null);
     setEditCoverFile(null);
     setEditing(true);
@@ -329,6 +344,10 @@ export default function UniversePage({
         title: tT,
         description: dT || null,
         cover_image_url,
+        saga_premise: editSagaPremise.trim() || null,
+        afterword: editAfterword.trim() || null,
+        default_calendar_label: editCalendarLabel.trim() || null,
+        codex_enabled: editCodexEnabled,
       });
       toast({ title: t('universe.updated') });
       setEditing(false);
@@ -471,6 +490,11 @@ export default function UniversePage({
       {!embedExploration && <Header />}
       <main className="container min-w-0 max-w-6xl py-8 max-sm:py-6 animate-fade-in">
         {!embedExploration && <PreviousScreenBackButton className="-mt-1 mb-4" />}
+        {!embedExploration && universe && (universe.codex_enabled ?? true) ? (
+          <div className="mb-6">
+            <CodexModeToggle universeId={universe.id} mode="stories" codexEnabled={universe.codex_enabled ?? true} />
+          </div>
+        ) : null}
         {editing ? (
           <div className="mb-8 space-y-4 rounded-lg border border-border bg-card p-4 max-sm:p-3 max-sm:shadow-sm sm:p-4">
             <div className="flex items-center justify-between gap-3 max-sm:items-start max-sm:border-b max-sm:border-border max-sm:pb-3">
@@ -506,6 +530,26 @@ export default function UniversePage({
               <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} />
               <CharacterMeter length={editDescription.length} max={CONTENT_LIMITS.universeDescription} className="mt-1 text-right" />
             </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('codex.sagaPremise')}</label>
+              <Textarea value={editSagaPremise} onChange={e => setEditSagaPremise(e.target.value)} rows={4} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('codex.afterword')}</label>
+              <Textarea value={editAfterword} onChange={e => setEditAfterword(e.target.value)} rows={3} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('codex.calendarLabel')}</label>
+              <Input value={editCalendarLabel} onChange={e => setEditCalendarLabel(e.target.value)} placeholder="T.C." />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editCodexEnabled}
+                onChange={(e) => setEditCodexEnabled(e.target.checked)}
+              />
+              {t('codex.enableCodex')}
+            </label>
             <div className="flex flex-wrap gap-2 max-sm:flex-col-reverse">
               <Button onClick={saveEdits} disabled={saving || !editTitle.trim() || editUniverseOverLimit} size="sm" type="button" className="max-sm:h-11 max-sm:w-full max-sm:touch-manipulation gradient-warm text-primary-foreground">
                 <Save className="mr-1 h-4 w-4 shrink-0" aria-hidden />

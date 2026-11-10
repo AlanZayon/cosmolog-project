@@ -36,7 +36,15 @@ export function deleteArc(arcId: string) {
 
 export function updateUniverse(
   universeId: string,
-  body: { title?: string; description?: string | null; cover_image_url?: string | null },
+  body: {
+    title?: string;
+    description?: string | null;
+    cover_image_url?: string | null;
+    codex_enabled?: boolean;
+    saga_premise?: string | null;
+    default_calendar_label?: string | null;
+    afterword?: string | null;
+  },
 ) {
   return apiFetch<ApiUniverse>(`/universes/${universeId}`, {
     method: 'PATCH',

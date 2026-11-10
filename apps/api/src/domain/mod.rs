@@ -5,6 +5,7 @@ pub mod arcs;
 pub mod auth;
 pub mod blocks;
 pub mod chapters;
+pub mod codex;
 pub mod comic_pages;
 pub mod comment_likes;
 pub mod comments;

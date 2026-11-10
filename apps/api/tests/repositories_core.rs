@@ -91,6 +91,10 @@ async fn universes_crud_and_ownership() {
         title: Some("Cosmos Renamed".into()),
         description: Some("New blurb".into()),
         cover_image_url: None,
+        codex_enabled: None,
+        saga_premise: None,
+        default_calendar_label: None,
+        afterword: None,
     };
     let updated = update_universe(&pool, universe.id, owner.user_id, &input)
         .await
@@ -105,6 +109,10 @@ async fn universes_crud_and_ownership() {
             title: Some("Hack".into()),
             description: None,
             cover_image_url: None,
+            codex_enabled: None,
+            saga_premise: None,
+            default_calendar_label: None,
+            afterword: None,
         },
     )
     .await;

@@ -127,6 +127,16 @@ impl TestApp {
     }
 }
 
+pub async fn text_body(response: Response<Body>) -> String {
+    let bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("body")
+        .to_bytes();
+    String::from_utf8(bytes.to_vec()).expect("utf8 body")
+}
+
 pub async fn json(response: Response<Body>) -> Value {
     let status = response.status();
     let bytes = response

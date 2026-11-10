@@ -2,7 +2,7 @@ use axum::{
     extract::DefaultBodyLimit,
     http::{header, HeaderName, Method},
     middleware,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post, put},
     Router,
 };
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -11,7 +11,7 @@ use crate::config::Config;
 use crate::domain::limits::MAX_UPLOAD_BYTES;
 use crate::middleware::{rate_limit, request_context, security_headers};
 use crate::routes::{
-    activity_notifications, arcs, auth, db, feed, health, library, notifications, profiles,
+    activity_notifications, arcs, auth, codex, db, feed, health, library, notifications, profiles,
     storage, stories, story_content, universes,
 };
 use crate::state::AppState;
@@ -191,6 +191,88 @@ pub fn router(state: AppState, config: &Config) -> Router {
             get(universes::arcs).post(arcs::create_for_universe),
         )
         .route("/universes/{id}/stories", get(universes::stories))
+        .route(
+            "/universes/{id}/codex/entries",
+            get(codex::list_entries).post(codex::create_entry),
+        )
+        .route(
+            "/universes/{universe_id}/codex/entries/by-slug/{slug}",
+            get(codex::get_entry_by_slug),
+        )
+        .route(
+            "/universes/{id}/codex/relations",
+            get(codex::list_relations).post(codex::create_relation),
+        )
+        .route(
+            "/universes/{id}/codex/timeline",
+            get(codex::list_timeline).post(codex::create_timeline_event),
+        )
+        .route(
+            "/universes/{id}/codex/maps",
+            get(codex::list_maps).post(codex::create_map),
+        )
+        .route(
+            "/universes/{id}/codex/gallery",
+            get(codex::list_gallery_collections).post(codex::create_gallery_collection),
+        )
+        .route(
+            "/universes/{id}/codex/toc",
+            get(codex::list_toc).put(codex::replace_toc),
+        )
+        .route(
+            "/universes/{id}/codex/export.md",
+            get(codex::export_markdown),
+        )
+        .route(
+            "/codex/entries/{id}",
+            get(codex::get_entry)
+                .patch(codex::patch_entry)
+                .delete(codex::delete_entry),
+        )
+        .route(
+            "/codex/entries/{id}/blocks",
+            get(codex::list_blocks).put(codex::replace_blocks),
+        )
+        .route(
+            "/codex/entries/{id}/appearances",
+            get(codex::list_appearances).post(codex::create_appearance),
+        )
+        .route("/codex/relations/{id}", delete(codex::delete_relation))
+        .route(
+            "/codex/timeline/{id}",
+            get(codex::get_timeline_event)
+                .patch(codex::patch_timeline_event)
+                .delete(codex::delete_timeline_event),
+        )
+        .route("/codex/appearances/{id}", delete(codex::delete_appearance))
+        .route(
+            "/arcs/{id}/lore-links",
+            get(codex::list_arc_lore_links).post(codex::create_arc_lore_link),
+        )
+        .route(
+            "/arcs/{arc_id}/lore-links/{entry_id}",
+            delete(codex::delete_arc_lore_link),
+        )
+        .route(
+            "/codex/maps/{id}",
+            get(codex::get_map)
+                .patch(codex::patch_map)
+                .delete(codex::delete_map),
+        )
+        .route(
+            "/codex/maps/{id}/pins",
+            get(codex::list_map_pins).put(codex::replace_map_pins),
+        )
+        .route(
+            "/codex/gallery/{id}",
+            get(codex::get_gallery_collection)
+                .patch(codex::patch_gallery_collection)
+                .delete(codex::delete_gallery_collection),
+        )
+        .route(
+            "/codex/gallery/{id}/assets",
+            get(codex::list_gallery_assets).put(codex::replace_gallery_assets),
+        )
         .route(
             "/arcs/{id}",
             get(arcs::by_id).patch(arcs::update).delete(arcs::delete),

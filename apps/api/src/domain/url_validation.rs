@@ -8,6 +8,9 @@ const ALLOWED_BUCKETS: &[&str] = &[
     "comics",
     "universe-covers",
     "arc-covers",
+    "codex-covers",
+    "codex-maps",
+    "codex-gallery",
 ];
 
 /// Validates that `url` points to an object served by this project's image
@@ -104,6 +107,13 @@ mod tests {
     #[test]
     fn accepts_valid_s3_url() {
         assert!(validate_stored_image_url(&valid_url("avatars"), &prefixes()).is_ok());
+    }
+
+    #[test]
+    fn accepts_codex_buckets() {
+        for bucket in ["codex-covers", "codex-maps", "codex-gallery"] {
+            assert!(validate_stored_image_url(&valid_url(bucket), &prefixes()).is_ok());
+        }
     }
 
     #[test]

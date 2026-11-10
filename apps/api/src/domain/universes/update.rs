@@ -7,6 +7,10 @@ pub struct UpdateUniverseInput {
     pub title: Option<String>,
     pub description: Option<String>,
     pub cover_image_url: Option<Option<String>>,
+    pub codex_enabled: Option<bool>,
+    pub saga_premise: Option<Option<String>>,
+    pub default_calendar_label: Option<Option<String>>,
+    pub afterword: Option<Option<String>>,
 }
 
 impl UpdateUniverseInput {
@@ -37,6 +41,10 @@ mod tests {
             title: Some("Renamed".into()),
             description: None,
             cover_image_url: None,
+            codex_enabled: None,
+            saga_premise: None,
+            default_calendar_label: None,
+            afterword: None,
         };
         assert!(input.validate().is_ok());
     }
@@ -47,6 +55,10 @@ mod tests {
             title: Some(" ".into()),
             description: None,
             cover_image_url: None,
+            codex_enabled: None,
+            saga_premise: None,
+            default_calendar_label: None,
+            afterword: None,
         };
         assert!(matches!(input.validate(), Err(AppError::BadRequest(_))));
     }

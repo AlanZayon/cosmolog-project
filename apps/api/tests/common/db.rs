@@ -52,6 +52,39 @@ pub async fn ensure_schema(pool: &PgPool) {
     apply_schema(pool).await;
     apply_schema_patches(pool).await;
     apply_feed_function(pool).await;
+    apply_codex_schema(pool).await;
+}
+
+async fn apply_codex_schema(pool: &PgPool) {
+    // Test fixtures omit the trigger function that production migrations install.
+    sqlx::raw_sql(
+        r#"
+        CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          NEW.updated_at = now();
+          RETURN NEW;
+        END;
+        $$;
+        "#,
+    )
+    .execute(pool)
+    .await
+    .expect("update_updated_at_column");
+
+    let sql = include_str!("../../migrations/20260803192841_universe_codex_foundation.sql");
+    sqlx::raw_sql(sql)
+        .execute(pool)
+        .await
+        .expect("apply universe codex schema");
+
+    let slug_sql = include_str!("../../migrations/20260803194500_lore_entries_active_slug.sql");
+    sqlx::raw_sql(slug_sql)
+        .execute(pool)
+        .await
+        .expect("apply lore entry active slug index");
 }
 
 /// `get_feed` is loaded from the v2 ranking migration (single source of truth).
@@ -116,6 +149,10 @@ async fn apply_schema_patches(pool: &PgPool) {
         "CREATE INDEX IF NOT EXISTS idx_likes_story_created ON public.likes (story_id, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_likes_created ON public.likes (created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_universes_owner ON public.universes (owner_id)",
+        "ALTER TABLE public.universes ADD COLUMN IF NOT EXISTS codex_enabled BOOLEAN NOT NULL DEFAULT true",
+        "ALTER TABLE public.universes ADD COLUMN IF NOT EXISTS saga_premise TEXT",
+        "ALTER TABLE public.universes ADD COLUMN IF NOT EXISTS default_calendar_label TEXT",
+        "ALTER TABLE public.universes ADD COLUMN IF NOT EXISTS afterword TEXT",
         r#"INSERT INTO public.feed_metadata (key, value, version)
            VALUES (
              'weights.sql_feed',
@@ -146,6 +183,17 @@ async fn apply_schema(pool: &PgPool) {
 pub async fn truncate_all(pool: &PgPool) {
     sqlx::query(
         "TRUNCATE TABLE
+            codex_toc_items,
+            gallery_assets,
+            gallery_collections,
+            map_pins,
+            maps,
+            arc_lore_links,
+            lore_appearances,
+            timeline_events,
+            lore_relations,
+            lore_blocks,
+            lore_entries,
             processed_events,
             feed_metadata,
             feed_deliveries,

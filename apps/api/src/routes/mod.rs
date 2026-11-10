@@ -1,6 +1,7 @@
 pub mod activity_notifications;
 pub mod arcs;
 pub mod auth;
+pub mod codex;
 pub mod db;
 pub mod feed;
 pub mod health;

@@ -39,8 +39,177 @@ export type ApiUniverse = {
   description: string | null;
   cover_image_url: string | null;
   owner_id: string;
+  codex_enabled?: boolean;
+  saga_premise?: string | null;
+  default_calendar_label?: string | null;
+  afterword?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type LoreEntryKind =
+  | 'episode'
+  | 'era'
+  | 'event'
+  | 'faction'
+  | 'institution'
+  | 'social_class'
+  | 'place'
+  | 'creature'
+  | 'system'
+  | 'glossary_term'
+  | 'vehicle'
+  | 'character'
+  | 'drama_synopsis'
+  | 'side_tale'
+  | 'meta_essay'
+  | 'custom';
+
+export type LoreCanonStatus = 'canon' | 'apocrypha' | 'meta';
+export type LorePublishState = 'draft' | 'published';
+
+export type ApiLoreEntry = {
+  id: string;
+  universe_id: string;
+  kind: LoreEntryKind;
+  slug: string;
+  title: string;
+  summary: string | null;
+  cover_image_url: string | null;
+  canon_status: LoreCanonStatus;
+  publish_state: LorePublishState;
+  parent_entry_id: string | null;
+  sort_key: number;
+  custom_fields: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiLoreBlock = {
+  id: string;
+  entry_id: string;
+  block_type: 'text' | 'image';
+  content: string;
+  block_order: number;
+  created_at: string;
+};
+
+export type LoreRelationType =
+  | 'related'
+  | 'causes'
+  | 'caused_by'
+  | 'member_of'
+  | 'rules'
+  | 'subordinate_to'
+  | 'allied_with'
+  | 'at_war_with'
+  | 'located_in'
+  | 'habitat'
+  | 'defines'
+  | 'depends_on'
+  | 'part_of'
+  | 'piloted_by'
+  | 'variant_of'
+  | 'knows'
+  | 'family'
+  | 'rival'
+  | 'serves'
+  | 'reincarnation_of'
+  | 'appears_with'
+  | 'custom';
+
+export type ApiLoreRelation = {
+  id: string;
+  universe_id: string;
+  from_entry_id: string;
+  to_entry_id: string;
+  rel_type: LoreRelationType;
+  label: string | null;
+  created_at: string;
+};
+
+export type TimelineConfidence = 'confirmed' | 'uncertain' | 'legendary';
+
+export type ApiTimelineEvent = {
+  id: string;
+  universe_id: string;
+  title: string;
+  summary: string | null;
+  body: string;
+  occurred_at_label: string | null;
+  sort_key: number;
+  era_entry_id: string | null;
+  confidence: TimelineConfidence;
+  cover_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiLoreAppearance = {
+  id: string;
+  entry_id: string;
+  story_id: string | null;
+  chapter_id: string | null;
+  timeline_event_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type ApiMap = {
+  id: string;
+  universe_id: string;
+  title: string;
+  description: string | null;
+  image_url: string;
+  sort_key: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiMapPin = {
+  id: string;
+  map_id: string;
+  label: string;
+  x_norm: number;
+  y_norm: number;
+  entry_id: string | null;
+  created_at: string;
+};
+
+export type GalleryArtKind = 'final' | 'sketch' | 'map' | 'diagram';
+
+export type ApiGalleryCollection = {
+  id: string;
+  universe_id: string;
+  title: string;
+  description: string | null;
+  sort_key: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiGalleryAsset = {
+  id: string;
+  collection_id: string;
+  image_url: string;
+  caption: string | null;
+  art_kind: GalleryArtKind;
+  entry_id: string | null;
+  sort_key: number;
+  created_at: string;
+};
+
+export type CodexTocHrefKind = 'cover' | 'timeline' | 'gallery' | 'index' | 'maps' | 'entry' | 'kind';
+
+export type ApiCodexTocItem = {
+  id: string;
+  universe_id: string;
+  title: string;
+  section_key: string | null;
+  entry_id: string | null;
+  href_kind: CodexTocHrefKind | null;
+  sort_key: number;
+  created_at: string;
 };
 
 export type ApiArc = {

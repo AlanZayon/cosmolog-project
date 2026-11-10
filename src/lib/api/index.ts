@@ -11,4 +11,5 @@ export * from '@/lib/api/social';
 export * from '@/lib/api/storage';
 export * from '@/lib/api/stories';
 export * from '@/lib/api/universes';
+export * from '@/lib/api/codex';
 export type * from '@/lib/api/types';

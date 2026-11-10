@@ -18,6 +18,7 @@ This document describes **who can do what** on the Rust API (`apps/api`). Enforc
 | Profile | `profiles.user_id` | User may update **own** profile only |
 | Universe | `universes.owner_id` | Owner CRUD; public read by id |
 | Arc | via `arcs.universe_id` → universe owner | Universe owner CRUD; public read |
+| Codex lore / timeline / maps / gallery / TOC | via `universe_id` → universe owner | Owner write; public read of **published** entries (drafts owner-only) |
 | Story | `stories.author_id` | Author update/delete; public read |
 | Chapter / blocks / comic pages | via story author | Story author only |
 | Comment | any authenticated user | Create on any story; no edit/delete API yet |
@@ -46,6 +47,8 @@ Cross-user assignment returns **401 Unauthorized** (not 404) to avoid leaking ex
 | `GET /stories/search` | ✅ | ✅ |
 | `GET /profiles/search` | ✅ | ✅ |
 | `GET /universes/{id}` | ✅ | ✅ |
+| `GET /universes/{id}/codex/*` (published) | ✅ | ✅ (+ drafts if owner) |
+| `POST/PATCH/PUT/DELETE …/codex…` | ❌ 401 | ✅ universe owner |
 | `POST /stories` | ❌ 401 | ✅ (own scope) |
 | `PATCH /stories/{id}` | ❌ 401 | ✅ author only |
 | `PUT /stories/{id}/blocks` | ❌ 401 | ✅ author only |

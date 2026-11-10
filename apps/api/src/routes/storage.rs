@@ -16,6 +16,9 @@ const ALLOWED_BUCKETS: &[&str] = &[
     "comics",
     "universe-covers",
     "arc-covers",
+    "codex-covers",
+    "codex-maps",
+    "codex-gallery",
 ];
 
 const ALLOWED_IMAGE_TYPES: &[&str] = &["image/jpeg", "image/png", "image/webp", "image/gif"];

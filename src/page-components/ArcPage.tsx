@@ -8,8 +8,22 @@ import { BrowseContentRow, browseStoryTileClass } from '@/components/browse/Brow
 import { UniverseDetailSkeleton } from '@/components/loading/skeletons';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { getArc, getArcStories, getUniverseById } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  ApiError,
+  createArcLoreLink,
+  deleteArcLoreLink,
+  getArc,
+  getArcStories,
+  getUniverseById,
+  listArcLoreLinks,
+} from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useToast } from '@/hooks/use-toast';
+import { entryPagePath } from '@/lib/codex/sections';
+import type { ApiLoreEntry } from '@/lib/api/types';
 import type { Tables } from '@/integrations/supabase/types';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -32,10 +46,15 @@ export default function ArcPage({
   const params = useParams<{ id: string }>();
   const id = (arcIdOverride ?? params?.id) as string | undefined;
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [arc, setArc] = useState<Arc | null>(null);
   const [universe, setUniverse] = useState<Tables<'universes'> | null>(null);
   const [stories, setStories] = useState<StoryWithProfile[]>([]);
+  const [loreLinks, setLoreLinks] = useState<ApiLoreEntry[]>([]);
+  const [linkEntryId, setLinkEntryId] = useState('');
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     if (id) fetchArc();
@@ -47,16 +66,48 @@ export default function ArcPage({
     try {
       const arcData = await getArc(id);
       setArc(arcData as Arc);
-      const [universeData, storiesData] = await Promise.all([
+      const [universeData, storiesData, linked] = await Promise.all([
         getUniverseById(arcData.universe_id),
         getArcStories(id),
+        listArcLoreLinks(id),
       ]);
       setUniverse(universeData as Tables<'universes'>);
       setStories(storiesData as StoryWithProfile[]);
+      setLoreLinks(linked);
     } catch {
       setArc(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isOwner = Boolean(user && universe && user.id === universe.owner_id);
+
+  const addLoreLink = async () => {
+    if (!id || !linkEntryId.trim()) return;
+    setLinking(true);
+    try {
+      await createArcLoreLink(id, linkEntryId.trim());
+      const linked = await listArcLoreLinks(id);
+      setLoreLinks(linked);
+      setLinkEntryId('');
+      toast({ title: t('codex.arcLinkAdded') });
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const removeLoreLink = async (entryId: string) => {
+    if (!id) return;
+    try {
+      await deleteArcLoreLink(id, entryId);
+      setLoreLinks((prev) => prev.filter((e) => e.id !== entryId));
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : String(err);
+      toast({ title: t('common.error'), description: message, variant: 'destructive' });
     }
   };
 
@@ -162,6 +213,48 @@ export default function ArcPage({
             </div>
           )}
         </div>
+
+        <section className="mb-10 space-y-3">
+          <h2 className="text-lg font-semibold">{t('codex.arcLoreLinks')}</h2>
+          {loreLinks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('codex.noArcLoreLinks')}</p>
+          ) : (
+            <ul className="space-y-2">
+              {loreLinks.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+                >
+                  <Link
+                    href={universe ? entryPagePath(universe.id, entry.slug) : '#'}
+                    className="text-primary hover:underline"
+                  >
+                    {entry.title}
+                    <span className="ml-2 text-muted-foreground">({entry.kind})</span>
+                  </Link>
+                  {isOwner && !embedExploration ? (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => removeLoreLink(entry.id)}>
+                      {t('common.delete')}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          {isOwner && !embedExploration ? (
+            <div className="flex flex-wrap gap-2">
+              <Input
+                className="max-w-sm"
+                placeholder={t('codex.arcLinkEntryId')}
+                value={linkEntryId}
+                onChange={(e) => setLinkEntryId(e.target.value)}
+              />
+              <Button type="button" size="sm" variant="outline" onClick={addLoreLink} disabled={linking || !linkEntryId.trim()}>
+                {linking ? t('common.saving') : t('codex.addArcLink')}
+              </Button>
+            </div>
+          ) : null}
+        </section>
 
         {stories.length === 0 ? (
           <p className="text-muted-foreground">{t('universe.arcStoriesEmpty')}</p>
